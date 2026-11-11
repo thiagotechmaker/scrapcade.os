@@ -25,6 +25,20 @@ Sistema próprio, baseado em Linux e montado com **Buildroot**, voltado para emu
 | Tela de boot | Logo fixa do T-OS, sem textos do Linux |
 | Tempo de boot | Meta de até 15 segundos até o menu |
 
+## ScrapCade no T-OS: igual ao do iChroma
+
+O ScrapCade do T-OS deve ter o mesmo visual e as mesmas funções do ScrapCade do iChroma:
+
+- Carrossel de **capas dos jogos** (não de consoles), com a faixa e o logo do console no topo de cada capa, reflexo no chão e borda na selecionada.
+- Filtros com **LB/RB**: Todos, Favoritos, Mais jogados e cada console.
+- Barra de cima com logo do console, nome do emulador, filtro atual, hora, data e IP.
+- Embaixo da capa: título do jogo, ano, empresa e gênero, e a posição ("2 de 31").
+- Fundo com a cena do jogo selecionado, borrada e escurecida.
+- Barra de botões com ícones: direcional escolher, A jogar, X favorito, Y detalhes, LB/RB filtrar, Select sistema.
+- Painel **Sistema** no Select: tema (Aurora, Carbono, Neon), animações, capas, fundo, arquivos, informações, reiniciar.
+- Capas e dados baixados sozinhos (acervo da libretro, ScreenScraper opcional), com organização automática da pasta "Jogos novos".
+- Mesmas cores e fontes do iChroma, adaptadas à resolução da tela.
+
 ## Jogos e emuladores
 
 | Console | Emulador | BIOS |
