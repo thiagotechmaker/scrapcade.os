@@ -17,7 +17,7 @@ Sistema próprio, baseado em Linux e montado com **Buildroot**, voltado para emu
 | Item | Decisão |
 |---|---|
 | Uso | Só jogos, com **modo desktop** acessível quando precisar |
-| Modo desktop | XFCE |
+| Modo desktop | **Fluxbox**, no estilo do antiX: PCManFM (arquivos), xterm (terminal), Dillo (navegador leve), mpv (vídeo), feh (imagens). O XFCE não existe no Buildroot. |
 | Menu de jogos | **ScrapCade novo do zero**, em C/C++ com SDL2 (estilo Aurora, carrossel de capas) |
 | Idioma | Português do Brasil, com opção de inglês |
 | Contas | Sem conta no modo jogo; senha só no modo desktop e no acesso remoto |
@@ -78,10 +78,10 @@ Sistema próprio, baseado em Linux e montado com **Buildroot**, voltado para emu
 
 1. Ambiente de compilação (Buildroot no WSL2 com Ubuntu).
 2. Imagem x64 mínima: liga pelo pen drive e mostra a logo e uma tela de teste.
-3. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64).
+3. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64). O RetroArch não existe no Buildroot: o T-OS empacota ele e os núcleos, como o Batocera.
 4. ScrapCade em SDL2: carrossel, capas, organização por console.
 5. Transferência (página, Samba, pen drive) e menu Select + Start.
 6. Imagem x86 32 bits, depois Raspberry Pi, depois TV boxes.
 7. Emuladores pesados (PCSX2, Dolphin, PPSSPP, melonDS, Azahar) com perfis por desempenho.
-8. Modo desktop XFCE e instalador para o HD.
+8. Modo desktop Fluxbox e instalador para o HD.
 9. Site de download.
