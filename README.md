@@ -4,7 +4,7 @@ Sistema operacional próprio, baseado em Linux, voltado para **emulação de jog
 
 O T-OS é montado com o [Buildroot](https://buildroot.org), a mesma ferramenta usada pelo Batocera. Ele não é uma distribuição pronta: o Buildroot compila do código-fonte só o que o sistema precisa, e gera uma imagem pronta para gravar.
 
-> **Estado atual (2026.11): base mínima.** O sistema liga no PC com UEFI e chega ao login. Ainda não tem menu de jogos nem emuladores. Eles vêm nas próximas etapas.
+> **Estado atual (2026.11):** o sistema liga no PC com UEFI direto no **modo jogo**, com o menu ScrapCade em tela cheia. Ainda não tem emuladores: eles vêm na próxima etapa.
 
 ## Capturas
 
@@ -22,6 +22,24 @@ O T-OS é montado com o [Buildroot](https://buildroot.org), a mesma ferramenta u
 
 Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 
+## Modo jogo: ScrapCade
+
+Como numa Steam Machine, o T-OS liga direto no **modo jogo**: o ScrapCade abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O modo desktop (XFCE) entra numa próxima etapa.
+
+**Carrossel de consoles**, no estilo do dashboard Aurora:
+
+![Menu](docs/capturas/5_menu_consoles.png)
+
+**Navegando:** o fundo muda de cor conforme o console escolhido:
+
+![Navegando](docs/capturas/6_menu_navegando.png)
+
+**Lista de jogos** do console. Sem jogos, mostra a pasta onde copiar:
+
+![Jogos](docs/capturas/7_menu_jogos.png)
+
+O ScrapCade para Linux é escrito em C e tem cerca de 55 KB. Ele desenha direto na tela (framebuffer), sem precisar de aceleração 3D, e lê teclado e controle pelo evdev do Linux (direcional, analógico, A e B). Um controle ligado depois do boot é reconhecido em até 3 segundos. Código em `external/package/scrapcade/src`.
+
 ## O que cada parte faz
 
 | Parte | O que faz |
@@ -38,6 +56,8 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 | **acpid** | Trata o botão de ligar e eventos de energia (desligar ao apertar o botão). |
 | **crond** | Executa tarefas agendadas. |
 | **Primeiro boot** | Script `S01primeiro-boot`: se o administrador ainda não tem senha, pede para criar uma antes do login. |
+| **ScrapCade** | Menu de jogos (modo jogo). Abre no boot pelo serviço `S99scrapcade`, no tty1. |
+| **DejaVu Sans** | Fonte usada no menu (só as variantes Sans, para economizar espaço). |
 | **genimage** | Monta o `disk.img` final: tabela GPT, partição EFI (com o GRUB e o kernel) e partição do sistema (ext4, 512 MB). |
 
 ## Como foi feito
@@ -60,7 +80,8 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 ```
 external/
   external.desc              nome da árvore externa (TOS)
-  Config.in, external.mk     pacotes próprios do T-OS (ScrapCade etc., futuramente)
+  Config.in, external.mk     pacotes próprios do T-OS
+  package/scrapcade/         menu de jogos (código em C, serviço de início)
   configs/
     tos_x86_64_defconfig     configuração da imagem para PC 64 bits
   board/
@@ -98,7 +119,7 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
 ## Próximos passos
 
 1. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64).
-2. ScrapCade em C/C++ com SDL2: menu de jogos com carrossel de capas.
+2. ScrapCade: capas dos jogos, abrir o emulador certo e menu Select + Start durante o jogo.
 3. Logo de boot do T-OS e início direto no menu.
 4. Transferência de jogos (página web, pasta na rede, pen drive) e menu Select + Start.
 5. Imagens x86 32 bits, Raspberry Pi e TV boxes.
