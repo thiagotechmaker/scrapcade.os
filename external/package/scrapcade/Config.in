@@ -1,6 +1,12 @@
 config BR2_PACKAGE_SCRAPCADE
 	bool "scrapcade"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_TTF
+	select BR2_PACKAGE_SDL2_IMAGE
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_JPEG
 	select BR2_PACKAGE_DEJAVU
 	help
-	  ScrapCade: menu de jogos do T-OS (modo jogo). Desenha direto
-	  no framebuffer e le teclado e controle pelo evdev.
+	  ScrapCade: menu de jogos do T-OS (modo jogo), em C++ com SDL2.
+	  Mesmo visual do ScrapCade do iChroma.

@@ -5,3 +5,4 @@ dl/
 qemu*.log
 qemu*.sh
 wait.sh
+teste/

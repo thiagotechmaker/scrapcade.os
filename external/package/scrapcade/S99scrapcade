@@ -1,6 +1,7 @@
 #!/bin/sh
 # Modo jogo do T-OS: abre o ScrapCade em tela cheia no tty1.
 # O login de manutencao fica no tty2 (Ctrl+Alt+F2).
+export SDL_VIDEODRIVER=kmsdrm
 DAEMON=/usr/bin/scrapcade
 PIDFILE=/var/run/scrapcade.pid
 case "$1" in

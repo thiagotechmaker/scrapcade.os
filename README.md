@@ -26,19 +26,21 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 
 Como numa Steam Machine, o T-OS liga direto no **modo jogo**: o ScrapCade abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O modo desktop (XFCE) entra numa próxima etapa.
 
-**Carrossel de consoles**, no estilo do dashboard Aurora:
+O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2**, com as mesmas medidas, cores e funções.
 
-![Menu](docs/capturas/5_menu_consoles.png)
+**Carrossel de capas** com perspectiva, reflexo, faixa e logo do console, borda na selecionada e fundo do jogo borrado:
 
-**Navegando:** o fundo muda de cor conforme o console escolhido:
+![Carrossel](docs/capturas/5_menu_carrossel.png)
 
-![Navegando](docs/capturas/6_menu_navegando.png)
+**Filtros com LB/RB** (Todos, Favoritos, Mais jogados e cada console):
 
-**Lista de jogos** do console. Sem jogos, mostra a pasta onde copiar:
+![Filtro](docs/capturas/6_menu_filtro.png)
 
-![Jogos](docs/capturas/7_menu_jogos.png)
+**Temas** (Aurora, Carbono, Neon, Arcade, Claro), aqui no Carbono:
 
-O ScrapCade para Linux é escrito em C e tem cerca de 55 KB. Ele desenha direto na tela (framebuffer), sem precisar de aceleração 3D, e lê teclado e controle pelo evdev do Linux (direcional, analógico, A e B). Um controle ligado depois do boot é reconhecido em até 3 segundos. Código em `external/package/scrapcade/src`.
+![Tema](docs/capturas/7_menu_tema.png)
+
+As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pela GPU (OpenGL ES pela Mesa) e lê teclado e controle pelo SDL2. Código em `external/package/scrapcade/src`.
 
 ## O que cada parte faz
 
@@ -56,7 +58,9 @@ O ScrapCade para Linux é escrito em C e tem cerca de 55 KB. Ele desenha direto 
 | **acpid** | Trata o botão de ligar e eventos de energia (desligar ao apertar o botão). |
 | **crond** | Executa tarefas agendadas. |
 | **Primeiro boot** | Script `S01primeiro-boot`: se o administrador ainda não tem senha, pede para criar uma antes do login. |
-| **ScrapCade** | Menu de jogos (modo jogo). Abre no boot pelo serviço `S99scrapcade`, no tty1. |
+| **ScrapCade** | Menu de jogos (modo jogo), em C++ com SDL2. Abre no boot pelo serviço `S99scrapcade`. |
+| **Mesa + LLVM** | Drivers de vídeo abertos (Intel, AMD, NVIDIA/Nouveau) e o `llvmpipe` para PC sem placa de vídeo. |
+| **SDL2** | Base do ScrapCade: tela pela GPU (KMS/DRM, sem servidor gráfico), controles, imagens PNG/JPEG e fontes. |
 | **DejaVu Sans** | Fonte usada no menu (só as variantes Sans, para economizar espaço). |
 | **genimage** | Monta o `disk.img` final: tabela GPT, partição EFI (com o GRUB e o kernel) e partição do sistema (ext4, 512 MB). |
 
