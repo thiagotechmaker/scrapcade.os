@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.2 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.3 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -7,7 +7,14 @@
 //
 // Jogos: ROMS_DIR/<console>/ (padrao /userdata/roms). Capas: <console>/images/<jogo>.png ou .jpg.
 // Fundo do jogo: <console>/images/<jogo>-fundo.png. Licenca: GPLv3.
+//
+// Fase B: dados dos jogos pelo CRC (meta.h), capas e fundos baixados do acervo libretro (capas.h) e
+// organizacao automatica da pasta "Jogos novos" (organizar.h), tudo numa thread de fundo.
 #include "gfx.h"
+#include "catalogo.h"
+#include "meta.h"
+#include "capas.h"
+#include "organizar.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -22,127 +29,9 @@
 #include <sstream>
 #include <strings.h>
 #include <sys/stat.h>
+#include <mutex>
+#include <thread>
 
-static std::string DATA = "/usr/share/scrapcade";
-static std::string ROMS = "/userdata/roms";
-static std::string CONF = "/userdata/system/scrapcade.conf";
-
-// ------------------------------------------------------------------ consoles
-
-struct Sys {
-    std::string id, logo, name, emu;
-    uint32_t color;
-    std::vector<std::string> exts;
-};
-
-// Mesmas cores do iChroma onde o console ja existia la
-static std::vector<Sys> SYSTEMS = {
-    {"nes", "nes", "NES", "Mesen", 0xFFC93636, {".nes", ".fds", ".zip"}},
-    {"snes", "snes", "Super Nintendo", "Snes9x", 0xFF5560C2, {".smc", ".sfc", ".zip"}},
-    {"n64", "n64", "Nintendo 64", "Mupen64Plus-Next", 0xFF1E9C4A, {".z64", ".n64", ".v64", ".zip"}},
-    {"gb", "gbc", "Game Boy", "Gambatte", 0xFF7F8C55, {".gb", ".zip"}},
-    {"gbc", "gbc", "Game Boy Color", "Gambatte", 0xFF2E9E62, {".gbc", ".zip"}},
-    {"gba", "gba", "Game Boy Advance", "mGBA", 0xFF6C47C9, {".gba", ".zip"}},
-    {"megadrive", "md", "Mega Drive", "Genesis Plus GX", 0xFF2B68C8, {".md", ".gen", ".smd", ".bin", ".sms", ".gg", ".zip"}},
-    {"psx", "psx", "PlayStation", "DuckStation", 0xFF7D8494, {".cue", ".chd", ".pbp", ".m3u", ".iso"}},
-    {"ps2", "", "PlayStation 2", "PCSX2", 0xFF2C3E9A, {".iso", ".chd", ".cso"}},
-    {"gamecube", "", "GameCube", "Dolphin", 0xFF5B3FA8, {".iso", ".rvz", ".gcm", ".ciso"}},
-    {"wii", "", "Wii", "Dolphin", 0xFF8A97A3, {".iso", ".rvz", ".wbfs"}},
-    {"psp", "", "PSP", "PPSSPP", 0xFF34495E, {".iso", ".cso", ".pbp", ".chd"}},
-    {"nds", "", "Nintendo DS", "melonDS", 0xFF9AA3AA, {".nds", ".zip"}},
-    {"3ds", "", "Nintendo 3DS", "Azahar", 0xFFD35400, {".3ds", ".cci", ".cxi", ".3dsx"}},
-    {"arcade", "arcade", "Fliperama", "FBNeo", 0xFFD9822B, {".zip"}},
-    {"neogeo", "neogeo", "Neo Geo", "FBNeo", 0xFF2F7DD1, {".zip"}},
-    {"dos", "", "PC (DOS)", "DOSBox Pure", 0xFF8C2F2F, {".zip", ".dosz", ".exe"}},
-};
-
-struct Game {
-    const Sys *sys;
-    std::string dir, file, base, title;
-    std::string key() const { return sys->id + "/" + file; }
-};
-
-static std::string lower(std::string s) {
-    for (auto &c : s) c = char(tolower((unsigned char)c));
-    return s;
-}
-
-static bool endsWith(const std::string &s, const std::string &e) {
-    return s.size() >= e.size() && lower(s.substr(s.size() - e.size())) == e;
-}
-
-// Nome do jogo a partir do arquivo: sem extensao e sem as marcas "(U) [!]"
-static std::string titleOf(const std::string &base) {
-    std::string t = base;
-    size_t p = t.find(" (");
-    size_t q = t.find(" [");
-    size_t cut = std::min(p, q);
-    if (cut != std::string::npos && cut > 0) t = t.substr(0, cut);
-    std::replace(t.begin(), t.end(), '_', ' ');
-    return t;
-}
-
-static bool isFile(const std::string &p) {
-    struct stat st;
-    return stat(p.c_str(), &st) == 0 && S_ISREG(st.st_mode);
-}
-
-static void mkdirs(const std::string &p) {
-    std::string cur;
-    std::stringstream ss(p);
-    std::string part;
-    while (std::getline(ss, part, '/')) {
-        if (part.empty()) continue;
-        cur += "/" + part;
-        mkdir(cur.c_str(), 0755);
-    }
-}
-
-static std::vector<Game> scanGames() {
-    std::vector<Game> out;
-    for (auto &s : SYSTEMS) {
-        std::string dir = ROMS + "/" + s.id;
-        mkdirs(dir);
-        DIR *d = opendir(dir.c_str());
-        if (!d) continue;
-        std::vector<Game> here;
-        while (dirent *e = readdir(d)) {
-            std::string f = e->d_name;
-            if (f.empty() || f[0] == '.' || e->d_type == DT_DIR) continue;
-            bool ok = false;
-            for (auto &x : s.exts) if (endsWith(f, x)) ok = true;
-            if (!ok) continue;
-            // CD: so o .cue/.m3u aparece, as faixas .bin ficam escondidas
-            if (s.id == "psx" && endsWith(f, ".bin")) continue;
-            Game g{&s, dir, f, f.substr(0, f.rfind('.')), ""};
-            g.title = titleOf(g.base);
-            here.push_back(g);
-        }
-        closedir(d);
-        std::sort(here.begin(), here.end(),
-                  [](const Game &a, const Game &b) { return strcasecmp(a.title.c_str(), b.title.c_str()) < 0; });
-        out.insert(out.end(), here.begin(), here.end());
-    }
-    return out;
-}
-
-// Capa: images/<jogo>.png (ou -image/-thumb, .jpg), igual as pastas do Batocera e do iChroma
-static std::string coverOf(const Game &g, const std::string &suffix = "") {
-    const char *subs[] = {"images", "media", "covers"};
-    const char *ends[] = {".png", "-image.png", "-thumb.png", ".jpg", "-image.jpg", "-thumb.jpg"};
-    for (auto sd : subs) {
-        if (!suffix.empty()) {
-            std::string p = g.dir + "/" + sd + "/" + g.base + suffix + ".png";
-            if (isFile(p)) return p;
-            continue;
-        }
-        for (auto en : ends) {
-            std::string p = g.dir + "/" + sd + "/" + g.base + en;
-            if (isFile(p)) return p;
-        }
-    }
-    return "";
-}
 
 // ------------------------------------------------------------------ preferencias (favoritos, jogados, tema)
 
@@ -484,7 +373,11 @@ static void loadBackdrop(const Game *g) {
     if (!g || !showBackdrop) return;
     std::string p = coverOf(*g, "-fundo");
     if (p.empty()) return;
-    SDL_Surface *src = IMG_Load(p.c_str());
+    SDL_Surface *raw = IMG_Load(p.c_str());
+    if (!raw) return;
+    // as cenas do acervo costumam vir com paleta (4 ou 8 bits): converte antes de reduzir
+    SDL_Surface *src = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
+    SDL_FreeSurface(raw);
     if (!src) return;
     float ar = float(G.W) / G.H, sw = float(src->w), sh = float(src->h);
     float cw = std::min(sw, sh * ar), ch = cw / ar;
@@ -601,7 +494,9 @@ static void titleBar(const Game *g) {
     if (!g) return;
     std::string t = (isFav(*g) ? "★  " : "") + g->title;
     T.draw(t, G.W / 2.0f, y + h * 0.36f, 13.5f, false, 0xFFFFFFFF, 1, G.W - 32 * u);
-    std::string sub = std::to_string(mod(target, int(view.size())) + 1) + " de " + std::to_string(view.size());
+    std::string meta = Meta::line(*g);
+    std::string sub = (meta.empty() ? "" : meta + "     ") + std::to_string(mod(target, int(view.size())) + 1) + " de " +
+                      std::to_string(view.size());
     T.draw(sub, G.W / 2.0f, y + h * 0.78f, 8.5f, false, 0xDDFFFFFF, 1);
 }
 
@@ -629,25 +524,76 @@ static void hintBar() {
 
 static std::string toastMsg;
 static Uint32 toastUntil = 0;
-static void toast(const std::string &s) { toastMsg = s; toastUntil = SDL_GetTicks() + 2600; }
+static void toast(const std::string &s, Uint32 ms = 2600) { toastMsg = s; toastUntil = SDL_GetTicks() + ms; }
 
 static void drawToast() {
     if (toastMsg.empty() || SDL_GetTicks() > toastUntil) return;
-    float u = G.u, w = T.width(toastMsg, 10, false) + 24 * u, h = 22 * u;
+    float u = G.u, maxw = G.W - 40 * u, w = std::min(maxw, T.width(toastMsg, 10, false) + 24 * u), h = 22 * u;
     float x = (G.W - w) / 2, y = G.H - (TITLE_H + HINT_H) * u - h - 8 * u;
     G.roundRect(x, y, w, h, 6 * u, 0xE6202329);
-    T.draw(toastMsg, G.W / 2.0f, y + h / 2, 10, false, 0xFFFFFFFF, 1);
+    T.draw(toastMsg, G.W / 2.0f, y + h / 2, 10, false, 0xFFFFFFFF, 1, w - 16 * u);
 }
 
 static void drawEmpty() {
     float u = G.u, cy = areaH() * 0.45f;
     const char *L[] = {"Nenhum jogo ainda.", "",
-                       "Copie os jogos para a pasta do console em:", ROMS.c_str(), "",
-                       "Exemplo: /userdata/roms/snes para Super Nintendo."};
+                       "Copie os jogos (ou os .zip) para a pasta:", INBOX.c_str(), "",
+                       "Eles vão sozinhos para o console certo, com capa e dados."};
     for (int i = 0; i < 6; i++) {
         uint32_t c = i == 3 ? 0xFFFFD479 : 0xFFFFFFFF;
         T.draw(L[i], G.W / 2.0f, cy + (i - 2.5f) * 16 * u, i == 0 ? 14 : 10, i == 0, c, 1);
     }
+}
+
+// ------------------------------------------------------------------ detalhes (Y), como o Home.showDetails
+
+static bool details = false;
+
+static std::string sizeText(long long b) {
+    char s[32];
+    if (b >= 1024LL * 1024 * 1024) snprintf(s, sizeof s, "%.1f GB", b / 1073741824.0);
+    else if (b >= 1024 * 1024) snprintf(s, sizeof s, "%.1f MB", b / 1048576.0);
+    else snprintf(s, sizeof s, "%lld KB", (b + 1023) / 1024);
+    return s;
+}
+
+static void drawDetails() {
+    const Game *g = current();
+    if (!details || !g) return;
+    float u = G.u;
+    G.fillRect(0, 0, float(G.W), float(G.H), 0xA0000000);
+    std::vector<std::string> L;
+    L.push_back("Console: " + g->sys->name + "     Emulador: " + g->sys->emu);
+    Meta::Info m;
+    bool has = Meta::get(g->key(), m);
+    if (has && (!m.year.empty() || !m.dev.empty() || !m.genre.empty())) {
+        std::string s;
+        if (!m.year.empty()) s += "Ano: " + m.year + "     ";
+        if (!m.dev.empty()) s += "Empresa: " + m.dev + "     ";
+        if (!m.genre.empty()) s += "Gênero: " + Meta::genrePt(m.genre);
+        L.push_back(s);
+    } else {
+        L.push_back(has ? "Ano, empresa e gênero: sem dados para este jogo" : "Procurando os dados do jogo...");
+    }
+    if (has && !m.name.empty() && m.name != g->title) L.push_back("Versão: " + m.name);
+    L.push_back("");
+    struct stat st;
+    std::string f = "Arquivo: " + g->file;
+    if (stat((g->dir + "/" + g->file).c_str(), &st) == 0) f += "  (" + sizeText(st.st_size) + ")";
+    L.push_back(f);
+    L.push_back("Pasta: " + g->dir);
+    L.push_back("");
+    int n = plays(*g);
+    L.push_back(n == 0 ? "Ainda não jogado" : (n == 1 ? "Jogado 1 vez" : "Jogado " + std::to_string(n) + " vezes"));
+    L.push_back(std::string("Favorito: ") + (isFav(*g) ? "sim" : "não") + "  (o botão X marca e desmarca)");
+    float w = std::min(G.W - 40 * u, 430 * u), lh = 13 * u, h = 44 * u + L.size() * lh;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    G.roundRect(x, y, w, h, 8 * u, 0xF2202329);
+    G.roundRectStroke(x, y, w, h, 8 * u, std::max(1.0f, u), alpha(accent(g->sys->color), 0xC0));
+    T.draw(g->title, x + 14 * u, y + 16 * u, 13, true, 0xFFFFFFFF, 0, w - 28 * u);
+    for (size_t i = 0; i < L.size(); i++)
+        T.draw(L[i], x + 14 * u, y + 34 * u + i * lh, 9, false, 0xFFDDE1E8, 0, w - 28 * u);
+    T.draw("B fecha", x + w - 14 * u, y + h - 10 * u, 8, false, 0x99FFFFFF, 2);
 }
 
 // ------------------------------------------------------------------ desenho da tela
@@ -708,6 +654,7 @@ static void render() {
     topBar(g);
     titleBar(g);
     hintBar();
+    drawDetails();
     drawToast();
     SDL_RenderPresent(G.r);
 }
@@ -715,6 +662,7 @@ static void render() {
 // ------------------------------------------------------------------ acoes
 
 static void move(int dir) {
+    details = false;
     if (view.size() < 2) return;
     animFrom = pos;
     target += dir;
@@ -763,10 +711,80 @@ static void cycleTheme() {
 static volatile sig_atomic_t quit = 0;
 static void onSignal(int) { quit = 1; }
 
+// ------------------------------------------------------------------ trabalho de fundo (Capas.start do iChroma)
+
+static Uint32 EV_TOAST = 0, EV_META = 0, EV_ART = 0;
+static volatile bool workStop = false;
+static std::mutex workMu;
+static std::string workMsg;
+
+static void post(Uint32 type) {
+    SDL_Event e;
+    SDL_zero(e);
+    e.type = type;
+    SDL_PushEvent(&e);
+}
+
+// Arcade e Neo Geo: o nome do zip ("mslug") vira o nome oficial
+static void nameGames(std::vector<Game> &games) {
+    for (auto &g : games) {
+        if (g.sys->id != "arcade" && g.sys->id != "neogeo") continue;
+        Meta::Info m;
+        if (Meta::get(g.key(), m) && !m.name.empty()) g.title = titleOf(m.name);
+    }
+}
+
+static void worker() {
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    long long netRetry = 0;
+    while (!quit && !workStop) {
+        std::string msg = Org::run();
+        if (!msg.empty()) {
+            { std::lock_guard<std::mutex> l(workMu); workMsg = msg; }
+            post(EV_TOAST);
+        }
+        auto games = scanGames();
+        if (Meta::fill(games, workStop)) post(EV_META);
+        if (Org::nowMs() >= netRetry && getenv("SCRAPCADE_OFFLINE") == nullptr) {
+            try {
+                if (Capas::work(games, showBackdrop, workStop)) post(EV_ART);
+            } catch (Capas::NetError &) {
+                netRetry = Org::nowMs() + 60000;   // sem rede: tenta de novo em 1 minuto
+                post(EV_ART);                      // o que ja baixou aparece
+            }
+        }
+        for (int i = 0; i < 30 && !quit && !workStop; i++) SDL_Delay(100);
+    }
+    curl_global_cleanup();
+}
+
+// Lista nova de jogos, ficando no mesmo jogo se ele ainda existir
+static void setGames(std::vector<Game> fresh) {
+    nameGames(fresh);
+    std::stable_sort(fresh.begin(), fresh.end(), [](const Game &a, const Game &b) {
+        if (a.sys != b.sys) return a.sys < b.sys;
+        return strcasecmp(a.title.c_str(), b.title.c_str()) < 0;
+    });
+    const Game *g = current();
+    std::string keep = g ? g->key() : "";
+    all = fresh;
+    buildFilters();
+    applyFilter();
+    for (size_t i = 0; i < view.size(); i++)
+        if (view[i].key() == keep) { target = int(i); pos = float(target); break; }
+}
+
+static std::string signature(const std::vector<Game> &games) {
+    std::string s;
+    for (auto &g : games) s += g.key() + "\n";
+    return s;
+}
+
 int main() {
     if (getenv("ROMS_DIR")) ROMS = getenv("ROMS_DIR");
     if (getenv("SCRAPCADE_DATA")) DATA = getenv("SCRAPCADE_DATA");
     if (getenv("SCRAPCADE_CONF")) CONF = getenv("SCRAPCADE_CONF");
+    if (getenv("INBOX_DIR")) INBOX = getenv("INBOX_DIR");
     signal(SIGTERM, onSignal);
     signal(SIGINT, onSignal);
 
@@ -796,10 +814,13 @@ int main() {
     loadPrefs();
     if (prefs.count("theme")) theme = std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str())));
     mkdirs(ROMS);
-    all = scanGames();
-    buildFilters();
-    applyFilter();
+    setGames(scanGames());
+    std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();
+    EV_TOAST = SDL_RegisterEvents(3);
+    EV_META = EV_TOAST + 1;
+    EV_ART = EV_TOAST + 2;
+    std::thread work(worker);
 
     Uint32 holdDir = 0, holdNext = 0, lastScan = SDL_GetTicks();
     int axisDir = 0;
@@ -810,6 +831,19 @@ int main() {
             any = true;
             switch (e.type) {
             case SDL_QUIT: quit = 1; break;
+            default:
+                if (e.type == EV_TOAST) {
+                    std::string m;
+                    { std::lock_guard<std::mutex> l(workMu); m = workMsg; }
+                    toast(m, 6000);
+                    lastScan = 0;   // procura os jogos de novo agora
+                } else if (e.type == EV_META) {
+                    setGames(scanGames());
+                } else if (e.type == EV_ART) {
+                    clearCards();
+                    backdropKey = "\x01";   // recarrega o fundo do jogo selecionado
+                }
+                break;
             case SDL_CONTROLLERDEVICEADDED: SDL_GameControllerOpen(e.cdevice.which); break;
             case SDL_KEYDOWN:
                 switch (e.key.keysym.sym) {
@@ -817,7 +851,8 @@ int main() {
                 case SDLK_RIGHT: move(1); break;
                 case SDLK_RETURN: case SDLK_SPACE: play(); break;
                 case SDLK_f: toggleFav(); break;
-                case SDLK_d: toast("Detalhes do jogo entram na próxima versão"); break;
+                case SDLK_d: details = !details; break;
+                case SDLK_ESCAPE: case SDLK_BACKSPACE: details = false; break;
                 case SDLK_q: case SDLK_PAGEUP: nextFilter(-1); break;
                 case SDLK_e: case SDLK_PAGEDOWN: nextFilter(1); break;
                 case SDLK_TAB: cycleTheme(); break;
@@ -829,7 +864,8 @@ int main() {
                 case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: move(1); holdDir = 1; holdNext = SDL_GetTicks() + 380; break;
                 case SDL_CONTROLLER_BUTTON_A: play(); break;
                 case SDL_CONTROLLER_BUTTON_X: toggleFav(); break;
-                case SDL_CONTROLLER_BUTTON_Y: toast("Detalhes do jogo entram na próxima versão"); break;
+                case SDL_CONTROLLER_BUTTON_Y: details = !details; break;
+                case SDL_CONTROLLER_BUTTON_B: details = false; break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: nextFilter(-1); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: nextFilter(1); break;
                 case SDL_CONTROLLER_BUTTON_BACK: cycleTheme(); break;
@@ -858,10 +894,10 @@ int main() {
         if (now - lastScan > 5000) {
             lastScan = now;
             auto fresh = scanGames();
-            if (fresh.size() != all.size()) {
-                all = fresh;
-                buildFilters();
-                applyFilter();
+            std::string s2 = signature(fresh);
+            if (s2 != sig) {
+                sig = s2;
+                setGames(fresh);
                 any = true;
             }
         }
@@ -877,6 +913,8 @@ int main() {
             SDL_Delay(30);
         }
     }
+    workStop = true;
+    work.join();
     SDL_Quit();
     return 0;
 }

@@ -4,10 +4,12 @@
 export SDL_VIDEODRIVER=kmsdrm
 DAEMON=/usr/bin/scrapcade
 PIDFILE=/var/run/scrapcade.pid
+LOG=/userdata/system/logs/scrapcade.log
 case "$1" in
   start)
     printf "Starting scrapcade: "
-    start-stop-daemon -S -q -b -m -p "$PIDFILE" -x "$DAEMON" && echo "OK" || echo "FAIL"
+    mkdir -p "${LOG%/*}"
+    start-stop-daemon -S -q -b -m -p "$PIDFILE" -x /bin/sh -- -c "exec $DAEMON >>$LOG 2>&1" && echo "OK" || echo "FAIL"
     ;;
   stop)
     printf "Stopping scrapcade: "

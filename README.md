@@ -42,6 +42,13 @@ O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2*
 
 As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pela GPU (OpenGL ES pela Mesa) e lê teclado e controle pelo SDL2. Código em `external/package/scrapcade/src`.
 
+**Capas, dados e organização automática (ScrapCade 0.3):**
+
+- **Pasta "Jogos novos"** (`/userdata/Jogos novos`): o jogo copiado ali vai sozinho para o console certo. Vale ROM solta, `.zip` com a ROM dentro, CD (`.cue` + `.bin`), Neo Geo (a BIOS que vier junto vira `neogeo.zip`), arcade do FBNeo e imagens de disco (`.iso`, `.rvz`: GameCube, Wii, PSP, PS1 ou PS2 pelo cabeçalho do disco). Arquivo ainda sendo copiado espera 10 s sem mudar de tamanho. O que não for reconhecido vai para `nao_reconhecidos`.
+- **Dados do jogo pelo CRC**, sem rede: nome oficial, ano, empresa e gênero, mostrados embaixo da capa e no painel de detalhes (botão **Y**).
+- **Capa e fundo baixados sozinhos** do acervo [libretro-thumbnails](https://thumbnails.libretro.com), sem conta. O que o acervo não tem fica anotado para não tentar de novo; sem rede, tenta outra vez a cada minuto.
+- Registro do ScrapCade em `/userdata/system/logs/scrapcade.log`.
+
 ## O que cada parte faz
 
 | Parte | O que faz |
@@ -123,7 +130,7 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
 ## Próximos passos
 
 1. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64).
-2. ScrapCade: capas dos jogos, abrir o emulador certo e menu Select + Start durante o jogo.
+2. ScrapCade: abrir o emulador certo, painel Sistema (Select) e menu Select + Start durante o jogo.
 3. Logo de boot do T-OS e início direto no menu.
 4. Transferência de jogos (página web, pasta na rede, pen drive) e menu Select + Start.
 5. Imagens x86 32 bits, Raspberry Pi e TV boxes.
