@@ -37,6 +37,7 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 | **syslogd / klogd** | Guardam os registros do sistema e do kernel, para descobrir problemas. |
 | **acpid** | Trata o botão de ligar e eventos de energia (desligar ao apertar o botão). |
 | **crond** | Executa tarefas agendadas. |
+| **Primeiro boot** | Script `S01primeiro-boot`: se o administrador ainda não tem senha, pede para criar uma antes do login. |
 | **genimage** | Monta o `disk.img` final: tabela GPT, partição EFI (com o GRUB e o kernel) e partição do sistema (ext4, 512 MB). |
 
 ## Como foi feito
@@ -48,7 +49,9 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
    - nome, versão e hostname do T-OS (`/etc/os-release`, `/etc/issue`);
    - compilador estável da Bootlin;
    - partição do sistema de 512 MB;
-   - menu do GRUB com o nome T-OS e espera de 1 segundo.
+   - menu do GRUB com o nome T-OS e espera de 1 segundo;
+   - boot silencioso (`quiet`), sem os textos do kernel na tela;
+   - pedido de senha do administrador no primeiro boot.
 5. **Compilação:** cerca de 27 minutos na primeira vez (Ryzen 7, 16 threads), poucos minutos nas seguintes.
 6. **Teste:** máquina virtual QEMU com firmware UEFI (OVMF).
 
@@ -88,7 +91,9 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
   -drive file=$HOME/t-os/output/x86_64/images/disk.img,format=raw,if=virtio -snapshot
 ```
 
-Login: `root`, **sem senha nesta versão de teste**. A senha entra antes da primeira versão pública.
+**Primeiro boot:** o T-OS pede para criar a senha do administrador (`root`) antes de liberar o login. A imagem não traz senha fixa, porque uma senha publicada seria a mesma em todo aparelho.
+
+![Primeiro boot](docs/capturas/4_primeiro_boot.png)
 
 ## Próximos passos
 
