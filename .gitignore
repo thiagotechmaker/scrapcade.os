@@ -1,0 +1,7 @@
+buildroot/
+output/
+dl/
+*.ppm
+qemu*.log
+qemu*.sh
+wait.sh
