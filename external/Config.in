@@ -1,1 +1,1 @@
-# pacotes proprios do T-OS (ScrapCade etc.) entram aqui
+source "$BR2_EXTERNAL_TOS_PATH/package/scrapcade/Config.in"

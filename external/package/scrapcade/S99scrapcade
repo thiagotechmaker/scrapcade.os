@@ -1,0 +1,20 @@
+#!/bin/sh
+# Modo jogo do T-OS: abre o ScrapCade em tela cheia no tty1.
+# O login de manutencao fica no tty2 (Ctrl+Alt+F2).
+DAEMON=/usr/bin/scrapcade
+PIDFILE=/var/run/scrapcade.pid
+case "$1" in
+  start)
+    printf "Starting scrapcade: "
+    start-stop-daemon -S -q -b -m -p "$PIDFILE" -x "$DAEMON" && echo "OK" || echo "FAIL"
+    ;;
+  stop)
+    printf "Stopping scrapcade: "
+    start-stop-daemon -K -q -p "$PIDFILE" && echo "OK" || echo "FAIL"
+    rm -f "$PIDFILE"
+    ;;
+  restart)
+    "$0" stop; sleep 1; "$0" start
+    ;;
+esac
+exit 0
