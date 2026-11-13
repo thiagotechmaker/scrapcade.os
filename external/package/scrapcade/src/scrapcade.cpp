@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.3 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.4 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -30,6 +30,10 @@
 #include <strings.h>
 #include <sys/stat.h>
 #include <mutex>
+#include <sys/statvfs.h>
+#include <sys/utsname.h>
+#include <sys/reboot.h>
+#include <unistd.h>
 #include <thread>
 
 
@@ -312,7 +316,7 @@ static float pos = 0, animFrom = 0;
 static int target = 0;
 static Uint32 animStart = 0, lastMove = 0;
 static bool animating = false;
-static const Uint32 ANIM_MS = 200;
+static Uint32 ANIM_MS = 200;   // 130 com animacoes rapidas
 
 static int mod(int a, int n) { int m = a % n; return m < 0 ? m + n : m; }
 static const Game *current() { return view.empty() ? nullptr : &view[mod(target, int(view.size()))]; }
@@ -596,6 +600,283 @@ static void drawDetails() {
     T.draw("B fecha", x + w - 14 * u, y + h - 10 * u, 8, false, 0x99FFFFFF, 2);
 }
 
+// ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
+
+enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_HELP, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+static bool sysOpen = false;
+static int optSel = 0;
+static std::string textTitle;                 // painel de texto (Como jogar, Informacoes)
+static std::vector<std::string> textLines;
+static int cpuPct = 0, memPct = 0, diskPct = 0;
+static long long cpuTotal = 0, cpuIdle = 0;
+static Uint32 barsAt = 0;
+static std::string glName;                    // placa de video, lida uma vez
+
+static void readUsage() {
+    std::ifstream st("/proc/stat");
+    std::string cpu;
+    long long v[8] = {0}, total = 0;
+    st >> cpu;
+    for (int i = 0; i < 8; i++) { st >> v[i]; total += v[i]; }
+    long long idle = v[3] + v[4], dt = total - cpuTotal, di = idle - cpuIdle;
+    cpuPct = dt > 0 ? int(100 - di * 100 / dt) : 0;
+    cpuTotal = total;
+    cpuIdle = idle;
+    std::ifstream mi("/proc/meminfo");
+    std::string k;
+    long long val, memTotal = 0, memAvail = 0;
+    std::string unit;
+    while (mi >> k >> val >> unit) {
+        if (k == "MemTotal:") memTotal = val;
+        if (k == "MemAvailable:") memAvail = val;
+    }
+    memPct = memTotal > 0 ? int((memTotal - memAvail) * 100 / memTotal) : 0;
+    struct statvfs fs;
+    diskPct = statvfs(ROMS.c_str(), &fs) == 0 && fs.f_blocks ? int(100 - fs.f_bavail * 100 / fs.f_blocks) : 0;
+}
+
+static std::string optLabel(int i) {
+    switch (i) {
+    case OPT_THEME: return std::string("Tema:   ‹ ") + THEME_NAMES[theme] + " ›";
+    case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
+    case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
+    case OPT_BG: return std::string("Fundo do jogo:   ‹ ") + (showBackdrop ? "Mostrar" : "Ocultar") + " ›";
+    case OPT_HELP: return "Como jogar (botões)";
+    case OPT_INFO: return "Informações do sistema";
+    case OPT_REBOOT: return "Reiniciar";
+    case OPT_OFF: return "Desligar";
+    }
+    return "";
+}
+
+static void drawBar(const std::string &name, int pct, float x, float y, float w) {
+    float u = G.u, h = 7 * u;
+    T.draw(name, x, y + h / 2, 8.5f, false, 0xFF5E6269);
+    float bx = x + 46 * u, bw = w - 46 * u - 30 * u;
+    G.roundRect(bx, y, bw, h, h / 2, 0xFFE3E5E8);
+    if (pct > 0) G.roundRect(bx, y, std::max(h, bw * std::min(pct, 100) / 100.0f), h, h / 2, pct > 85 ? 0xFFE0564A : 0xFF2CCF9A);
+    T.draw(std::to_string(pct) + "%", x + w, y + h / 2, 8.5f, true, 0xFF2B2E33, 2);
+}
+
+// Painel branco com faixa cinza no alto, como o whitePanel do iChroma. Devolve o y do corpo.
+static float whitePanel(const std::string &title, float x, float y, float w, float h) {
+    float u = G.u, th = 22 * u;
+    G.fillRect(0, 0, float(G.W), float(G.H), 0x99000000);
+    G.fillRect(x, y, w, h, 0xFFFFFFFF);
+    G.fillRect(x, y, w, th, 0xFF4A4D52);
+    T.draw(title, x + 12 * u, y + th / 2, 13, false, 0xFFFFFFFF);
+    return y + th;
+}
+
+static void panelHints(const char *const *H, int n, float x, float y, float w) {
+    float u = G.u, s = 13 * u, cx = x + 12 * u, cy = y - 11 * u;
+    G.fillRect(x, y - 22 * u, w, 22 * u, 0xFFF1F2F4);
+    for (int i = 0; i < n; i += 2) {
+        std::stringstream ss(H[i]);
+        std::string k;
+        while (ss >> k) {
+            if (SDL_Texture *t = image(DATA + "/botoes/" + k + ".png")) {
+                SDL_FRect d{cx, cy - s / 2, s, s};
+                SDL_RenderCopyF(G.r, t, nullptr, &d);
+            }
+            cx += s + u;
+        }
+        T.draw(H[i + 1], cx + 2 * u, cy, 8.5f, false, 0xFF5E6269);
+        cx += 2 * u + T.width(H[i + 1], 8.5f, false) + 12 * u;
+    }
+}
+
+static std::string ipAddr();
+
+static void drawSystem() {
+    if (!sysOpen) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u), rowH = 15 * u;
+    float h = 22 * u + 10 * u + OPT_COUNT * (rowH + 1.6f * u) + 14 * u + 22 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Sistema", x, y, w, h) + 8 * u;
+    float lx = x + 12 * u, lw = (w - 24 * u) * 0.53f, rx = lx + lw + 14 * u, rw = x + w - 12 * u - rx;
+    T.draw("Opções", lx, top + 5 * u, 11, false, 0xFF2B2E33);
+    for (int i = 0; i < OPT_COUNT; i++) {
+        float ry = top + 13 * u + i * (rowH + 1.6f * u);
+        G.fillRect(lx, ry, lw, rowH, i == optSel ? 0xFF2CCF9A : 0xFF4A4D52);
+        T.draw(optLabel(i), lx + 8 * u, ry + rowH / 2, 9.5f, false, 0xFFFFFFFF, 0, lw - 16 * u);
+    }
+    float ry = top + 5 * u;
+    T.draw("Endereço IP", rx, ry, 11, false, 0xFF2B2E33);
+    T.draw(ipAddr(), rx, ry + 14 * u, 10, false, 0xFF5E6269, 0, rw);
+    ry += 34 * u;
+    T.draw("Jogos novos", rx, ry, 11, false, 0xFF2B2E33);
+    T.draw(INBOX, rx, ry + 14 * u, 8.5f, false, 0xFF5E6269, 0, rw);
+    ry += 34 * u;
+    T.draw("Uso do sistema", rx, ry, 11, false, 0xFF2B2E33);
+    if (SDL_GetTicks() - barsAt > 1000) { readUsage(); barsAt = SDL_GetTicks(); }
+    drawBar("CPU", cpuPct, rx, ry + 12 * u, rw);
+    drawBar("Memória", memPct, rx, ry + 25 * u, rw);
+    drawBar("Disco", diskPct, rx, ry + 38 * u, rw);
+    static const char *H[] = {"ud", "escolher", "lr", "mudar", "a", "abrir", "b", "fechar"};
+    panelHints(H, 8, x, y + h, w);
+}
+
+static void drawTextPanel() {
+    if (textTitle.empty()) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u), lh = 12.5f * u;
+    float h = 22 * u + 16 * u + textLines.size() * lh + 22 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel(textTitle, x, y, w, h) + 12 * u;
+    for (size_t i = 0; i < textLines.size(); i++)
+        T.draw(textLines[i], x + 14 * u, top + i * lh + lh / 2, 9, false, 0xFF2B2E33, 0, w - 28 * u);
+    static const char *H[] = {"b", "voltar"};
+    panelHints(H, 2, x, y + h, w);
+}
+
+static std::string firstLine(const char *path, const char *key) {
+    std::ifstream in(path);
+    std::string l;
+    while (std::getline(in, l))
+        if (l.compare(0, strlen(key), key) == 0) {
+            size_t c = l.find(':');
+            std::string v = c == std::string::npos ? l : l.substr(c + 1);
+            while (!v.empty() && (v[0] == ' ' || v[0] == '\t')) v.erase(0, 1);
+            return v;
+        }
+    return "";
+}
+
+static void openInfo() {
+    struct utsname un;
+    uname(&un);
+    long long kbTotal = 0, kbAvail = 0;
+    {
+        std::ifstream mi("/proc/meminfo");
+        std::string k, unit;
+        long long v;
+        while (mi >> k >> v >> unit) {
+            if (k == "MemTotal:") kbTotal = v;
+            if (k == "MemAvailable:") kbAvail = v;
+        }
+    }
+    struct statvfs fs;
+    double freeG = 0, totG = 0;
+    if (statvfs(ROMS.c_str(), &fs) == 0) {
+        freeG = double(fs.f_bavail) * fs.f_frsize / 1073741824.0;
+        totG = double(fs.f_blocks) * fs.f_frsize / 1073741824.0;
+    }
+    double up = 0;
+    std::ifstream("/proc/uptime") >> up;
+    std::string emus;
+    for (auto &s : SYSTEMS)
+        if (emus.find(s.emu) == std::string::npos) emus += (emus.empty() ? "" : ", ") + s.emu;
+    std::string ver = firstLine("/etc/os-release", "VERSION=");
+    ver.erase(std::remove(ver.begin(), ver.end(), '"'), ver.end());
+    if (!ver.empty() && ver[0] == '=') ver.erase(0, 1);
+    char buf[160];
+    textTitle = "Informações do sistema";
+    textLines.clear();
+    textLines.push_back("Processador: " + firstLine("/proc/cpuinfo", "model name") + "  (" +
+                        std::to_string(sysconf(_SC_NPROCESSORS_ONLN)) + " núcleos)");
+    textLines.push_back("Vídeo: " + (glName.empty() ? std::string("desenho por software") : glName));
+    snprintf(buf, sizeof buf, "Memória: %lld MB livres de %lld MB", kbAvail / 1024, kbTotal / 1024);
+    textLines.push_back(buf);
+    snprintf(buf, sizeof buf, "Disco dos jogos: %.1f GB livres de %.1f GB", freeG, totG);
+    textLines.push_back(buf);
+    textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
+    snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.4" + buf);
+    textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
+    textLines.push_back("Emuladores previstos: " + emus);
+    textLines.push_back("");
+    textLines.push_back("Botões: Xelu's Free Controller Prompts (CC0)  •  Logos: es-theme-carbon");
+    textLines.push_back("Capas: libretro-thumbnails  •  Dados dos jogos: libretro-database e FBNeo");
+}
+
+static void openHelp() {
+    textTitle = "Como jogar (botões)";
+    textLines = {
+        "No menu:",
+        "   Direcional ou analógico: escolher o jogo        A: jogar",
+        "   X: marcar ou desmarcar favorito        Y: detalhes do jogo",
+        "   LB / RB: filtrar (Todos, Favoritos, Mais jogados, cada console)",
+        "   Select: este painel Sistema",
+        "",
+        "Durante o jogo:",
+        "   Select + Start: menu rápido (salvar, carregar, sair do jogo)",
+        "",
+        "No teclado: setas, Enter (jogar), F (favorito), D (detalhes),",
+        "Q / E (filtrar), Tab (Sistema), Esc (voltar).",
+        "",
+        "Jogos novos: copie para " + INBOX + " (vão sozinhos para o console certo).",
+    };
+}
+
+static void powerOff(bool restart) {
+    toast(restart ? "Reiniciando..." : "Desligando...", 10000);
+    sync();
+    // o init do BusyBox fecha os servicos e desmonta os discos antes de desligar
+    if (system(restart ? "/sbin/reboot" : "/sbin/poweroff") != 0) reboot(restart ? RB_AUTOBOOT : RB_POWER_OFF);
+}
+
+static void clearCards();
+static void clearBacks();
+
+// dir: -1/+1 = mudar valor (esquerda/direita); 0 = confirmar (A)
+static void optAction(int dir) {
+    int d = dir == 0 ? 1 : dir;
+    switch (optSel) {
+    case OPT_THEME:
+        theme = (theme + d + NTEMAS) % NTEMAS;
+        prefs["theme"] = std::to_string(theme);
+        clearCards();
+        clearBacks();
+        break;
+    case OPT_ANIM:
+        ANIM_MS = ANIM_MS < 200 ? 200 : 130;
+        prefs["anim"] = ANIM_MS < 200 ? "rapida" : "normal";
+        break;
+    case OPT_COVERS:
+        showCovers = !showCovers;
+        prefs["covers"] = showCovers ? "1" : "0";
+        clearCards();
+        break;
+    case OPT_BG:
+        showBackdrop = !showBackdrop;
+        prefs["backdrop"] = showBackdrop ? "1" : "0";
+        backdropKey = "\x01";
+        break;
+    case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
+    case OPT_INFO: if (dir == 0) { sysOpen = false; openInfo(); } return;
+    case OPT_REBOOT: if (dir == 0) powerOff(true); return;
+    case OPT_OFF: if (dir == 0) powerOff(false); return;
+    }
+    savePrefs();
+}
+
+// Teclas e botoes enquanto um painel esta aberto. true = o painel tratou.
+enum Btn { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER };
+static bool panelInput(Btn b) {
+    if (!textTitle.empty()) {
+        if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
+        return true;
+    }
+    if (!sysOpen) return false;
+    switch (b) {
+    case B_UP: optSel = (optSel + OPT_COUNT - 1) % OPT_COUNT; break;
+    case B_DOWN: optSel = (optSel + 1) % OPT_COUNT; break;
+    case B_LEFT: optAction(-1); break;
+    case B_RIGHT: optAction(1); break;
+    case B_A: optAction(0); break;
+    case B_B: case B_SELECT: sysOpen = false; break;
+    default: break;
+    }
+    return true;
+}
+
+static void openSystem() {
+    sysOpen = true;
+    optSel = 0;
+    readUsage();
+    barsAt = SDL_GetTicks();
+}
+
 // ------------------------------------------------------------------ desenho da tela
 
 static void render() {
@@ -655,6 +936,8 @@ static void render() {
     titleBar(g);
     hintBar();
     drawDetails();
+    drawSystem();
+    drawTextPanel();
     drawToast();
     SDL_RenderPresent(G.r);
 }
@@ -695,15 +978,6 @@ static void play() {
     const Game *g = current();
     if (!g) return;
     toast("O " + g->sys->emu + " entra na próxima versão do T-OS");
-}
-
-static void cycleTheme() {
-    theme = (theme + 1) % NTEMAS;
-    prefs["theme"] = std::to_string(theme);
-    savePrefs();
-    clearCards();
-    clearBacks();
-    toast(std::string("Tema: ") + THEME_NAMES[theme]);
 }
 
 // ------------------------------------------------------------------ principal
@@ -813,6 +1087,14 @@ int main() {
 
     loadPrefs();
     if (prefs.count("theme")) theme = std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str())));
+    if (prefs["anim"] == "rapida") ANIM_MS = 130;
+    if (prefs["covers"] == "0") showCovers = false;
+    if (prefs["backdrop"] == "0") showBackdrop = false;
+    if (std::string(info.name).find("opengl") != std::string::npos) {   // nome da placa, para as Informacoes
+        typedef const unsigned char *(*GetStr)(unsigned);
+        if (GetStr gs = (GetStr)SDL_GL_GetProcAddress("glGetString"))
+            if (const unsigned char *r = gs(0x1F01)) glName = (const char *)r;   // GL_RENDERER
+    }
     mkdirs(ROMS);
     setGames(scanGames());
     std::string sig = signature(scanGames());
@@ -845,8 +1127,13 @@ int main() {
                 }
                 break;
             case SDL_CONTROLLERDEVICEADDED: SDL_GameControllerOpen(e.cdevice.which); break;
-            case SDL_KEYDOWN:
-                switch (e.key.keysym.sym) {
+            case SDL_KEYDOWN: {
+                SDL_Keycode kc = e.key.keysym.sym;
+                Btn pb = kc == SDLK_UP ? B_UP : kc == SDLK_DOWN ? B_DOWN : kc == SDLK_LEFT ? B_LEFT :
+                         kc == SDLK_RIGHT ? B_RIGHT : (kc == SDLK_RETURN || kc == SDLK_SPACE) ? B_A :
+                         (kc == SDLK_ESCAPE || kc == SDLK_BACKSPACE) ? B_B : kc == SDLK_TAB ? B_SELECT : B_OTHER;
+                if (panelInput(pb)) break;
+                switch (kc) {
                 case SDLK_LEFT: move(-1); break;
                 case SDLK_RIGHT: move(1); break;
                 case SDLK_RETURN: case SDLK_SPACE: play(); break;
@@ -855,11 +1142,18 @@ int main() {
                 case SDLK_ESCAPE: case SDLK_BACKSPACE: details = false; break;
                 case SDLK_q: case SDLK_PAGEUP: nextFilter(-1); break;
                 case SDLK_e: case SDLK_PAGEDOWN: nextFilter(1); break;
-                case SDLK_TAB: cycleTheme(); break;
+                case SDLK_TAB: details = false; openSystem(); break;
                 }
                 break;
-            case SDL_CONTROLLERBUTTONDOWN:
-                switch (e.cbutton.button) {
+            }
+            case SDL_CONTROLLERBUTTONDOWN: {
+                Uint8 cb = e.cbutton.button;
+                Btn pb = cb == SDL_CONTROLLER_BUTTON_DPAD_UP ? B_UP : cb == SDL_CONTROLLER_BUTTON_DPAD_DOWN ? B_DOWN :
+                         cb == SDL_CONTROLLER_BUTTON_DPAD_LEFT ? B_LEFT : cb == SDL_CONTROLLER_BUTTON_DPAD_RIGHT ? B_RIGHT :
+                         cb == SDL_CONTROLLER_BUTTON_A ? B_A : cb == SDL_CONTROLLER_BUTTON_B ? B_B :
+                         cb == SDL_CONTROLLER_BUTTON_BACK ? B_SELECT : B_OTHER;
+                if (panelInput(pb)) break;
+                switch (cb) {
                 case SDL_CONTROLLER_BUTTON_DPAD_LEFT: move(-1); holdDir = Uint32(-1); holdNext = SDL_GetTicks() + 380; break;
                 case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: move(1); holdDir = 1; holdNext = SDL_GetTicks() + 380; break;
                 case SDL_CONTROLLER_BUTTON_A: play(); break;
@@ -868,14 +1162,23 @@ int main() {
                 case SDL_CONTROLLER_BUTTON_B: details = false; break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: nextFilter(-1); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: nextFilter(1); break;
-                case SDL_CONTROLLER_BUTTON_BACK: cycleTheme(); break;
+                case SDL_CONTROLLER_BUTTON_BACK: details = false; openSystem(); break;
                 }
                 break;
+            }
             case SDL_CONTROLLERBUTTONUP:
                 if (e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT || e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
+                if (sysOpen || !textTitle.empty()) {
+                    static int ly = 0;
+                    if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+                        int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
+                        if (d != ly) { ly = d; if (d) panelInput(d < 0 ? B_UP : B_DOWN); }
+                    }
+                    break;
+                }
                 if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) {
                     int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
                     if (d != axisDir) {
@@ -889,6 +1192,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         // segurando o direcional: anda sozinho
+        if (holdDir && (sysOpen || !textTitle.empty())) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -906,7 +1210,10 @@ int main() {
         static int minute = -1;
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
-        if (any || animating || backdropFading || toastOn || mnow != minute) {
+        static Uint32 lastBars = 0;
+        bool barsDue = sysOpen && now - lastBars > 1000;
+        if (barsDue) lastBars = now;
+        if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
             minute = mnow;
             render();
         } else {
