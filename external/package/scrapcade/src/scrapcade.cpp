@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.4 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.5 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -15,6 +15,7 @@
 #include "meta.h"
 #include "capas.h"
 #include "organizar.h"
+#include "envio.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -540,9 +541,10 @@ static void drawToast() {
 
 static void drawEmpty() {
     float u = G.u, cy = areaH() * 0.45f;
+    std::string web = "http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
     const char *L[] = {"Nenhum jogo ainda.", "",
-                       "Copie os jogos (ou os .zip) para a pasta:", INBOX.c_str(), "",
-                       "Eles vão sozinhos para o console certo, com capa e dados."};
+                       "No navegador do PC ou do celular, na mesma rede, abra:", web.c_str(), "",
+                       "e arraste os jogos. Eles vão sozinhos para o console certo, com capa e dados."};
     for (int i = 0; i < 6; i++) {
         uint32_t c = i == 3 ? 0xFFFFD479 : 0xFFFFFFFF;
         T.draw(L[i], G.W / 2.0f, cy + (i - 2.5f) * 16 * u, i == 0 ? 14 : 10, i == 0, c, 1);
@@ -705,8 +707,8 @@ static void drawSystem() {
     T.draw("Endereço IP", rx, ry, 11, false, 0xFF2B2E33);
     T.draw(ipAddr(), rx, ry + 14 * u, 10, false, 0xFF5E6269, 0, rw);
     ry += 34 * u;
-    T.draw("Jogos novos", rx, ry, 11, false, 0xFF2B2E33);
-    T.draw(INBOX, rx, ry + 14 * u, 8.5f, false, 0xFF5E6269, 0, rw);
+    T.draw("Enviar jogos do PC", rx, ry, 11, false, 0xFF2B2E33);
+    T.draw("http://" + ipAddr() + ":" + std::to_string(Envio::PORT), rx, ry + 14 * u, 9.5f, false, 0xFF5E6269, 0, rw);
     ry += 34 * u;
     T.draw("Uso do sistema", rx, ry, 11, false, 0xFF2B2E33);
     if (SDL_GetTicks() - barsAt > 1000) { readUsage(); barsAt = SDL_GetTicks(); }
@@ -804,7 +806,8 @@ static void openHelp() {
         "No teclado: setas, Enter (jogar), F (favorito), D (detalhes),",
         "Q / E (filtrar), Tab (Sistema), Esc (voltar).",
         "",
-        "Jogos novos: copie para " + INBOX + " (vão sozinhos para o console certo).",
+        "Jogos novos: no navegador do PC ou celular, abra http://" + ipAddr() + ":" + std::to_string(Envio::PORT),
+        "e arraste os jogos. Eles vão sozinhos para o console certo, com capa e dados.",
     };
 }
 
@@ -987,7 +990,7 @@ static void onSignal(int) { quit = 1; }
 
 // ------------------------------------------------------------------ trabalho de fundo (Capas.start do iChroma)
 
-static Uint32 EV_TOAST = 0, EV_META = 0, EV_ART = 0;
+static Uint32 EV_TOAST = 0, EV_META = 0, EV_ART = 0, EV_WEB = 0;
 static volatile bool workStop = false;
 static std::mutex workMu;
 static std::string workMsg;
@@ -1042,6 +1045,7 @@ static void setGames(std::vector<Game> fresh) {
     const Game *g = current();
     std::string keep = g ? g->key() : "";
     all = fresh;
+    Envio::setGames(all);
     buildFilters();
     applyFilter();
     for (size_t i = 0; i < view.size(); i++)
@@ -1099,10 +1103,13 @@ int main() {
     setGames(scanGames());
     std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();
-    EV_TOAST = SDL_RegisterEvents(3);
+    EV_TOAST = SDL_RegisterEvents(4);
     EV_META = EV_TOAST + 1;
     EV_ART = EV_TOAST + 2;
+    EV_WEB = EV_TOAST + 3;
     std::thread work(worker);
+    Envio::changed = [] { post(EV_WEB); };
+    Envio::start();
 
     Uint32 holdDir = 0, holdNext = 0, lastScan = SDL_GetTicks();
     int axisDir = 0;
@@ -1121,6 +1128,10 @@ int main() {
                     lastScan = 0;   // procura os jogos de novo agora
                 } else if (e.type == EV_META) {
                     setGames(scanGames());
+                } else if (e.type == EV_WEB) {   // jogo, capa ou apagado pela pagina
+                    clearCards();
+                    backdropKey = "\x01";
+                    lastScan = 0;
                 } else if (e.type == EV_ART) {
                     clearCards();
                     backdropKey = "\x01";   // recarrega o fundo do jogo selecionado

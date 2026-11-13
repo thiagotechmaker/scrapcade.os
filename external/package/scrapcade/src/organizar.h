@@ -59,7 +59,7 @@ static bool settled(const std::string &p) {
 static bool ready(const std::string &p) {
     std::string n = lower(base(p));
     if (n.empty() || n[0] == '.' || n == "desktop.ini" || n == "thumbs.db") return false;
-    for (const char *e : {".baixando", ".part", ".crdownload", ".tmp", ".partial"})
+    for (const char *e : {".baixando", ".envio", ".part", ".crdownload", ".tmp", ".partial"})
         if (endsWith(n, e)) return false;
     return settled(p);
 }
