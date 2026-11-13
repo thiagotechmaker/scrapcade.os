@@ -1,8 +1,10 @@
 #!/bin/sh
-# T-OS: no primeiro boot, pede a senha do administrador (root) antes de liberar o login.
-# A imagem nao traz senha fixa: uma senha publicada seria a mesma em todo aparelho.
+# T-OS: no primeiro boot, pede a senha do administrador (root). A imagem nao traz senha fixa: uma senha
+# publicada seria a mesma em todo aparelho. A senha fica em TOS-DADOS (o sistema e somente leitura).
+SALVA=/userdata/system/shadow
 case "$1" in
   start)
+    [ -f "$SALVA" ] && cp "$SALVA" /etc/shadow
     if grep -q '^root::' /etc/shadow; then
       {
         echo
@@ -16,6 +18,8 @@ case "$1" in
         echo "As senhas nao conferem ou estao vazias. Tente de novo." > /dev/console
       done
       echo "Senha criada." > /dev/console
+      cp /etc/shadow "$SALVA"
+      chmod 600 "$SALVA" 2>/dev/null || true
     fi
     ;;
 esac

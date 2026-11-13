@@ -1,0 +1,50 @@
+#!/bin/sh
+# T-OS: particao de dados TOS-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
+# Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o T-OS
+# troca so o tos.squashfs da particao TOS-BOOT: a TOS-DADOS nunca e mexida.
+msg() { echo "$1" > /dev/console; }
+
+dados() { blkid | sed -n 's/^\([^:]*\):.*LABEL="TOS-DADOS".*/\1/p' | head -1; }
+
+criar() {
+  boot=$(cat /run-tos-boot 2>/dev/null)
+  case "$boot" in /dev/sr*|"") return 1 ;; esac            # DVD ou .iso: nao da para criar
+  part=${boot##*/}
+  [ -e /sys/class/block/$part/partition ] || return 1      # .iso gravado direto: sem tabela de particoes
+  disco=$(basename "$(readlink -f /sys/class/block/$part/..)")
+  dev=/dev/$disco
+  grep -q " /boot vfat" /proc/mounts || return 1           # o .iso (iso9660) nao ganha particao
+  # a imagem foi gravada num disco maior: leva a copia da tabela GPT para o fim do disco de verdade
+  sfdisk --relocate gpt-bak-std "$dev" >/dev/null 2>&1 || true
+  livre=$(sfdisk -F "$dev" 2>/dev/null | sed -n 's/.* \([0-9]*\) bytes.*/\1/p' | head -1)
+  [ -n "$livre" ] && [ "$livre" -gt 1073741824 ] || return 1   # menos de 1 GB livre: deixa quieto
+  msg "T-OS: criando a particao de dados (TOS-DADOS) no espaco livre do disco..."
+  echo ",,EBD0A0A2-B9E5-4433-87C0-68B6B72699C7" | sfdisk --append --no-reread "$dev" >/dev/null 2>&1 || return 1
+  n=$(sfdisk -l "$dev" 2>/dev/null | grep -c "^$dev")
+  partx -a --nr "$n" "$dev" 2>/dev/null || partx -u "$dev" 2>/dev/null || true
+  sleep 1
+  case "$disco" in nvme*|mmcblk*|loop*) novo=${dev}p$n ;; *) novo=$dev$n ;; esac
+  [ -b "$novo" ] || return 1
+  mkfs.exfat -L TOS-DADOS "$novo" >/dev/null 2>&1 || return 1
+  msg "T-OS: particao de dados pronta."
+}
+
+case "$1" in
+  start)
+    mkdir -p /userdata
+    d=$(dados)
+    [ -z "$d" ] && criar && d=$(dados)
+    if [ -n "$d" ] && mount "$d" /userdata 2>/dev/null; then
+      :
+    else
+      mount -t tmpfs -o size=60% tmpfs /userdata
+      msg "T-OS: sem particao de dados; os jogos ficam na memoria ate desligar."
+    fi
+    mkdir -p /userdata/roms /userdata/bios /userdata/saves /userdata/themes "/userdata/Jogos novos" \
+             /userdata/system/logs /userdata/system/connman
+    # configuracoes que precisam sobreviver ao desligar (o sistema e somente leitura)
+    mkdir -p /var/lib/connman
+    mount --bind /userdata/system/connman /var/lib/connman
+    ;;
+esac
+exit 0

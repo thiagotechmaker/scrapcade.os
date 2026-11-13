@@ -1,0 +1,9 @@
+#!/bin/sh
+# Modo desktop do T-OS: Fluxbox no X, aberto pelo painel Sistema do ScrapCade.
+# "Voltar ao modo jogo" no menu do Fluxbox fecha o X e o ScrapCade volta.
+export HOME=/userdata/system/desktop
+mkdir -p "$HOME/.fluxbox" /userdata/system/logs
+[ -f "$HOME/.fluxbox/menu" ] || cp /usr/share/tos-desktop/menu "$HOME/.fluxbox/menu"
+xinit /usr/bin/tos-desktop-sessao -- /usr/bin/Xorg :0 vt1 -nolisten tcp -keeptty \
+	>/userdata/system/logs/desktop.log 2>&1
+exec /usr/bin/scrapcade

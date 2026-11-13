@@ -1,16 +1,17 @@
 #!/bin/sh
-# Monta o .iso do T-OS: o sistema todo vai na memoria (initrd), entao roda de pen drive, DVD ou Ventoy.
+# Monta o .iso do T-OS: o sistema (tos.squashfs) e lido do proprio pen drive ou DVD, somente leitura.
 # Boot por UEFI: a particao EFI vai dentro do .iso (El Torito) e tambem anexada como GPT, para o pen drive.
 set -e
 B=$BINARIES_DIR
-[ -f "$B/rootfs.cpio.gz" ] || exit 0
+[ -f "$B/rootfs.squashfs" ] || exit 0
 VER=$(sed -n 's/^VERSION="\{0,1\}\([^"]*\)"\{0,1\}/\1/p' "$TARGET_DIR/etc/os-release")
 T=$BUILD_DIR/tos-iso
 rm -rf "$T"
 mkdir -p "$T/boot" "$T/EFI/BOOT"
 cp "$B/bzImage" "$T/boot/bzImage"
-cp "$B/rootfs.cpio.gz" "$T/boot/initrd.gz"
-echo "T-OS $VER" > "$T/boot/tos-live"
+cp "$B/tos-initrd.gz" "$T/boot/initrd.gz"
+cp "$B/rootfs.squashfs" "$T/boot/tos.squashfs"
+cp "$B/tos-live" "$T/boot/tos-live"
 cp "$B/efi-part/EFI/BOOT/bootx64.efi" "$T/EFI/BOOT/"
 cp "$(dirname "$0")/grub-live.cfg" "$T/EFI/BOOT/grub.cfg"
 EFI=$BUILD_DIR/tos-efi.img

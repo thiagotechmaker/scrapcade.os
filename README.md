@@ -49,17 +49,34 @@ As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pel
 - **Capa e fundo baixados sozinhos** do acervo [libretro-thumbnails](https://thumbnails.libretro.com), sem conta. O que o acervo não tem fica anotado para não tentar de novo; sem rede, tenta outra vez a cada minuto.
 - Registro do ScrapCade em `/userdata/system/logs/scrapcade.log`.
 
-## Testar num notebook ou PC (.iso)
+## Como o T-OS fica no disco
 
-A compilação gera também `output/x86_64/images/t-os-2026.11-x86_64.iso` (cerca de 165 MB):
+Parecido com o Batocera, mas pensado para não perder jogos:
 
-1. Grave o `.iso` num pen drive com o [Rufus](https://rufus.ie) (modo **DD**), o [balenaEtcher](https://etcher.balena.io) ou copie para um pen drive com [Ventoy](https://www.ventoy.net).
-2. No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). O boot é por **UEFI**; desligue o Secure Boot se o notebook recusar o pen drive.
-3. O T-OS pede a senha do administrador e abre o ScrapCade.
+| Partição | Formato | O que tem |
+|---|---|---|
+| **TOS-BOOT** | FAT32, 1 GB | GRUB, kernel, um initrd pequeno e o sistema inteiro em `boot/tos.squashfs` (somente leitura) |
+| **TOS-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e as configurações (`system`: senha, rede, ScrapCade) |
 
-O `.iso` roda **inteiro na memória**: não mexe no HD do notebook, e o que for feito nele some ao desligar. Serve para testar vídeo, controle, som e rede. O instalador para o HD e a transferência de jogos vêm nas próximas etapas.
+- **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
+- **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
+- **Atualizar o T-OS** é trocar o `tos.squashfs` (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
+- **exFAT** para o Windows ler e gravar os jogos direto.
 
-**Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, como jogar, informações do sistema (processador, vídeo, memória, disco), reiniciar e desligar, com IP e uso de CPU, memória e disco.
+## Testar num notebook ou PC
+
+A compilação gera dois arquivos em `output/x86_64/images/`:
+
+- **`disk.img`** (1 GB): para usar de verdade. Grave num pen drive ou HD com o [Rufus](https://rufus.ie) (modo **DD**) ou o [balenaEtcher](https://etcher.balena.io). No primeiro boot ele cria a TOS-DADOS no resto do espaço.
+- **`t-os-2026.11-x86_64.iso`** (cerca de 170 MB): para experimentar. Grave com o Rufus (modo DD), o balenaEtcher ou copie para um pen drive com [Ventoy](https://www.ventoy.net). Os jogos ficam na memória, a não ser que haja uma TOS-DADOS em algum disco ligado.
+
+No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). O boot é por **UEFI**; desligue o Secure Boot se o notebook recusar o pen drive. No primeiro boot o T-OS pede a senha do administrador.
+
+O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
+
+**Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, **motor gráfico**, **modo desktop**, como jogar, informações do sistema, reiniciar e desligar, com IP, endereço da página e uso de CPU, memória e disco.
+
+**Modo desktop:** Fluxbox com terminal (xterm) e ajuste de tela. Para manter o sistema leve, só o essencial; os arquivos ficam no gerenciador da página web. "Voltar ao modo jogo", no menu do Fluxbox (botão direito na área de trabalho), reabre o ScrapCade.
 
 ## O que cada parte faz
 

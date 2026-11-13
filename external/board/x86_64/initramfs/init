@@ -1,0 +1,37 @@
+#!/bin/busybox sh
+# T-OS: acha o tos.squashfs (pen drive, HD, DVD ou .iso), monta ele somente leitura com uma camada
+# na memoria por cima, e passa para o sistema. Desligar da tomada nao estraga o sistema.
+/bin/busybox --install -s /bin
+export PATH=/bin
+mount -t devtmpfs devtmpfs /dev
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+echo 0 > /proc/sys/kernel/printk
+mkdir -p /boot /lower /rw /newroot
+
+achou=""
+for t in $(seq 1 40); do      # pen drive USB demora alguns segundos para aparecer
+  for d in /dev/sd* /dev/nvme*n* /dev/mmcblk* /dev/vd* /dev/sr*; do
+    [ -b "$d" ] || continue
+    mount -o ro "$d" /boot 2>/dev/null || continue
+    if [ -f /boot/boot/tos.squashfs ]; then achou=$d; break 2; fi
+    umount /boot
+  done
+  [ $t = 3 ] && echo "T-OS: procurando o sistema..."
+  sleep 0.5
+done
+if [ -z "$achou" ]; then
+  echo "T-OS: nao achei o arquivo boot/tos.squashfs. Confira o pen drive."
+  exec sh
+fi
+
+mount -t squashfs -o ro /boot/boot/tos.squashfs /lower
+mount -t tmpfs -o mode=755 tmpfs /rw
+mkdir -p /rw/upper /rw/work
+mount -t overlay overlay -o lowerdir=/lower,upperdir=/rw/upper,workdir=/rw/work /newroot
+mkdir -p /newroot/boot
+mount --move /boot /newroot/boot
+echo "$achou" > /newroot/run-tos-boot 2>/dev/null || true
+mount --move /dev /newroot/dev
+umount /proc /sys
+exec switch_root /newroot /sbin/init

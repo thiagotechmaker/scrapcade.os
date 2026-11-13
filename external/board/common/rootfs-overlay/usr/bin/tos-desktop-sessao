@@ -1,0 +1,4 @@
+#!/bin/sh
+# Sessao do desktop: fundo de tela e o Fluxbox
+feh --no-fehbg --bg-fill /usr/share/scrapcade/fundo.jpg 2>/dev/null
+exec fluxbox

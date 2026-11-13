@@ -1,0 +1,11 @@
+[begin] (T-OS)
+	[exec] (Terminal) {xterm -fa "DejaVu Sans Mono" -fs 11 -bg "#101418" -fg "#e6e9f0"}
+	[submenu] (Tela)
+		[exec] (Resolução automática) {xrandr --auto}
+		[exec] (Mostrar as resoluções no terminal) {xterm -hold -e xrandr}
+	[end]
+	[separator]
+	[exit] (Voltar ao modo jogo)
+	[exec] (Reiniciar) {reboot}
+	[exec] (Desligar) {poweroff}
+[end]
