@@ -76,7 +76,7 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 
 | Partição | Formato | O que tem |
 |---|---|---|
-| **TOS-BOOT** | FAT32, 1 GB | GRUB, kernel, um initrd pequeno e o sistema inteiro em `boot/tos.squashfs` (somente leitura) |
+| **TOS-BOOT** | FAT32, 1 GB (tabela MBR, GRUB para UEFI e para BIOS) | GRUB, kernel, um initrd pequeno e o sistema inteiro em `boot/tos.squashfs` (somente leitura) |
 | **TOS-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e as configurações (`system`: senha, rede, ScrapCade) |
 
 - **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
@@ -91,7 +91,13 @@ A compilação gera dois arquivos em `output/x86_64/images/`:
 - **`disk.img`** (1 GB): para usar de verdade. Grave num pen drive ou HD com o [Rufus](https://rufus.ie) (modo **DD**) ou o [balenaEtcher](https://etcher.balena.io). No primeiro boot ele cria a TOS-DADOS no resto do espaço.
 - **`t-os-2026.11-x86_64.iso`** (cerca de 170 MB): para experimentar. Grave com o Rufus (modo DD), o balenaEtcher ou copie para um pen drive com [Ventoy](https://www.ventoy.net). Os jogos ficam na memória, a não ser que haja uma TOS-DADOS em algum disco ligado.
 
-No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). O boot é por **UEFI**; desligue o Secure Boot se o notebook recusar o pen drive. No primeiro boot o T-OS pede a senha do administrador.
+No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. No primeiro boot o T-OS pede a senha do administrador.
+
+| Como gravar | Liga | Guarda jogos e saves |
+|---|---|---|
+| `disk.img` no Rufus (modo DD) ou balenaEtcher | UEFI e BIOS | Sim: cria a partição TOS-DADOS no resto do pen drive |
+| `.iso` no Rufus **modo ISO** | UEFI e BIOS | Sim: na pasta `tos-dados` do próprio pen drive (FAT32: arquivos de até 4 GB) |
+| `.iso` no Rufus modo DD, balenaEtcher ou DVD | UEFI e BIOS | Não: fica na memória (a não ser que haja uma TOS-DADOS em outro disco) |
 
 O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
 

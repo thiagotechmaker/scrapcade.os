@@ -14,12 +14,14 @@ criar() {
   disco=$(basename "$(readlink -f /sys/class/block/$part/..)")
   dev=/dev/$disco
   grep -q " /boot vfat" /proc/mounts || return 1           # o .iso (iso9660) nao ganha particao
-  # a imagem foi gravada num disco maior: leva a copia da tabela GPT para o fim do disco de verdade
-  sfdisk --relocate gpt-bak-std "$dev" >/dev/null 2>&1 || true
+  tipo=$(sfdisk -d "$dev" 2>/dev/null | sed -n 's/^label: *//p')
+  # GPT gravado num disco maior: leva a copia da tabela para o fim do disco de verdade
+  [ "$tipo" = gpt ] && sfdisk --relocate gpt-bak-std "$dev" >/dev/null 2>&1
   livre=$(sfdisk -F "$dev" 2>/dev/null | sed -n 's/.* \([0-9]*\) bytes.*/\1/p' | head -1)
   [ -n "$livre" ] && [ "$livre" -gt 1073741824 ] || return 1   # menos de 1 GB livre: deixa quieto
   msg "T-OS: criando a particao de dados (TOS-DADOS) no espaco livre do disco..."
-  echo ",,EBD0A0A2-B9E5-4433-87C0-68B6B72699C7" | sfdisk --append --no-reread "$dev" >/dev/null 2>&1 || return 1
+  if [ "$tipo" = gpt ]; then novotipo=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7; else novotipo=7; fi
+  echo ",,$novotipo" | sfdisk --append --no-reread "$dev" >/dev/null 2>&1 || return 1
   n=$(sfdisk -l "$dev" 2>/dev/null | grep -c "^$dev")
   partx -a --nr "$n" "$dev" 2>/dev/null || partx -u "$dev" 2>/dev/null || true
   sleep 1
@@ -36,6 +38,11 @@ case "$1" in
     [ -z "$d" ] && criar && d=$(dados)
     if [ -n "$d" ] && mount "$d" /userdata 2>/dev/null; then
       :
+    elif grep -q " /boot vfat" /proc/mounts && mount -o remount,rw /boot 2>/dev/null; then
+      # gravado pelo modo ISO do Rufus (sem espaco para particao): os dados ficam numa pasta do proprio pen drive
+      mkdir -p /boot/tos-dados
+      mount --bind /boot/tos-dados /userdata
+      msg "T-OS: jogos e saves na pasta tos-dados do pen drive."
     else
       mount -t tmpfs -o size=60% tmpfs /userdata
       msg "T-OS: sem particao de dados; os jogos ficam na memoria ate desligar."

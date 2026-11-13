@@ -36,13 +36,19 @@ case "$D" in *nvme*|*mmcblk*) P1=${D}p1; P2=${D}p2 ;; *) P1=${D}1; P2=${D}2 ;; e
 p 5 "Preparando o disco"
 for m in $(grep "^$D" /proc/mounts | cut -d' ' -f2); do umount -l "$m"; done
 wipefs -a "$D" >/dev/null 2>&1
-printf 'label: gpt\n,1GiB,U,*\n,,EBD0A0A2-B9E5-4433-87C0-68B6B72699C7\n' | sfdisk --wipe always "$D" >/dev/null 2>&1 \
+# MBR: liga por UEFI (particao tipo EFI) e por BIOS antigo (GRUB no comeco do disco)
+printf 'label: dos\n1MiB,1GiB,ef,*\n,,7\n' | sfdisk --wipe always "$D" >/dev/null 2>&1 \
   || { p 0 "ERRO: nao consegui particionar o disco"; exit 1; }
 partx -u "$D" 2>/dev/null; sleep 2
 
 p 15 "Formatando"
 mkfs.vfat -F 32 -n TOS-BOOT "$P1" >/dev/null 2>&1 || { p 0 "ERRO: nao formatou a particao TOS-BOOT"; exit 1; }
 mkfs.exfat -L TOS-DADOS "$P2" >/dev/null 2>&1 || { p 0 "ERRO: nao formatou a particao TOS-DADOS"; exit 1; }
+
+p 22 "Instalando o boot para BIOS antigo"
+dd if=/usr/share/tos/grub-bios/boot.img of="$D" bs=440 count=1 conv=notrunc 2>/dev/null
+dd if=/usr/share/tos/grub-bios/core.img of="$D" bs=512 seek=1 conv=notrunc 2>/dev/null
+sync
 
 p 25 "Copiando o sistema"
 mkdir -p /mnt/tos-boot /mnt/tos-dados
