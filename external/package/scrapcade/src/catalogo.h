@@ -32,7 +32,7 @@ static std::vector<Sys> SYSTEMS = {
     {"gbc", "gbc", "Game Boy Color", "Gambatte", 0xFF2E9E62, {".gbc", ".zip"}},
     {"gba", "gba", "Game Boy Advance", "mGBA", 0xFF6C47C9, {".gba", ".zip"}},
     {"megadrive", "md", "Mega Drive", "Genesis Plus GX", 0xFF2B68C8, {".md", ".gen", ".smd", ".bin", ".sms", ".gg", ".zip"}},
-    {"psx", "psx", "PlayStation", "DuckStation", 0xFF7D8494, {".cue", ".chd", ".pbp", ".m3u", ".iso"}},
+    {"psx", "psx", "PlayStation", "PCSX ReARMed", 0xFF7D8494, {".cue", ".chd", ".pbp", ".m3u", ".iso"}},
     {"ps2", "", "PlayStation 2", "PCSX2", 0xFF2C3E9A, {".iso", ".chd", ".cso"}},
     {"gamecube", "", "GameCube", "Dolphin", 0xFF5B3FA8, {".iso", ".rvz", ".gcm", ".ciso"}},
     {"wii", "", "Wii", "Dolphin", 0xFF8A97A3, {".iso", ".rvz", ".wbfs"}},

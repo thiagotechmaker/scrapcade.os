@@ -49,6 +49,27 @@ As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pel
 - **Capa e fundo baixados sozinhos** do acervo [libretro-thumbnails](https://thumbnails.libretro.com), sem conta. O que o acervo não tem fica anotado para não tentar de novo; sem rede, tenta outra vez a cada minuto.
 - Registro do ScrapCade em `/userdata/system/logs/scrapcade.log`.
 
+## Emuladores
+
+O T-OS empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS, sem X, menu RGUI em português) e estes núcleos libretro:
+
+| Console | Núcleo |
+|---|---|
+| NES | Mesen |
+| Super Nintendo | Snes9x |
+| Mega Drive, Master System, Game Gear | Genesis Plus GX |
+| Game Boy, Game Boy Color | Gambatte |
+| Game Boy Advance | mGBA |
+| PlayStation | PCSX ReARMed (tem BIOS livre embutida) |
+| Nintendo 64 | Mupen64Plus-Next |
+| Fliperama e Neo Geo | FBNeo (Neo Geo precisa do `neogeo.zip` do usuário) |
+
+- **Configuração central:** o `tos-jogar` passa a mesma configuração para todo emulador (vídeo, som, controles, atalhos e pastas). Para mudar algo só seu: `TOS-DADOS/system/configs/retroarch/retroarch-usuario.cfg`.
+- **Atalhos iguais em todo jogo:** **Select + Start** sai, **Select + X** abre o menu, **Select + RB/LB** salva/carrega. No teclado: **Esc** sai, **F1** abre o menu. O ScrapCade mostra esses atalhos ao abrir cada jogo.
+- **Nunca perder o progresso:** o jogo salva sozinho ao sair e continua de onde parou.
+- **Controles:** reconhecidos pelo banco de dados do SDL2 (Xbox, PlayStation, Nintendo, genéricos), sem configurar.
+- **Pastas na TOS-DADOS:** `saves/<console>`, `bios`, `screenshots`. O gerenciador da página mostra também `bios`, `saves` e `Registros` (logs, para pedir ajuda).
+
 ## Como o T-OS fica no disco
 
 Parecido com o Batocera, mas pensado para não perder jogos:

@@ -18,7 +18,10 @@ static const std::string USB = "Pen drive";
 static std::string USB_DIR = "/media/usb";   // o pen drive sera montado aqui (importacao: proxima etapa)
 
 struct Root { std::string name, path; };
-static std::vector<Root> roots() { return {{"roms", ROMS}, {"Jogos novos", INBOX}, {USB, USB_DIR}}; }
+static std::vector<Root> roots() {
+    return {{"roms", ROMS}, {"Jogos novos", INBOX}, {"bios", "/userdata/bios"}, {"saves", "/userdata/saves"},
+            {"Registros", "/userdata/system/logs"}, {USB, USB_DIR}};
+}
 
 static std::string real(const std::string &p) {
     char buf[PATH_MAX];

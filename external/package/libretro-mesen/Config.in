@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_MESEN
+	bool "libretro-mesen"
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Nucleo libretro Mesen para o RetroArch.

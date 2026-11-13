@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_FBNEO
+	bool "libretro-fbneo"
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Nucleo libretro FBNeo para o RetroArch.

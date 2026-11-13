@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.7 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.8 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -808,7 +808,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.7" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.8" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -826,7 +826,8 @@ static void openHelp() {
         "   Select: este painel Sistema",
         "",
         "Durante o jogo:",
-        "   Select + Start: menu rápido (salvar, carregar, sair do jogo)",
+        "   Select + Start: sair do jogo (salva sozinho e continua de onde parou)",
+        "   Select + X: menu do emulador     Select + RB / LB: salvar / carregar",
         "",
         "No teclado: setas, Enter (jogar), F (favorito), D (detalhes),",
         "Q / E (filtrar), Tab (Sistema), Esc (voltar).",
@@ -1027,10 +1028,43 @@ static void toggleFav() {
     toast(on ? "Adicionado aos favoritos" : "Tirado dos favoritos");
 }
 
+// Nucleo libretro de cada console (o tos-jogar usa a mesma tabela)
+static std::string coreOf(const std::string &id) {
+    static const std::map<std::string, std::string> m = {
+        {"nes", "mesen"}, {"snes", "snes9x"}, {"megadrive", "genesis_plus_gx"}, {"gb", "gambatte"},
+        {"gbc", "gambatte"}, {"gba", "mgba"}, {"psx", "pcsx_rearmed"}, {"n64", "mupen64plus_next"},
+        {"arcade", "fbneo"}, {"neogeo", "fbneo"}};
+    auto it = m.find(id);
+    return it == m.end() ? "" : it->second;
+}
+
+static std::string launchSys, launchRom;   // jogo que abre quando a tela fecha
+
+// A: abre o jogo. Antes, uma tela com os atalhos (a duvida mais comum: como sair do jogo).
 static void play() {
     const Game *g = current();
     if (!g) return;
-    toast("O " + g->sys->emu + " entra na próxima versão do T-OS");
+    std::string core = coreOf(g->sys->id);
+    if (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so")) {
+        toast("O " + g->sys->emu + " entra numa próxima versão do T-OS", 3500);
+        return;
+    }
+    prefs["plays|" + g->key()] = std::to_string(plays(*g) + 1);
+    prefs["ultimo"] = g->key();
+    savePrefs();
+    float u = G.u;
+    G.fillRect(0, 0, float(G.W), float(G.H), 0xE6101418);
+    T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.40f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
+    T.draw(g->sys->name + "  •  " + g->sys->emu, G.W / 2.0f, G.H * 0.40f + 22 * u, 10, false, 0xFFB8BEC8, 1);
+    T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
+           accent(g->sys->color), 1);
+    T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
+           false, 0xFFDDE1E8, 1);
+    SDL_RenderPresent(G.r);
+    SDL_Delay(1800);
+    launchSys = g->sys->id;
+    launchRom = g->dir + "/" + g->file;
+    restartMenu = true;   // o laco principal solta a tela e o tos-jogar abre o emulador
 }
 
 // ------------------------------------------------------------------ principal
@@ -1154,6 +1188,8 @@ int main() {
     }
     mkdirs(ROMS);
     setGames(scanGames());
+    for (size_t i = 0; i < view.size(); i++)   // voltando de um jogo: fica nele
+        if (view[i].key() == prefs["ultimo"]) { target = int(i); pos = float(target); break; }
     std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();
     EV_TOAST = SDL_RegisterEvents(4);
@@ -1288,6 +1324,10 @@ int main() {
     if (restartMenu) {
         // troca de motor grafico: solta a tela e o processo vira um ScrapCade novo
         SDL_Quit();
+        if (!launchRom.empty()) {
+            fprintf(stderr, "scrapcade: abrindo %s (%s)\n", launchRom.c_str(), launchSys.c_str());
+            execl("/usr/bin/tos-jogar", "tos-jogar", launchSys.c_str(), launchRom.c_str(), (char *)nullptr);
+        }
         if (prefs["voltar"] == "desktop") {
             prefs.erase("voltar");
             savePrefs();

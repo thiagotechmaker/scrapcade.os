@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_MUPEN64PLUS
+	bool "libretro-mupen64plus"
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Nucleo libretro mupen64plus-libretro-nx para o RetroArch.

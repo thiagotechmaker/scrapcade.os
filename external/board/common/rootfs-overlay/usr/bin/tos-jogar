@@ -1,0 +1,36 @@
+#!/bin/sh
+# T-OS: abre o jogo no emulador certo, com a configuracao central, e volta para o ScrapCade.
+# Uso: tos-jogar <console> <arquivo do jogo>
+export HOME=/userdata/system   # historico e favoritos do RetroArch ficam em TOS-DADOS
+SIS=$1
+ROM=$2
+CFG=/userdata/system/configs/retroarch
+mkdir -p "$CFG" "/userdata/saves/$SIS" /userdata/bios /userdata/screenshots /userdata/system/logs
+
+case "$SIS" in
+  nes) CORE=mesen ;;
+  snes) CORE=snes9x ;;
+  megadrive) CORE=genesis_plus_gx ;;
+  gb|gbc) CORE=gambatte ;;
+  gba) CORE=mgba ;;
+  psx) CORE=pcsx_rearmed ;;
+  n64) CORE=mupen64plus_next ;;
+  arcade|neogeo) CORE=fbneo ;;
+  *) CORE="" ;;
+esac
+SO=/usr/lib/libretro/${CORE}_libretro.so
+
+if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
+  # configuracao central: sempre o modelo do sistema; o que o usuario quiser mudar vai em retroarch-usuario.cfg
+  cp /usr/share/tos/retroarch.cfg "$CFG/retroarch.cfg"
+  {
+    echo "savefile_directory = \"/userdata/saves/$SIS\""
+    echo "savestate_directory = \"/userdata/saves/$SIS\""
+  } > /tmp/tos-console.cfg
+  EXTRA=/tmp/tos-console.cfg
+  [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
+  echo "== $(date "+%d/%m %H:%M") $SIS $CORE $ROM" > /userdata/system/logs/retroarch.log
+  retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" -L "$SO" "$ROM" \
+    >> /userdata/system/logs/retroarch.log 2>&1
+fi
+exec /usr/bin/scrapcade

@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_PCSX
+	bool "libretro-pcsx"
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Nucleo libretro pcsx_rearmed para o RetroArch.
