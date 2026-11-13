@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.5 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.7 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -604,8 +604,10 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_HELP, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
+static bool restartMenu = false;
+static const std::string DESKTOP = "/usr/bin/tos-desktop";
 static int optSel = 0;
 static std::string textTitle;                 // painel de texto (Como jogar, Informacoes)
 static std::vector<std::string> textLines;
@@ -613,6 +615,26 @@ static int cpuPct = 0, memPct = 0, diskPct = 0;
 static long long cpuTotal = 0, cpuIdle = 0;
 static Uint32 barsAt = 0;
 static std::string glName;                    // placa de video, lida uma vez
+
+// Motor grafico: os desenhos que o SDL tem neste sistema (lidos na hora, so aparece o que existe)
+static std::string engineNow;                 // o que esta desenhando agora
+static std::string engineWant;                // escolhido no painel (vale ao reabrir)
+static std::vector<std::string> engines() {
+    std::vector<std::string> v;
+    for (int i = 0; i < SDL_GetNumRenderDrivers(); i++) {
+        SDL_RendererInfo ri;
+        if (SDL_GetRenderDriverInfo(i, &ri) == 0) v.push_back(ri.name);
+    }
+    return v;
+}
+static std::string engineName(const std::string &id) {
+    if (id == "opengles2") return "GPU (OpenGL ES)";
+    if (id == "opengles") return "GPU (OpenGL ES 1)";
+    if (id == "opengl") return "GPU (OpenGL)";
+    if (id == "vulkan") return "GPU (Vulkan)";
+    if (id == "software") return "CPU (sem placa de vídeo)";
+    return id;
+}
 
 static void readUsage() {
     std::ifstream st("/proc/stat");
@@ -643,6 +665,9 @@ static std::string optLabel(int i) {
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
     case OPT_BG: return std::string("Fundo do jogo:   ‹ ") + (showBackdrop ? "Mostrar" : "Ocultar") + " ›";
+    case OPT_ENGINE:
+        return "Motor gráfico:   ‹ " + engineName(engineWant) + " ›" + (engineWant != engineNow ? "   A aplica" : "");
+    case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
@@ -783,7 +808,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.4" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.7" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -845,6 +870,31 @@ static void optAction(int dir) {
         prefs["backdrop"] = showBackdrop ? "1" : "0";
         backdropKey = "\x01";
         break;
+    case OPT_ENGINE: {
+        auto v = engines();
+        if (v.empty()) return;
+        if (dir != 0) {
+            int i = int(std::find(v.begin(), v.end(), engineWant) - v.begin());
+            engineWant = v[(i + dir + int(v.size()) * 2) % int(v.size())];
+            return;
+        }
+        if (engineWant == engineNow) return;
+        prefs["engine"] = engineWant;
+        savePrefs();
+        restartMenu = true;   // o laco principal fecha a tela e reabre o ScrapCade com o motor novo
+        return;
+    }
+    case OPT_DESKTOP:
+        if (dir != 0) return;
+        // o desktop (Fluxbox, no estilo do antiX) chega como /usr/bin/tos-desktop; ao sair dele, volta o ScrapCade
+        if (isFile(DESKTOP)) {
+            prefs["voltar"] = "desktop";
+            savePrefs();
+            restartMenu = true;
+        } else {
+            toast("O modo desktop entra numa próxima versão do T-OS", 4000);
+        }
+        return;
     case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
     case OPT_INFO: if (dir == 0) { sysOpen = false; openInfo(); } return;
     case OPT_REBOOT: if (dir == 0) powerOff(true); return;
@@ -1067,6 +1117,8 @@ int main() {
     signal(SIGINT, onSignal);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+    loadPrefs();
+    if (!prefs["engine"].empty()) SDL_SetHint(SDL_HINT_RENDER_DRIVER, prefs["engine"].c_str());
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "scrapcade: SDL_Init: %s\n", SDL_GetError());
         return 1;
@@ -1081,6 +1133,7 @@ int main() {
     if (!G.r) { fprintf(stderr, "scrapcade: renderer: %s\n", SDL_GetError()); return 1; }
     SDL_RendererInfo info;
     SDL_GetRendererInfo(G.r, &info);
+    engineNow = engineWant = info.name;
     SDL_GetRendererOutputSize(G.r, &G.W, &G.H);
     G.u = std::min(std::max(G.W, G.H) / 533.33f, std::min(G.W, G.H) / 320.0f);
     fprintf(stderr, "scrapcade: %dx%d, desenho %s, u=%.2f\n", G.W, G.H, info.name, G.u);
@@ -1113,7 +1166,7 @@ int main() {
 
     Uint32 holdDir = 0, holdNext = 0, lastScan = SDL_GetTicks();
     int axisDir = 0;
-    while (!quit) {
+    while (!quit && !restartMenu) {
         SDL_Event e;
         bool any = false;
         while (SDL_PollEvent(&e)) {
@@ -1232,6 +1285,18 @@ int main() {
         }
     }
     workStop = true;
+    if (restartMenu) {
+        // troca de motor grafico: solta a tela e o processo vira um ScrapCade novo
+        SDL_Quit();
+        if (prefs["voltar"] == "desktop") {
+            prefs.erase("voltar");
+            savePrefs();
+            fprintf(stderr, "scrapcade: abrindo o modo desktop\n");
+            execl(DESKTOP.c_str(), "tos-desktop", (char *)nullptr);   // o script reabre o ScrapCade ao sair
+        }
+        fprintf(stderr, "scrapcade: reabrindo com o motor %s\n", prefs["engine"].c_str());
+        execl("/proc/self/exe", "scrapcade", (char *)nullptr);
+    }
     work.join();
     SDL_Quit();
     return 0;

@@ -5,10 +5,12 @@
 //   PUT  /envio/<nome> grava em "Jogos novos" (o organizador leva para o console certo)
 //   PUT  /capa/<chave> troca a capa do jogo (images/<jogo>.png)
 //   POST /apaga/<chave> apaga o jogo (so o que esta na lista)
+//   GET  /arquivos     gerenciador de arquivos (arquivos.h): /fs/lista, /fs/baixar, /fs/enviar, /fs/<operacao>
 // So atende a rede local (enderecos privados), como um aparelho de casa.
 #pragma once
 #include "catalogo.h"
 #include "meta.h"
+#include "arquivos.h"
 
 #include <arpa/inet.h>
 #include <functional>
@@ -123,16 +125,72 @@ static const char *CSS =
     "*{box-sizing:border-box}"
     "body{font:16px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0b0520;color:#f2f0ff}"
     "main{max-width:860px;margin:auto;padding:16px}a{color:#19e6ff}"
-    ".logo{display:block;width:100%;max-width:520px;margin:0 auto 10px;border-radius:12px}h2{font-size:18px;margin:18px 0 8px}"
+    ".logo{display:block;width:100%;max-width:520px;margin:0 auto 10px;border-radius:12px}"
+    "nav{display:flex;gap:8px;justify-content:center;margin:0 0 14px}"
+    "nav a{padding:8px 18px;border-radius:999px;background:#1d1447;text-decoration:none;color:#f2f0ff}"
+    "nav a.on{background:#19e6ff;color:#0b0520;font-weight:700}h2{font-size:18px;margin:18px 0 8px}"
     "button{border:0;border-radius:8px;padding:8px 12px;min-height:36px;cursor:pointer;background:#2c2260;color:#fff;font:inherit;font-size:14px}"
-    ".x{background:#e0356b}"
+    "button.v,.x{background:#e0356b}button.a{background:#7dff3a;color:#0b0520;font-weight:700}"
     "table{width:100%;border-collapse:collapse;background:#17103a;border-radius:12px;overflow:hidden}"
     "td{padding:9px 12px;border-bottom:1px solid #2c2260;vertical-align:middle}tr:last-child td{border-bottom:0}"
-    ".c{color:#a59fcf;font-size:13px}.b{text-align:right;white-space:nowrap}.b button{margin:2px 0 2px 4px}"
+    ".c,td.s{color:#a59fcf;font-size:13px}td.s{white-space:nowrap}.b,td.o{text-align:right}.b{white-space:nowrap}"
+    ".b button,td.o button{margin:2px 0 2px 4px}.n{cursor:pointer;color:#19e6ff;font-weight:600;word-break:break-word}"
     "#d{display:block;border:2px dashed #19e6ff;border-radius:14px;padding:30px 16px;text-align:center;margin:8px 0 10px;cursor:pointer;background:#120a30}"
-    "#d.o{background:#1d1447}input[type=file]{display:none}#s div{margin:4px 0;font-size:14px;color:#ffd34e;min-height:20px}"
+    "#d.o{background:#1d1447}input[type=file]{display:none}#s div,#msg{margin:4px 0;font-size:14px;color:#ffd34e;min-height:20px}"
+    "#cam{margin:8px 0;font-size:15px;word-break:break-word}#cam a{cursor:pointer}.bar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}"
+    "#clip{background:#1d1447;border:1px solid #19e6ff;padding:10px 12px;border-radius:10px;display:none;margin:8px 0}"
     "@media(max-width:640px){main{padding:10px}td{display:block;border:0;padding:3px 12px}"
-    "tr{display:block;border-bottom:1px solid #2c2260;padding:8px 0}.b{text-align:left;white-space:normal}.b button{margin:4px 6px 0 0}}";
+    "tr{display:block;border-bottom:1px solid #2c2260;padding:8px 0}.b,td.o{text-align:left;white-space:normal}"
+    ".b button,td.o button{margin:4px 6px 0 0}}";
+
+// Inicio comum das paginas: estilo que se ajusta ao celular e ao PC, logo e abas
+static std::string head(const std::string &title, bool files) {
+    return std::string("<!DOCTYPE html><html lang=pt-br><meta charset=utf-8>"
+                       "<meta name=viewport content='width=device-width,initial-scale=1'><title>") + title +
+           "</title><style>" + CSS + "</style><main><img class=logo src=/logo.jpg alt=ScrapCade>"
+           "<nav><a href=/" + (files ? "" : " class=on") + ">Jogos</a><a href=/arquivos" + (files ? " class=on" : "") +
+           ">Arquivos</a></nav>";
+}
+
+static const char *FILES_SCRIPT =
+    "var cur='',clip=null;function $(i){return document.getElementById(i)}"
+    "function tam(s){return s>1048576?(s/1048576).toFixed(1)+' MB':Math.ceil(s/1024)+' KB'}"
+    "function req(m,u,body,ok){var x=new XMLHttpRequest;x.open(m,u);x.onload=function(){if(x.status==200)ok(x);else $('msg').textContent='Erro: '+x.statusText};x.send(body||null)}"
+    "function op(o,a,b,n){$('msg').textContent='Aguarde...';var u='/fs/'+o+'?a='+encodeURIComponent(a)+(b!=null?'&b='+encodeURIComponent(b):'')"
+    "+(n!=null?'&n='+encodeURIComponent(n):'');req('POST',u,null,function(){$('msg').textContent='Feito.';abre(cur)})}"
+    "function abre(p){cur=p;req('GET','/fs/lista?p='+encodeURIComponent(p),null,function(x){var l=JSON.parse(x.responseText),h='';"
+    "var c='<a onclick=\"abre(\\'\\')\">Início</a>',acc='';if(p)p.split('/').forEach(function(s){acc+=(acc?'/':'')+s;"
+    "c+=' / <a onclick=\"abre(\\''+acc.replace(/'/g,\"\\\\'\")+'\\')\">'+esc(s)+'</a>'});$('cam').innerHTML=c;"
+    "if(!l.length)h='<tr><td>Pasta vazia</td></tr>';l.forEach(function(f,i){h+='<tr><td><span class=n data-i='+i+'>'+(f.d?'📁 ':'')+esc(f.n)+'</span></td>'"
+    "+'<td class=s>'+(f.d?'':tam(f.s))+'</td><td class=o>'+(p?(f.d?'':'<button data-o=baixar data-i='+i+'>baixar</button>')"
+    "+'<button data-o=renomear data-i='+i+'>renomear</button><button data-o=recortar data-i='+i+'>mover</button>'"
+    "+'<button data-o=copiarclip data-i='+i+'>copiar</button><button data-o=clonar data-i='+i+'>clonar</button>'"
+    "+'<button class=v data-o=apagar data-i='+i+'>apagar</button>':'')+'</td></tr>'});$('t').innerHTML=h;"
+    "Array.prototype.forEach.call(document.querySelectorAll('[data-i]'),function(e){e.onclick=function(){acao(e.dataset.o,l[e.dataset.i])}});mostraClip()})}"
+    "function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}"
+    "function acao(o,f){if(!o){if(f.d)abre(f.p);return}"
+    "if(o=='baixar')location.href='/fs/baixar?p='+encodeURIComponent(f.p);"
+    "else if(o=='renomear'){var n=prompt('Novo nome:',f.n);if(n&&n!=f.n)op('renomear',f.p,null,n)}"
+    "else if(o=='recortar'||o=='copiarclip'){clip={o:o=='recortar'?'mover':'copiar',f:f};mostraClip()}"
+    "else if(o=='clonar')op('clonar',f.p);"
+    "else if(o=='apagar'){if(confirm('Apagar '+f.n+(f.d?' e tudo dentro dela':'')+'? Não dá para desfazer.'))op('apagar',f.p)}}"
+    "function mostraClip(){var c=$('clip');if(!clip){c.style.display='none';return}c.style.display='block';"
+    "c.innerHTML=(clip.o=='mover'?'Mover ':'Copiar ')+'<b>'+esc(clip.f.n)+'</b>: abra a pasta de destino e '"
+    "+(cur?'<button class=a onclick=\"cola()\">colar aqui</button> ':'escolha uma pasta. ')+'<button onclick=\"clip=null;mostraClip()\">cancelar</button>'}"
+    "function cola(){var c=clip;clip=null;op(c.o,c.f.p,cur)}"
+    "function nova(){if(!cur){alert('Abra uma pasta primeiro.');return}var n=prompt('Nome da pasta nova:');if(n)op('pasta',cur,null,n)}"
+    "$('up').onchange=function(e){if(!cur){alert('Abra uma pasta primeiro.');return}var fs=Array.prototype.slice.call(e.target.files);"
+    "(function vai(){var f=fs.shift();if(!f){abre(cur);return}var x=new XMLHttpRequest;x.open('PUT','/fs/enviar?a='+encodeURIComponent(cur)+'&n='+encodeURIComponent(f.name));"
+    "x.upload.onprogress=function(ev){$('msg').textContent=f.name+': '+Math.round(ev.loaded*100/f.size)+'%'};x.onload=vai;x.send(f)})()};"
+    "abre('roms')";
+
+static std::string filesPage() {
+    return head("ScrapCade - arquivos", true) +
+           "<div id=cam></div>"
+           "<div class=bar><button onclick='nova()'>Nova pasta</button><button onclick=\"document.getElementById('up').click()\">"
+           "Enviar arquivos para esta pasta</button><input id=up type=file multiple></div>"
+           "<div id=clip></div><div id=msg></div><table id=t></table></main><script>" + FILES_SCRIPT + "</script></html>";
+}
 
 static const char *SCRIPT =
     "var d=document.getElementById('d'),s=document.getElementById('s'),q=[],on=0;"
@@ -168,10 +226,8 @@ static std::string page() {
                 "</div></td><td class=b><button class=p data-k=\"" + html(g.key()) + "\">trocar capa</button>"
                 "<button class=x data-k=\"" + html(g.key()) + "\" data-t=\"" + html(g.title) + "\">apagar</button></td></tr>";
     }
-    return std::string("<!DOCTYPE html><html lang=pt-br><meta charset=utf-8>"
-                       "<meta name=viewport content='width=device-width,initial-scale=1'><title>ScrapCade</title><style>") +
-           CSS + "</style><main><img class=logo src=/logo.jpg alt=ScrapCade>"
-                 "<label id=d>Arraste os jogos para cá, ou toque para escolher<input id=f type=file multiple></label><div id=s></div>"
+    return head("ScrapCade", false) +
+           "<label id=d>Arraste os jogos para cá, ou toque para escolher<input id=f type=file multiple></label><div id=s></div>"
                  "<div class=c>Cada jogo vai sozinho para o console certo, e a capa é baixada sozinha.</div>"
                  "<h2>Jogos (" + std::to_string(gs.size()) + ")</h2><table>" + rows + "</table></main><script>" + SCRIPT +
            "</script></html>";
@@ -235,13 +291,54 @@ static void handle(int fd) {
         if (endsWith(g.file, ".cue")) remove((g.dir + "/" + g.base + ".bin").c_str());   // .cue leva junto o .bin
         reply(fd, "200 OK");
         if (changed) changed();
+    } else if (method == "GET" && path == "/arquivos") {
+        sendBody(fd, "text/html; charset=utf-8", filesPage());
+    } else if (method == "GET" && path.compare(0, 9, "/fs/lista") == 0) {
+        auto q = Arquivos::query(path, urldecode);
+        std::string j = Arquivos::list(q["p"]);
+        if (j.empty()) reply(fd, "404 Nao encontrado");
+        else sendBody(fd, "application/json; charset=utf-8", j);
+    } else if (method == "GET" && path.compare(0, 10, "/fs/baixar") == 0) {
+        auto q = Arquivos::query(path, urldecode);
+        std::string f = Arquivos::resolve(q["p"]);
+        FILE *in = f.empty() || Arquivos::isDirP(f) ? nullptr : fopen(f.c_str(), "rb");
+        if (!in) { reply(fd, "404 Nao encontrado"); return; }
+        std::string n = Arquivos::nameOf(f);
+        n.erase(std::remove(n.begin(), n.end(), '"'), n.end());
+        struct stat st;
+        stat(f.c_str(), &st);
+        std::string h = "HTTP/1.0 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " +
+                        std::to_string(st.st_size) + "\r\nContent-Disposition: attachment; filename=\"" + n +
+                        "\"\r\nConnection: close\r\n\r\n";
+        sendAll(fd, h.data(), h.size());
+        std::vector<char> b(1 << 16);
+        size_t r;
+        while ((r = fread(b.data(), 1, b.size(), in)) > 0)
+            if (!sendAll(fd, b.data(), r)) break;
+        fclose(in);
+    } else if (method == "PUT" && path.compare(0, 10, "/fs/enviar") == 0) {
+        // envio direto para uma pasta escolhida no gerenciador (nao passa pela caixa de entrada)
+        auto q = Arquivos::query(path, urldecode);
+        std::string dir = Arquivos::resolve(q["a"]), n = q["n"];
+        if (dir.empty() || !Arquivos::isDirP(dir)) { reply(fd, "404 Pasta nao encontrada"); return; }
+        if (Arquivos::badName(n) || n[0] == '.') { reply(fd, "400 Nome invalido"); return; }
+        std::string err = receiveFile(fd, rest, length, dir + "/" + n);
+        reply(fd, err.empty() ? "200 OK" : err);
+        if (err.empty() && changed) changed();
+    } else if (method == "POST" && path.compare(0, 4, "/fs/") == 0) {
+        size_t qm = path.find('?');
+        std::string op = path.substr(4, qm == std::string::npos ? std::string::npos : qm - 4);
+        auto q = Arquivos::query(path, urldecode);
+        std::string r = Arquivos::run(op, q);
+        reply(fd, r);
+        if (r.compare(0, 3, "200") == 0 && changed) changed();
     } else {
         reply(fd, "404 Nao encontrado");
     }
 }
 
 static void serve() {
-    int s = socket(AF_INET, SOCK_STREAM, 0);
+    int s = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);   // nao passa para o menu reaberto
     int one = 1;
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
     sockaddr_in a{};
@@ -256,7 +353,7 @@ static void serve() {
     while (true) {
         sockaddr_in from{};
         socklen_t fl = sizeof from;
-        int fd = accept(s, (sockaddr *)&from, &fl);
+        int fd = accept4(s, (sockaddr *)&from, &fl, SOCK_CLOEXEC);
         if (fd < 0) continue;
         if (!local(from)) { close(fd); continue; }
         timeval tv{60, 0};
