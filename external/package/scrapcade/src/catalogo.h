@@ -13,7 +13,7 @@
 static std::string DATA = "/usr/share/scrapcade";
 static std::string ROMS = "/userdata/roms";
 static std::string INBOX = "/userdata/Jogos novos";
-static std::string CONF = "/userdata/system/scrapcade.conf";
+static std::string CONF_FILE = "/userdata/system/scrapcade.conf";
 
 // ------------------------------------------------------------------ consoles
 

@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.8 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 0.9 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -16,6 +16,7 @@
 #include "capas.h"
 #include "organizar.h"
 #include "envio.h"
+#include "bios.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -43,7 +44,7 @@
 static std::map<std::string, std::string> prefs;
 
 static void loadPrefs() {
-    std::ifstream f(CONF);
+    std::ifstream f(CONF_FILE);
     std::string l;
     while (std::getline(f, l)) {
         size_t p = l.find('=');
@@ -52,13 +53,13 @@ static void loadPrefs() {
 }
 
 static void savePrefs() {
-    mkdirs(CONF.substr(0, CONF.rfind('/')));
-    std::string tmp = CONF + ".tmp";
+    mkdirs(CONF_FILE.substr(0, CONF_FILE.rfind('/')));
+    std::string tmp = CONF_FILE + ".tmp";
     {
         std::ofstream f(tmp);
         for (auto &kv : prefs) f << kv.first << "=" << kv.second << "\n";
     }
-    rename(tmp.c_str(), CONF.c_str());
+    rename(tmp.c_str(), CONF_FILE.c_str());
 }
 
 static bool isFav(const Game &g) { return prefs.count("fav|" + g.key()) > 0; }
@@ -604,7 +605,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static const std::string DESKTOP = "/usr/bin/tos-desktop";
@@ -669,6 +670,7 @@ static std::string optLabel(int i) {
         return "Motor gráfico:   ‹ " + engineName(engineWant) + " ›" + (engineWant != engineNow ? "   A aplica" : "");
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
+    case OPT_BIOS: return "BIOS dos consoles";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
     case OPT_OFF: return "Desligar";
@@ -750,8 +752,13 @@ static void drawTextPanel() {
     float h = 22 * u + 16 * u + textLines.size() * lh + 22 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
     float top = whitePanel(textTitle, x, y, w, h) + 12 * u;
-    for (size_t i = 0; i < textLines.size(); i++)
-        T.draw(textLines[i], x + 14 * u, top + i * lh + lh / 2, 9, false, 0xFF2B2E33, 0, w - 28 * u);
+    for (size_t i = 0; i < textLines.size(); i++) {
+        // tela de BIOS: verde = certo, vermelho = falta ou arquivo errado, ambar = opcional
+        const std::string &l = textLines[i];
+        uint32_t c = l.rfind("✓", 0) == 0 ? 0xFF1E9C4A : l.rfind("✗", 0) == 0 ? 0xFFD0362B
+                   : l.rfind("•", 0) == 0 ? 0xFFB7791F : 0xFF2B2E33;
+        T.draw(l, x + 14 * u, top + i * lh + lh / 2, 9, false, c, 0, w - 28 * u);
+    }
     static const char *H[] = {"b", "voltar"};
     panelHints(H, 2, x, y + h, w);
 }
@@ -808,7 +815,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.8" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.9" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -897,6 +904,16 @@ static void optAction(int dir) {
         }
         return;
     case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
+    case OPT_BIOS:
+        if (dir != 0) return;
+        sysOpen = false;
+        textTitle = "BIOS dos consoles";
+        textLines = Bios::report();
+        for (auto &l : textLines) {
+            size_t p = l.find("%IP%");
+            if (p != std::string::npos) l.replace(p, 4, ipAddr());
+        }
+        return;
     case OPT_INFO: if (dir == 0) { sysOpen = false; openInfo(); } return;
     case OPT_REBOOT: if (dir == 0) powerOff(true); return;
     case OPT_OFF: if (dir == 0) powerOff(false); return;
@@ -1145,7 +1162,7 @@ static std::string signature(const std::vector<Game> &games) {
 int main() {
     if (getenv("ROMS_DIR")) ROMS = getenv("ROMS_DIR");
     if (getenv("SCRAPCADE_DATA")) DATA = getenv("SCRAPCADE_DATA");
-    if (getenv("SCRAPCADE_CONF")) CONF = getenv("SCRAPCADE_CONF");
+    if (getenv("SCRAPCADE_CONF")) CONF_FILE = getenv("SCRAPCADE_CONF");
     if (getenv("INBOX_DIR")) INBOX = getenv("INBOX_DIR");
     signal(SIGTERM, onSignal);
     signal(SIGINT, onSignal);
