@@ -2,6 +2,9 @@
 # Modo desktop do T-OS: Fluxbox no X, aberto pelo painel Sistema do ScrapCade.
 # "Voltar ao modo jogo" no menu do Fluxbox fecha o X e o ScrapCade volta.
 export HOME=/userdata/system/desktop
+# a TOS-DADOS e exFAT (sem sockets nem links): o que o programa cria enquanto roda vai para a memoria
+export XDG_RUNTIME_DIR=/tmp/xdg-desktop XDG_CACHE_HOME=/tmp/cache-desktop
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CACHE_HOME"; chmod 700 "$XDG_RUNTIME_DIR"
 mkdir -p "$HOME/.fluxbox" /userdata/system/logs
 cp /usr/share/tos-desktop/menu /usr/share/tos-desktop/keys /usr/share/tos-desktop/overlay "$HOME/.fluxbox/"   # do sistema: sempre os da versao atual
 xinit /usr/bin/tos-desktop-sessao -- /usr/bin/Xorg :0 vt1 -nolisten tcp -keeptty \

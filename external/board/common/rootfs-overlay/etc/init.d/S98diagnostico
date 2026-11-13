@@ -1,0 +1,33 @@
+#!/bin/sh
+# T-OS: resumo do hardware e da rede a cada boot, em TOS-DADOS/system/logs/diagnostico.txt
+# (ajuda a descobrir driver que falta: o usuario copia o arquivo para o PC ou baixa pela pagina, em Registros)
+[ "$1" = start ] || exit 0
+(
+  sleep 15
+  D=/userdata/system/logs/diagnostico.txt
+  {
+    echo "== T-OS $(sed -n 's/^VERSION=//p' /etc/os-release)  $(date)"
+    echo "== processador: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2)"
+    echo "== memoria: $(grep MemTotal /proc/meminfo)"
+    echo "== placas (PCI: fabricante:modelo classe -> driver)"
+    for d in /sys/bus/pci/devices/*; do
+      v=$(cat $d/vendor); p=$(cat $d/device); c=$(cat $d/class)
+      dr=$(basename "$(readlink $d/driver 2>/dev/null)" 2>/dev/null)
+      echo "  ${v#0x}:${p#0x} classe ${c#0x} -> ${dr:-SEM DRIVER}"
+    done
+    echo "== USB"
+    for d in /sys/bus/usb/devices/*; do
+      [ -f $d/idVendor ] && echo "  $(cat $d/idVendor):$(cat $d/idProduct) $(cat $d/product 2>/dev/null)"
+    done
+    echo "== rede"
+    ip addr 2>&1
+    echo "== connman"
+    connmanctl technologies 2>&1 | grep -E "^/|Powered|Connected"
+    connmanctl services 2>&1
+    echo "== controles"
+    grep -E "^N:|^H:" /proc/bus/input/devices | paste - - 2>/dev/null
+    echo "== avisos do kernel"
+    dmesg | grep -iE "firmware|fail|error|wlan|wifi|eth|r8169|iwl|brcm|ath|rtw|radeon|i915|nouveau|drm" | tail -60
+  } > $D 2>&1
+) &
+exit 0

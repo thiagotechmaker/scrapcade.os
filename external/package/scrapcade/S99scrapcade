@@ -2,6 +2,13 @@
 # Modo jogo do T-OS: abre o ScrapCade em tela cheia no tty1.
 # O login de manutencao fica no tty2 (Ctrl+Alt+F2).
 export SDL_VIDEODRIVER=kmsdrm
+# controles: banco da comunidade (SDL_GameControllerDB) + os que o usuario configurou no ScrapCade.
+# O ScrapCade e o RetroArch leem o mesmo arquivo.
+mkdir -p /userdata/system/configs
+cat /usr/share/scrapcade/gamecontrollerdb.txt /userdata/system/configs/controles.txt > /tmp/gamecontrollerdb.txt 2>/dev/null
+export SDL_GAMECONTROLLERCONFIG_FILE=/tmp/gamecontrollerdb.txt
+# volume salvo no painel Sistema
+[ -f /userdata/system/configs/volume ] && amixer -q sset Master "$(cat /userdata/system/configs/volume)" 2>/dev/null
 # "Iniciar em modo de compatibilidade" no menu de boot: desenha sem a aceleracao da placa de video
 if grep -q "tos.seguro=1" /proc/cmdline; then
   export LIBGL_ALWAYS_SOFTWARE=1 SDL_RENDER_DRIVER=software

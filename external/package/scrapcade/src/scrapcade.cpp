@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.0 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.1 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -18,6 +18,7 @@
 #include "envio.h"
 #include "bios.h"
 #include "usb.h"
+#include "rede.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -606,9 +607,10 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
+static int volume = -2;   // -2 ainda nao leu, -1 sem placa de som, 0..100
 static const std::string DESKTOP = "/usr/bin/tos-desktop";
 static int optSel = 0;
 static std::string textTitle;                 // painel de texto (Como jogar, Informacoes)
@@ -669,6 +671,10 @@ static std::string optLabel(int i) {
     case OPT_BG: return std::string("Fundo do jogo:   ‹ ") + (showBackdrop ? "Mostrar" : "Ocultar") + " ›";
     case OPT_ENGINE:
         return "Motor gráfico:   ‹ " + engineName(engineWant) + " ›" + (engineWant != engineNow ? "   A aplica" : "");
+    case OPT_VOLUME: return volume < 0 ? "Volume:   (sem placa de som)" :
+                            std::string("Volume:   ‹ ") + (volume == 0 ? "mudo" : std::to_string(volume) + "%") + " ›   A testa";
+    case OPT_REDE: return "Rede e Wi-Fi";
+    case OPT_CONTROLE: return "Configurar controle";
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_BIOS: return "BIOS dos consoles";
@@ -721,7 +727,8 @@ static std::string ipAddr();
 
 static void drawSystem() {
     if (!sysOpen) return;
-    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u), rowH = 15 * u;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u);
+    float rowH = std::min(15 * u, (G.H - 96 * u) / OPT_COUNT - 1.6f * u);
     float h = 22 * u + 10 * u + OPT_COUNT * (rowH + 1.6f * u) + 14 * u + 22 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
     float top = whitePanel("Sistema", x, y, w, h) + 8 * u;
@@ -817,7 +824,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.0" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.1" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -855,6 +862,276 @@ static void powerOff(bool restart) {
 
 static void clearCards();
 static void clearBacks();
+
+// ------------------------------------------------------------------ som (amixer) e teste de som
+
+
+static void readVolume() {
+    std::string o = Rede::run("amixer sget Master");
+    size_t a = o.find('['), b = o.find("%]");
+    if (a == std::string::npos || b == std::string::npos || b < a) { volume = -1; return; }
+    volume = atoi(o.c_str() + a + 1);
+    if (o.find("[off]") != std::string::npos) volume = 0;
+}
+
+static void setVolume(int v) {
+    if (volume < 0) return;
+    volume = std::max(0, std::min(100, v));
+    std::string pct = std::to_string(volume) + "%";
+    Rede::run("amixer -q sset Master " + pct + (volume == 0 ? " mute" : " unmute"));
+    Rede::run("amixer -q sset PCM 100% unmute");
+    mkdirs("/userdata/system/configs");
+    std::ofstream("/userdata/system/configs/volume") << pct << (volume == 0 ? " mute" : " unmute") << "\n";
+}
+
+// Toca dois tons curtos (o som do T-OS) para conferir se o som sai
+static void testSound() {
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) { toast("Sem som: " + std::string(SDL_GetError()), 4000); return; }
+    SDL_AudioSpec want{}, got{};
+    want.freq = 44100;
+    want.format = AUDIO_S16SYS;
+    want.channels = 2;
+    want.samples = 1024;
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(nullptr, 0, &want, &got, 0);
+    if (!dev) { toast("Sem som: " + std::string(SDL_GetError()), 4000); SDL_QuitSubSystem(SDL_INIT_AUDIO); return; }
+    std::vector<int16_t> buf;
+    for (int nota = 0; nota < 2; nota++) {
+        float f = nota ? 880.0f : 659.25f;
+        int n = got.freq * 28 / 100;
+        for (int i = 0; i < n; i++) {
+            float env = std::min(1.0f, std::min(i, n - i) / (got.freq * 0.02f));
+            int16_t v = int16_t(std::sin(i * 6.2831853f * f / got.freq) * 9000 * env);
+            buf.push_back(v);
+            buf.push_back(v);
+        }
+    }
+    SDL_QueueAudio(dev, buf.data(), Uint32(buf.size() * sizeof(int16_t)));
+    SDL_PauseAudioDevice(dev, 0);
+    SDL_Delay(650);
+    SDL_CloseAudioDevice(dev);
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
+
+// ------------------------------------------------------------------ rede e Wi-Fi (rede.h)
+
+static void redraw();   // pede um desenho novo (chamado de outras threads)
+static int netStage = 0;    // 0 fechado, 1 lista, 2 senha, 3 conectando, 4 resultado
+static std::mutex netMu;
+static std::vector<Rede::Wifi> nets;
+static bool netBusy = false;
+static int netSel = 0;
+static std::string netMsg, senha;
+static int oskRow = 0, oskCol = 0;
+static bool oskUpper = false, oskShow = false;
+static const char *OSK[] = {"1234567890", "qwertyuiop", "asdfghjkl@", "zxcvbnm.-_", "!#$%&*+=?/"};
+static const char *OSK_ESP[] = {"Aa", "espaço", "apagar", "ver", "conectar"};
+
+static void netScan() {
+    if (netBusy) return;
+    netBusy = true;
+    std::thread([] {
+        auto v = Rede::scan();
+        std::lock_guard<std::mutex> l(netMu);
+        nets = v;
+        netBusy = false;
+        redraw();   // redesenha
+    }).detach();
+}
+
+static void openRede() {
+    netStage = 1;
+    netSel = 0;
+    netMsg.clear();
+    netScan();
+}
+
+static void netConnect() {
+    Rede::Wifi w;
+    {
+        std::lock_guard<std::mutex> l(netMu);
+        if (netSel >= int(nets.size())) return;
+        w = nets[netSel];
+    }
+    netStage = 3;
+    std::string pw = senha;
+    std::thread([w, pw] {
+        bool ok = Rede::connect(w, pw);
+        std::lock_guard<std::mutex> l(netMu);
+        netMsg = ok ? "Conectado em " + w.name + "." : "Não conectou em " + w.name + ". Confira a senha e tente de novo.";
+        netStage = 4;
+        redraw();
+    }).detach();
+}
+
+static char oskChar(int r, int c) {
+    char ch = OSK[r][c];
+    return oskUpper ? char(toupper((unsigned char)ch)) : ch;
+}
+
+static void drawRede() {
+    if (!netStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u), lh = 14 * u;
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t c = 0xFF2B2E33) { L.push_back(t); C.push_back(c); };
+    std::vector<Rede::Wifi> v;
+    bool busy;
+    {
+        std::lock_guard<std::mutex> l(netMu);
+        v = nets;
+        busy = netBusy;
+    }
+    const char *H1[] = {"ud", "escolher", "a", "conectar", "x", "procurar de novo", "b", "voltar"};
+    const char *H2[] = {"ud lr", "teclas", "a", "digitar", "b", "apagar", "start", "conectar"};
+    const char *H4[] = {"b", "voltar"};
+    const char *const *H = H1;
+    int nh = 8;
+    std::string ip = ipAddr();
+    if (netStage == 1) {
+        for (auto &c : Rede::cabos())
+            add("Cabo (" + c.dev + "): " + (c.link ? "ligado" : "sem cabo"), c.link ? 0xFF1E9C4A : 0xFF5E6269);
+        add(ip.empty() || ip == "sem rede" ? "Sem conexão." : "Conectado. Endereço: " + ip, 0xFF2B2E33);
+        add("");
+        if (!Rede::temWifi()) {
+            add("Nenhuma placa de Wi-Fi encontrada (ou ela precisa de um driver que o T-OS", 0xFFD0362B);
+            add("ainda não tem). Veja Registros/diagnostico.txt na página de Arquivos.", 0xFFD0362B);
+        } else if (busy && v.empty()) {
+            add("Procurando redes Wi-Fi...");
+        } else if (v.empty()) {
+            add("Nenhuma rede Wi-Fi encontrada. Aperte X para procurar de novo.");
+        }
+        for (size_t i = 0; i < v.size() && i < 9; i++)
+            add(std::string(int(i) == netSel ? "▶  " : "    ") + v[i].name + (v[i].connected ? "   (conectado)" : v[i].saved ? "   (salva)" : ""),
+                int(i) == netSel ? 0xFF1E9C4A : 0xFF2B2E33);
+    } else if (netStage == 2) {
+        std::string nome;
+        {
+            std::lock_guard<std::mutex> l(netMu);
+            if (netSel < int(v.size())) nome = v[netSel].name;
+        }
+        add("Senha do Wi-Fi \"" + nome + "\":");
+        add("  " + (oskShow ? senha : std::string(senha.size(), '*')) + "_", 0xFF1E9C4A);
+        add("(o teclado do notebook também funciona: digite e aperte Enter)", 0xFF5E6269);
+        H = H2;
+    } else {
+        add(netStage == 3 ? "Conectando..." : netMsg, netMsg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
+        H = H4;
+        nh = netStage == 3 ? 0 : 2;
+    }
+    float kh = netStage == 2 ? 6 * 18 * u : 0;
+    float h = 22 * u + 16 * u + L.size() * lh + kh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Rede e Wi-Fi", x, y, w, h) + 10 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    if (netStage == 2) {   // teclado na tela
+        float ky = top + L.size() * lh + 4 * u, kw = (w - 28 * u) / 10;
+        for (int rr = 0; rr < 6; rr++) {
+            int cols = rr < 5 ? 10 : 5;
+            float cw = rr < 5 ? kw : (w - 28 * u) / 5;
+            for (int cc = 0; cc < cols; cc++) {
+                bool sel = rr == oskRow && cc == oskCol;
+                float bx = x + 14 * u + cc * cw, by = ky + rr * 18 * u;
+                G.roundRect(bx + u, by + u, cw - 2 * u, 16 * u, 3 * u, sel ? 0xFF2CCF9A : 0xFF4A4D52);
+                std::string t = rr < 5 ? std::string(1, oskChar(rr, cc)) : OSK_ESP[cc];
+                T.draw(t, bx + cw / 2, by + 9 * u, rr < 5 ? 10 : 8.5f, rr < 5, 0xFFFFFFFF, 1);
+            }
+        }
+    }
+    if (nh) panelHints(H, nh, x, y + h, w);
+}
+
+// ------------------------------------------------------------------ configurar controle (controle generico)
+
+struct Passo { const char *key, *nome; bool eixo; };
+static const Passo PASSOS[] = {
+    {"a", "A  (o botão de baixo: confirmar)", false}, {"b", "B  (o botão da direita: voltar)", false},
+    {"x", "X  (o botão da esquerda)", false}, {"y", "Y  (o botão de cima)", false},
+    {"back", "Select", false}, {"start", "Start", false},
+    {"leftshoulder", "LB  (ombro esquerdo, L1)", false}, {"rightshoulder", "RB  (ombro direito, R1)", false},
+    {"lefttrigger", "LT  (gatilho esquerdo, L2)", false}, {"righttrigger", "RT  (gatilho direito, R2)", false},
+    {"dpup", "Direcional para CIMA", false}, {"dpdown", "Direcional para BAIXO", false},
+    {"dpleft", "Direcional para a ESQUERDA", false}, {"dpright", "Direcional para a DIREITA", false},
+    {"leftx", "Analógico esquerdo: empurre para a DIREITA", true}, {"lefty", "Analógico esquerdo: empurre para BAIXO", true},
+    {"rightx", "Analógico direito: empurre para a DIREITA", true}, {"righty", "Analógico direito: empurre para BAIXO", true},
+};
+static const int NPASSOS = int(sizeof(PASSOS) / sizeof(PASSOS[0]));
+static int ctlStep = -1;   // -1 fechado
+static SDL_JoystickID ctlId = -1;
+static SDL_Joystick *ctlJoy = nullptr;
+static std::vector<std::string> ctlMap;
+static Uint32 ctlWait = 0;   // espera soltar antes do proximo passo
+
+static void ctlStart(SDL_Joystick *j) {
+    ctlJoy = j;
+    ctlId = SDL_JoystickInstanceID(j);
+    ctlMap.assign(NPASSOS, "");
+    ctlStep = 0;
+    ctlWait = SDL_GetTicks() + 600;
+}
+
+static void ctlFinish() {
+    char guid[64];
+    SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(ctlJoy), guid, sizeof guid);
+    std::string nome = SDL_JoystickName(ctlJoy) ? SDL_JoystickName(ctlJoy) : "Controle";
+    std::replace(nome.begin(), nome.end(), ',', ' ');
+    std::string m = std::string(guid) + "," + nome + ",";
+    for (int i = 0; i < NPASSOS; i++)
+        if (!ctlMap[i].empty()) m += std::string(PASSOS[i].key) + ":" + ctlMap[i] + ",";
+    m += "platform:Linux,";
+    if (SDL_GameControllerAddMapping(m.c_str()) < 0) {
+        toast("Não deu para salvar o controle: " + std::string(SDL_GetError()), 4000);
+    } else {
+        mkdirs("/userdata/system/configs");
+        std::ofstream("/userdata/system/configs/controles.txt", std::ios::app) << m << "\n";
+        std::ofstream("/tmp/gamecontrollerdb.txt", std::ios::app) << m << "\n";   // o RetroArch le este
+        for (int i = 0; i < SDL_NumJoysticks(); i++)
+            if (SDL_JoystickGetDeviceInstanceID(i) == ctlId && SDL_IsGameController(i)) SDL_GameControllerOpen(i);
+        toast("Controle configurado: vale no menu e nos jogos.", 4000);
+    }
+    ctlStep = -1;
+}
+
+// Um botao, direcional (hat) ou eixo do controle que esta sendo configurado
+static void ctlInput(const SDL_Event &e) {
+    if (ctlStep < 0 || SDL_GetTicks() < ctlWait) return;
+    std::string v;
+    if (e.type == SDL_JOYBUTTONDOWN && e.jbutton.which == ctlId) v = "b" + std::to_string(e.jbutton.button);
+    if (e.type == SDL_JOYHATMOTION && e.jhat.which == ctlId && e.jhat.value)
+        v = "h" + std::to_string(e.jhat.hat) + "." + std::to_string(e.jhat.value);
+    if (e.type == SDL_JOYAXISMOTION && e.jaxis.which == ctlId && std::abs(int(e.jaxis.value)) > 24000) {
+        int a = e.jaxis.axis;
+        if (PASSOS[ctlStep].eixo) v = "a" + std::to_string(a) + (e.jaxis.value < 0 ? "~" : "");
+        else v = std::string(e.jaxis.value < 0 ? "-" : "+") + "a" + std::to_string(a);
+    }
+    if (v.empty()) return;
+    for (int i = 0; i < ctlStep; i++)
+        if (ctlMap[i] == v) return;   // ja usado: ignora (evita pegar o mesmo botao duas vezes)
+    ctlMap[ctlStep] = v;
+    ctlWait = SDL_GetTicks() + 450;
+    if (++ctlStep >= NPASSOS) ctlFinish();
+}
+
+static void ctlSkip() {
+    if (ctlStep < 0) return;
+    if (++ctlStep >= NPASSOS) ctlFinish();
+}
+
+static void drawControle() {
+    if (ctlStep < 0) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), h = 150 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Configurar controle", x, y, w, h) + 14 * u;
+    T.draw(SDL_JoystickName(ctlJoy) ? SDL_JoystickName(ctlJoy) : "Controle", x + 14 * u, top, 9, false, 0xFF5E6269, 0, w - 28 * u);
+    T.draw("Passo " + std::to_string(ctlStep + 1) + " de " + std::to_string(NPASSOS), x + w - 14 * u, top, 9, false,
+           0xFF5E6269, 2);
+    T.draw("Aperte no controle:", x + 14 * u, top + 24 * u, 10, false, 0xFF2B2E33);
+    T.draw(PASSOS[ctlStep].nome, x + 14 * u, top + 44 * u, 13, true, 0xFF1E9C4A, 0, w - 28 * u);
+    T.draw("Se o controle não tiver esse botão: Espaço no teclado pula.  Esc cancela.", x + 14 * u, top + 72 * u, 8.5f,
+           false, 0xFF5E6269, 0, w - 28 * u);
+    float bw = w - 28 * u;
+    G.roundRect(x + 14 * u, top + 88 * u, bw, 6 * u, 3 * u, 0xFFE3E5E8);
+    G.roundRect(x + 14 * u, top + 88 * u, std::max(6 * u, bw * ctlStep / NPASSOS), 6 * u, 3 * u, 0xFF2CCF9A);
+}
 
 // ------------------------------------------------------------------ instalar no disco (tos-instalar)
 
@@ -996,6 +1273,18 @@ static void optAction(int dir) {
         restartMenu = true;   // o laco principal fecha a tela e reabre o ScrapCade com o motor novo
         return;
     }
+    case OPT_VOLUME:
+        if (volume == -2) readVolume();
+        if (dir == 0) testSound();
+        else setVolume((volume < 0 ? 0 : volume) + dir * 10);
+        return;
+    case OPT_REDE: if (dir == 0) { sysOpen = false; openRede(); } return;
+    case OPT_CONTROLE:
+        if (dir != 0) return;
+        if (SDL_NumJoysticks() == 0) { toast("Ligue um controle primeiro.", 3000); return; }
+        sysOpen = false;
+        ctlStart(SDL_JoystickOpen(SDL_NumJoysticks() - 1));
+        return;
     case OPT_DESKTOP:
         if (dir != 0) return;
         // o desktop (Fluxbox, no estilo do antiX) chega como /usr/bin/tos-desktop; ao sair dele, volta o ScrapCade
@@ -1027,7 +1316,45 @@ static void optAction(int dir) {
 }
 
 // Teclas e botoes enquanto um painel esta aberto. true = o painel tratou.
-enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER };
+enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER, B_X, B_START };
+
+static bool netInput(int b) {
+    if (!netStage) return false;
+    int n;
+    {
+        std::lock_guard<std::mutex> l(netMu);
+        n = int(nets.size());
+    }
+    if (netStage == 1) {
+        if (b == B_UP && n) netSel = (netSel + n - 1) % n;
+        if (b == B_DOWN && n) netSel = (netSel + 1) % n;
+        if (b == B_X) netScan();
+        if (b == B_A && n) { senha.clear(); oskRow = oskCol = 0; netStage = 2; }
+        if (b == B_B || b == B_SELECT) { netStage = 0; sysOpen = true; }
+    } else if (netStage == 2) {
+        int cols = oskRow < 5 ? 10 : 5;
+        if (b == B_UP) oskRow = (oskRow + 5) % 6;
+        if (b == B_DOWN) oskRow = (oskRow + 1) % 6;
+        if (b == B_UP || b == B_DOWN) oskCol = std::min(oskCol, (oskRow < 5 ? 10 : 5) - 1);
+        if (b == B_LEFT) oskCol = (oskCol + cols - 1) % cols;
+        if (b == B_RIGHT) oskCol = (oskCol + 1) % cols;
+        if (b == B_B && !senha.empty()) senha.pop_back();
+        if (b == B_START) netConnect();
+        if (b == B_SELECT) netStage = 1;
+        if (b == B_A) {
+            if (oskRow < 5) senha += oskChar(oskRow, oskCol);
+            else if (oskCol == 0) oskUpper = !oskUpper;
+            else if (oskCol == 1) senha += ' ';
+            else if (oskCol == 2) { if (!senha.empty()) senha.pop_back(); }
+            else if (oskCol == 3) oskShow = !oskShow;
+            else netConnect();
+        }
+    } else if (netStage == 4) {
+        if (b == B_B || b == B_A) { netStage = 1; netScan(); }
+    }
+    return true;
+}
+
 static bool installInput(int b) {
     if (!instStage) return false;
     if (instStage == 1) {
@@ -1046,6 +1373,8 @@ static bool installInput(int b) {
 }
 
 static bool panelInput(Btn b) {
+    if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
+    if (netInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -1066,6 +1395,7 @@ static bool panelInput(Btn b) {
 
 static void openSystem() {
     sysOpen = true;
+    readVolume();
     optSel = 0;
     readUsage();
     barsAt = SDL_GetTicks();
@@ -1133,6 +1463,8 @@ static void render() {
     drawSystem();
     drawTextPanel();
     drawInstall();
+    drawRede();
+    drawControle();
     drawToast();
     SDL_RenderPresent(G.r);
 }
@@ -1285,6 +1617,8 @@ static void setGames(std::vector<Game> fresh) {
         if (view[i].key() == keep) { target = int(i); pos = float(target); break; }
 }
 
+static void redraw() { post(EV_WEB); }
+
 static std::string signature(const std::vector<Game> &games) {
     std::string s;
     for (auto &g : games) s += g.key() + "\n";
@@ -1346,6 +1680,7 @@ int main() {
     EV_ART = EV_TOAST + 2;
     EV_WEB = EV_TOAST + 3;
     std::thread work(worker);
+    SDL_StartTextInput();
     Envio::changed = [] { post(EV_WEB); };
     Envio::start();
 
@@ -1376,11 +1711,38 @@ int main() {
                 }
                 break;
             case SDL_CONTROLLERDEVICEADDED: SDL_GameControllerOpen(e.cdevice.which); break;
+            case SDL_JOYDEVICEADDED:
+                // controle que o banco do SDL nao conhece: abre a configuracao na hora
+                if (!SDL_IsGameController(e.jdevice.which)) {
+                    if (SDL_Joystick *j = SDL_JoystickOpen(e.jdevice.which)) {
+                        details = false; sysOpen = false; textTitle.clear();
+                        ctlStart(j);
+                    }
+                }
+                break;
+            case SDL_JOYBUTTONDOWN: case SDL_JOYHATMOTION: case SDL_JOYAXISMOTION:
+                ctlInput(e);
+                break;
+            case SDL_TEXTINPUT:
+                if (netStage == 2) senha += e.text.text;
+                break;
             case SDL_KEYDOWN: {
                 SDL_Keycode kc = e.key.keysym.sym;
+                if (ctlStep >= 0) {   // configurando controle pelo teclado: so pular e cancelar
+                    if (kc == SDLK_SPACE) ctlSkip();
+                    if (kc == SDLK_ESCAPE) { ctlStep = -1; toast("Configuração cancelada.", 2500); }
+                    break;
+                }
+                if (netStage == 2) {   // senha pelo teclado do notebook
+                    if (kc == SDLK_BACKSPACE) { if (!senha.empty()) senha.pop_back(); break; }
+                    if (kc == SDLK_RETURN || kc == SDLK_KP_ENTER) { netConnect(); break; }
+                    if (kc == SDLK_ESCAPE) { netStage = 1; break; }
+                    if (kc != SDLK_UP && kc != SDLK_DOWN && kc != SDLK_LEFT && kc != SDLK_RIGHT) break;
+                }
                 Btn pb = kc == SDLK_UP ? B_UP : kc == SDLK_DOWN ? B_DOWN : kc == SDLK_LEFT ? B_LEFT :
                          kc == SDLK_RIGHT ? B_RIGHT : (kc == SDLK_RETURN || kc == SDLK_SPACE) ? B_A :
-                         (kc == SDLK_ESCAPE || kc == SDLK_BACKSPACE) ? B_B : kc == SDLK_TAB ? B_SELECT : B_OTHER;
+                         (kc == SDLK_ESCAPE || kc == SDLK_BACKSPACE) ? B_B : kc == SDLK_TAB ? B_SELECT :
+                         kc == SDLK_x ? B_X : B_OTHER;
                 if (panelInput(pb)) break;
                 switch (kc) {
                 case SDLK_LEFT: move(-1); break;
@@ -1400,7 +1762,8 @@ int main() {
                 Btn pb = cb == SDL_CONTROLLER_BUTTON_DPAD_UP ? B_UP : cb == SDL_CONTROLLER_BUTTON_DPAD_DOWN ? B_DOWN :
                          cb == SDL_CONTROLLER_BUTTON_DPAD_LEFT ? B_LEFT : cb == SDL_CONTROLLER_BUTTON_DPAD_RIGHT ? B_RIGHT :
                          cb == SDL_CONTROLLER_BUTTON_A ? B_A : cb == SDL_CONTROLLER_BUTTON_B ? B_B :
-                         cb == SDL_CONTROLLER_BUTTON_BACK ? B_SELECT : B_OTHER;
+                         cb == SDL_CONTROLLER_BUTTON_BACK ? B_SELECT : cb == SDL_CONTROLLER_BUTTON_X ? B_X :
+                         cb == SDL_CONTROLLER_BUTTON_START ? B_START : B_OTHER;
                 if (panelInput(pb)) break;
                 switch (cb) {
                 case SDL_CONTROLLER_BUTTON_DPAD_LEFT: move(-1); holdDir = Uint32(-1); holdNext = SDL_GetTicks() + 380; break;
@@ -1420,7 +1783,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -1441,7 +1804,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || ctlStep >= 0)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -1460,7 +1823,8 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = (sysOpen || instStage == 3) && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3) && now - lastBars > 1000;
+        if (ctlStep >= 0 || netStage == 2) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
             minute = mnow;
