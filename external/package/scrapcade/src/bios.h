@@ -100,7 +100,7 @@ static std::vector<std::string> report() {
     out.push_back(missing ? "Coloque as BIOS do seu console na pasta \"bios\" pela página de Arquivos:"
                           : "Tudo pronto. Outras BIOS vão na pasta \"bios\", pela página de Arquivos:");
     out.push_back("http://" + std::string("%IP%") + ":8080/arquivos  →  bios");
-    out.push_back("NES, Super Nintendo, Mega Drive, Nintendo 64 e a maioria do fliperama não precisam de BIOS.");
+    out.push_back("NES, SNES, Mega Drive, N64 e quase todo o fliperama não precisam de BIOS.");
     return out;
 }
 
