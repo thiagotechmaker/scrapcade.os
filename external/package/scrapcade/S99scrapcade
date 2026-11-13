@@ -2,6 +2,10 @@
 # Modo jogo do T-OS: abre o ScrapCade em tela cheia no tty1.
 # O login de manutencao fica no tty2 (Ctrl+Alt+F2).
 export SDL_VIDEODRIVER=kmsdrm
+# "Iniciar em modo de compatibilidade" no menu de boot: desenha sem a aceleracao da placa de video
+if grep -q "tos.seguro=1" /proc/cmdline; then
+  export LIBGL_ALWAYS_SOFTWARE=1 SDL_RENDER_DRIVER=software
+fi
 DAEMON=/usr/bin/scrapcade
 PIDFILE=/var/run/scrapcade.pid
 LOG=/userdata/system/logs/scrapcade.log

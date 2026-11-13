@@ -1,6 +1,6 @@
 #!/bin/sh
 # Monta o .iso do T-OS: o sistema (tos.squashfs) e lido do proprio pen drive ou DVD, somente leitura.
-# Liga por BIOS antigo (El Torito + MBR hibrido) e por UEFI (particao EFI no El Torito e anexada, para o pen drive).
+# Liga por BIOS antigo (isolinux com menu, hibrido para pen drive) e por UEFI (GRUB na imagem EFI).
 set -e
 B=$BINARIES_DIR
 [ -f "$B/rootfs.squashfs" ] || exit 0
@@ -21,14 +21,17 @@ dd if=/dev/zero of="$EFI" bs=1M count=4 status=none
 "$HOST_DIR/bin/mmd" -i "$EFI" ::/EFI ::/EFI/BOOT
 "$HOST_DIR/bin/mcopy" -i "$EFI" "$T/EFI/BOOT/bootx64.efi" "$T/EFI/BOOT/grub.cfg" ::/EFI/BOOT/
 cp "$EFI" "$T/boot/efi.img"
-# BIOS antigo: nucleo do GRUB no El Torito do CD/DVD e codigo de boot hibrido para pen drive
-mkdir -p "$T/boot/grub"
-cat "$B/cdboot.img" "$B/tos-core.img" > "$T/boot/grub/bios.img"
+# BIOS antigo: isolinux com o menu de boot (o Rufus no modo ISO reconhece e instala o syslinux)
+mkdir -p "$T/isolinux"
+cp "$B/syslinux/isolinux.bin" "$B"/syslinux/*.c32 "$HOST_DIR/share/syslinux/ldlinux.c32" "$T/isolinux/"
+cp "$B/tos-syslinux/syslinux.cfg" "$T/isolinux/isolinux.cfg"
+cp "$B/tos-syslinux/fundo.png" "$T/isolinux/"
+cp "$B/tos-memtest.bin" "$T/boot/memtest.bin"
+HYB=$(ls "$BUILD_DIR"/syslinux-*/bios/mbr/isohdpfx.bin | head -1)
 ISO=$B/t-os-$VER-x86_64.iso
 "$HOST_DIR/bin/xorriso" -as mkisofs -iso-level 3 -J -R -V "T-OS_$VER" \
-	-b boot/grub/bios.img -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info \
-	--grub2-mbr "$B/boot_hybrid.img" \
-	-eltorito-alt-boot -e boot/efi.img -no-emul-boot \
-	-append_partition 2 0xef "$EFI" \
+	-isohybrid-mbr "$HYB" \
+	-b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table \
+	-eltorito-alt-boot -e boot/efi.img -no-emul-boot -isohybrid-gpt-basdat \
 	-o "$ISO" "$T" 2>&1 | tail -2
 echo "iso: $ISO ($(du -h "$ISO" | cut -f1))"

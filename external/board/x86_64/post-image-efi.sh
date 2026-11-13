@@ -19,5 +19,20 @@ chmod 755 "$I/init"
 ( cd "$I" && find . | cpio -o -H newc --quiet | gzip -9 ) > "$BINARIES_DIR/tos-initrd.gz"
 
 cp "$B/grub-live.cfg" "$BINARIES_DIR/efi-part/EFI/BOOT/grub.cfg"
+
+# menu de boot do BIOS antigo (syslinux): configuracao, fundo e modulos do menu
+S=$BINARIES_DIR/tos-syslinux
+rm -rf "$S"; mkdir -p "$S"
+cp "$B/boot-menu.cfg" "$S/syslinux.cfg"
+cp "$B/boot-fundo.png" "$S/fundo.png"
+cp "$BINARIES_DIR"/syslinux/*.c32 "$S/"
+MT=$(ls "$BINARIES_DIR"/memtest*.bin "$TARGET_DIR"/boot/memtest*.bin 2>/dev/null | head -1)
+cp "$MT" "$BINARIES_DIR/tos-memtest.bin"
+
 support/scripts/genimage.sh -c "$B/genimage-efi.cfg"
+
+# BIOS antigo: codigo do syslinux no setor 0 e o syslinux instalado dentro da TOS-BOOT (que comeca em 1 MiB)
+SL=$(ls "$BUILD_DIR"/syslinux-*/bios/mtools/syslinux | head -1)
+"$SL" --offset 1048576 --directory /syslinux --install "$BINARIES_DIR/disk.img"
+dd if="$BINARIES_DIR/syslinux/mbr.bin" of="$BINARIES_DIR/disk.img" bs=440 count=1 conv=notrunc status=none
 sh "$B/make-iso.sh"
