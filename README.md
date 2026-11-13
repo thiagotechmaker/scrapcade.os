@@ -51,15 +51,15 @@ As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pel
 
 ## Testar num notebook ou PC (.iso)
 
-A compilaÃ§Ã£o gera tambÃ©m `output/x86_64/images/t-os-2026.11-x86_64.iso` (cerca de 165 MB):
+A compilação gera também `output/x86_64/images/t-os-2026.11-x86_64.iso` (cerca de 165 MB):
 
 1. Grave o `.iso` num pen drive com o [Rufus](https://rufus.ie) (modo **DD**), o [balenaEtcher](https://etcher.balena.io) ou copie para um pen drive com [Ventoy](https://www.ventoy.net).
-2. No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). O boot Ã© por **UEFI**; desligue o Secure Boot se o notebook recusar o pen drive.
+2. No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). O boot é por **UEFI**; desligue o Secure Boot se o notebook recusar o pen drive.
 3. O T-OS pede a senha do administrador e abre o ScrapCade.
 
-O `.iso` roda **inteiro na memÃ³ria**: nÃ£o mexe no HD do notebook, e o que for feito nele some ao desligar. Serve para testar vÃ­deo, controle, som e rede. O instalador para o HD e a transferÃªncia de jogos vÃªm nas prÃ³ximas etapas.
+O `.iso` roda **inteiro na memória**: não mexe no HD do notebook, e o que for feito nele some ao desligar. Serve para testar vídeo, controle, som e rede. O instalador para o HD e a transferência de jogos vêm nas próximas etapas.
 
-**Painel Sistema** (botÃ£o **Select** ou tecla **Tab**): tema, animaÃ§Ãµes, capas, fundo do jogo, como jogar, informaÃ§Ãµes do sistema (processador, vÃ­deo, memÃ³ria, disco), reiniciar e desligar, com IP e uso de CPU, memÃ³ria e disco.
+**Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, como jogar, informações do sistema (processador, vídeo, memória, disco), reiniciar e desligar, com IP e uso de CPU, memória e disco.
 
 ## O que cada parte faz
 
