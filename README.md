@@ -199,7 +199,7 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
 4. Transferência de jogos (página web, pasta na rede, pen drive) e menu Select + Start.
 5. Imagens x86 32 bits, Raspberry Pi e TV boxes.
 
-As definições completas do sistema estão em [docs/DEFINICOES.md](docs/DEFINICOES.md).
+As definições completas do sistema estão em [docs/DEFINICOES.md](docs/DEFINICOES.md), e do que cada parte é feita (com versões e ideias de melhoria) em [docs/COMPOSICAO.md](docs/COMPOSICAO.md).
 
 ## Licença
 
