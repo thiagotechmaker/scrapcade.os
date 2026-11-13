@@ -97,7 +97,15 @@ O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão S
 
 **Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, **motor gráfico**, **modo desktop**, como jogar, informações do sistema, reiniciar e desligar, com IP, endereço da página e uso de CPU, memória e disco.
 
-**Modo desktop:** Fluxbox com terminal (xterm) e ajuste de tela. Para manter o sistema leve, só o essencial; os arquivos ficam no gerenciador da página web. "Voltar ao modo jogo", no menu do Fluxbox (botão direito na área de trabalho), reabre o ScrapCade.
+**Modo desktop** (Sistema > Modo desktop): Fluxbox com um pacote leve de programas: **navegador** (NetSurf), **arquivos** (PCManFM), **terminal**, **editor de texto** (nano), **vídeos e músicas** (mpv), **imagens** (feh), **PDF** (MuPDF) e **volume do som**. O menu abre com o botão direito ou **Alt + F1**. **O que o navegador baixa vai para "Jogos novos"** e entra sozinho no console certo (o T-OS não traz endereço de jogos). "Voltar ao modo jogo" reabre o ScrapCade. LibreOffice não existe no Buildroot.
+
+## Pen drive com jogos
+
+Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o T-OS aberto: ele é lido **somente leitura**, os jogos que ainda não vieram são copiados para "Jogos novos" e vão sozinhos para o console certo. No fim aparece "Pode tirar". O T-OS lembra o que já copiou de cada pen drive.
+
+## Instalar no computador
+
+**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do T-OS não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o T-OS no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
 
 ## O que cada parte faz
 

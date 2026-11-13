@@ -1,0 +1,12 @@
+#!/bin/sh
+# Navegador do T-OS (NetSurf). O que for baixado vai para "Jogos novos": o ScrapCade leva cada jogo
+# para o console certo, com capa e dados. O T-OS nao traz endereco de jogos: cada um escolhe de onde baixar.
+C="$HOME/.config/netsurf"
+mkdir -p "$C"
+touch "$C/Choices"
+grep -q '^downloads_directory:' "$C/Choices" || echo 'downloads_directory:/userdata/Jogos novos' >> "$C/Choices"
+grep -q '^homepage_url:' "$C/Choices" || echo 'homepage_url:file:///usr/share/tos/inicio.html' >> "$C/Choices"
+for n in netsurf-gtk3 netsurf-gtk netsurf; do
+  command -v $n >/dev/null && exec $n "$@"
+done
+xterm -hold -e echo "Navegador nao encontrado"

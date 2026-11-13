@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 0.9 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.0 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -17,6 +17,7 @@
 #include "organizar.h"
 #include "envio.h"
 #include "bios.h"
+#include "usb.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -605,7 +606,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static const std::string DESKTOP = "/usr/bin/tos-desktop";
@@ -671,6 +672,7 @@ static std::string optLabel(int i) {
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_BIOS: return "BIOS dos consoles";
+    case OPT_INSTALL: return "Instalar no disco do computador";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
     case OPT_OFF: return "Desligar";
@@ -815,7 +817,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 0.9" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.0" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -853,6 +855,108 @@ static void powerOff(bool restart) {
 
 static void clearCards();
 static void clearBacks();
+
+// ------------------------------------------------------------------ instalar no disco (tos-instalar)
+
+static int instStage = 0;   // 0 fechado, 1 escolher o disco, 2 confirmar, 3 instalando, 4 terminou
+struct Disk { std::string dev, gb, model; };
+static std::vector<Disk> disks;
+static int diskSel = 0;
+static bool copyGames = true;
+static int instPct = 0;
+static std::string instMsg;
+
+static void openInstall() {
+    disks.clear();
+    FILE *f = popen("/usr/bin/tos-instalar listar 2>/dev/null", "r");
+    char line[512];
+    while (f && fgets(line, sizeof line, f)) {
+        std::string l = line;
+        while (!l.empty() && (l.back() == '\n' || l.back() == '\r')) l.pop_back();
+        size_t a = l.find('|'), b = l.find('|', a + 1);
+        if (a == std::string::npos || b == std::string::npos) continue;
+        disks.push_back({l.substr(0, a), l.substr(a + 1, b - a - 1), l.substr(b + 1)});
+    }
+    if (f) pclose(f);
+    diskSel = 0;
+    instStage = 1;
+}
+
+static void startInstall() {
+    std::string dev = disks[diskSel].dev;
+    remove("/tmp/tos-instalar.txt");
+    instPct = 0;
+    instMsg = "Começando";
+    std::string cmd = "/usr/bin/tos-instalar '" + dev + "' " + (copyGames ? "jogos" : "") +
+                      " >> /userdata/system/logs/instalar.log 2>&1";
+    std::thread([cmd] { if (system(cmd.c_str()) != 0) fprintf(stderr, "scrapcade: tos-instalar terminou com erro\n"); }).detach();
+    instStage = 3;
+}
+
+static void drawInstall() {
+    if (!instStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), lh = 15 * u;
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t c = 0xFF2B2E33) { L.push_back(t); C.push_back(c); };
+    const char *H1[] = {"ud", "escolher", "a", "continuar", "b", "voltar"};
+    const char *H2[] = {"lr", "jogos sim/não", "a", "instalar", "b", "cancelar"};
+    const char *H4[] = {"b", "fechar"};
+    const char *const *H = H1;
+    int nh = 6;
+    if (instStage == 1) {
+        add("Escolha o disco onde o T-OS vai ficar:");
+        add("");
+        if (disks.empty()) add("Nenhum outro disco encontrado (mínimo 4 GB).", 0xFFD0362B);
+        for (size_t i = 0; i < disks.size(); i++)
+            add(std::string(int(i) == diskSel ? "▶  " : "    ") + disks[i].model + "   " + disks[i].gb + " GB   (" +
+                    disks[i].dev + ")",
+                int(i) == diskSel ? 0xFF1E9C4A : 0xFF2B2E33);
+        add("");
+        add("O pen drive de onde o T-OS está rodando não aparece na lista.", 0xFF5E6269);
+    } else if (instStage == 2) {
+        const Disk &d = disks[diskSel];
+        add("ATENÇÃO: isso APAGA TUDO o que está no disco:", 0xFFD0362B);
+        add("    " + d.model + "   " + d.gb + " GB   (" + d.dev + ")", 0xFFD0362B);
+        add("");
+        add(std::string("Levar também os jogos, saves e BIOS deste pen drive:   ‹ ") + (copyGames ? "Sim" : "Não") + " ›");
+        add("");
+        add("Aperte A para instalar, ou B para cancelar.");
+        H = H2;
+    } else {
+        if (instStage == 3) {
+            std::ifstream in("/tmp/tos-instalar.txt");
+            int pc = 0;
+            std::string msg;
+            if (in >> pc) { std::getline(in, msg); instPct = pc; instMsg = msg.empty() ? instMsg : msg.substr(1); }
+            if (instPct >= 100 || instMsg.rfind("ERRO", 0) == 0) instStage = 4;
+        }
+        bool erro = instMsg.rfind("ERRO", 0) == 0;
+        add(instStage == 3 ? "Instalando... não desligue o computador." : (erro ? "A instalação não terminou." : "T-OS instalado!"),
+            erro ? 0xFFD0362B : 0xFF2B2E33);
+        add("");
+        add(instMsg + (instStage == 3 ? "  (" + std::to_string(instPct) + "%)" : ""), erro ? 0xFFD0362B : 0xFF1E9C4A);
+        add("");
+        if (instStage == 4 && !erro) add("Desligue, tire o pen drive e ligue de novo: o T-OS abre direto do disco.");
+        if (instStage == 4 && erro) add("Detalhes em Registros/instalar.log, na página de Arquivos.", 0xFF5E6269);
+        H = H4;
+        nh = instStage == 4 ? 2 : 0;
+    }
+    float h = 22 * u + 16 * u + L.size() * lh + 22 * u + (instStage == 3 ? 14 * u : 0);
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Instalar no disco do computador", x, y, w, h) + 12 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    if (instStage == 3) {   // barra de progresso
+        float by = top + L.size() * lh, bw = w - 28 * u;
+        G.roundRect(x + 14 * u, by, bw, 8 * u, 4 * u, 0xFFE3E5E8);
+        G.roundRect(x + 14 * u, by, std::max(8 * u, bw * instPct / 100.0f), 8 * u, 4 * u, 0xFF2CCF9A);
+    }
+    if (nh) panelHints(H, nh, x, y + h, w);
+}
+
+// true = a tela do instalador tratou o botao
+enum Btn : int;
+static bool installInput(int b);
 
 // dir: -1/+1 = mudar valor (esquerda/direita); 0 = confirmar (A)
 static void optAction(int dir) {
@@ -904,6 +1008,7 @@ static void optAction(int dir) {
         }
         return;
     case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
+    case OPT_INSTALL: if (dir == 0) { sysOpen = false; openInstall(); } return;
     case OPT_BIOS:
         if (dir != 0) return;
         sysOpen = false;
@@ -922,8 +1027,26 @@ static void optAction(int dir) {
 }
 
 // Teclas e botoes enquanto um painel esta aberto. true = o painel tratou.
-enum Btn { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER };
+enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER };
+static bool installInput(int b) {
+    if (!instStage) return false;
+    if (instStage == 1) {
+        if (b == B_UP && !disks.empty()) diskSel = (diskSel + int(disks.size()) - 1) % int(disks.size());
+        if (b == B_DOWN && !disks.empty()) diskSel = (diskSel + 1) % int(disks.size());
+        if (b == B_A && !disks.empty()) instStage = 2;
+        if (b == B_B || b == B_SELECT) { instStage = 0; sysOpen = true; }
+    } else if (instStage == 2) {
+        if (b == B_LEFT || b == B_RIGHT) copyGames = !copyGames;
+        if (b == B_A) startInstall();
+        if (b == B_B) instStage = 1;
+    } else if (instStage == 4) {
+        if (b == B_B || b == B_A) { instStage = 0; sysOpen = true; }
+    }
+    return true;   // instalando: nada mexe no menu
+}
+
 static bool panelInput(Btn b) {
+    if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
         return true;
@@ -1009,6 +1132,7 @@ static void render() {
     drawDetails();
     drawSystem();
     drawTextPanel();
+    drawInstall();
     drawToast();
     SDL_RenderPresent(G.r);
 }
@@ -1116,6 +1240,14 @@ static void worker() {
     curl_global_init(CURL_GLOBAL_DEFAULT);
     long long netRetry = 0;
     while (!quit && !workStop) {
+        std::string usb = Usb::import([](int n) {
+            { std::lock_guard<std::mutex> l(workMu); workMsg = "Pen drive: copiando " + std::to_string(n) + (n == 1 ? " arquivo..." : " arquivos..."); }
+            post(EV_TOAST);
+        });
+        if (!usb.empty()) {
+            { std::lock_guard<std::mutex> l(workMu); workMsg = usb; }
+            post(EV_TOAST);
+        }
         std::string msg = Org::run();
         if (!msg.empty()) {
             { std::lock_guard<std::mutex> l(workMu); workMsg = msg; }
@@ -1288,7 +1420,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty()) {
+                if (sysOpen || !textTitle.empty() || instStage) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -1309,7 +1441,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty())) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -1328,7 +1460,7 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = sysOpen && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3) && now - lastBars > 1000;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
             minute = mnow;

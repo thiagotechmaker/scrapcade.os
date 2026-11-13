@@ -1,8 +1,12 @@
 [begin] (T-OS)
+	[exec] (Navegador) {tos-navegador}
+	[exec] (Arquivos) {pcmanfm /userdata}
 	[exec] (Terminal) {xterm -fa "DejaVu Sans Mono" -fs 11 -bg "#101418" -fg "#e6e9f0"}
+	[exec] (Editor de texto) {xterm -fa "DejaVu Sans Mono" -fs 11 -T "Editor de texto" -e nano}
+	[exec] (Volume do som) {xterm -fa "DejaVu Sans Mono" -fs 11 -T "Volume" -e alsamixer}
 	[submenu] (Tela)
 		[exec] (Resolução automática) {xrandr --auto}
-		[exec] (Mostrar as resoluções no terminal) {xterm -hold -e xrandr}
+		[exec] (Mostrar as resoluções) {xterm -hold -e xrandr}
 	[end]
 	[separator]
 	[exit] (Voltar ao modo jogo)

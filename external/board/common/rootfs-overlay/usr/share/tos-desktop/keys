@@ -1,0 +1,8 @@
+# Atalhos do desktop do T-OS: o menu abre pelo teclado tambem (botao direito na area de trabalho continua valendo)
+OnDesktop Mouse3 :RootMenu
+Mod1 F1 :RootMenu
+Control Escape :RootMenu
+Mod4 e :Exec pcmanfm /userdata
+Mod4 t :Exec xterm -fa "DejaVu Sans Mono" -fs 11 -bg "#101418" -fg "#e6e9f0"
+Mod1 F4 :Close
+Mod1 Tab :NextWindow {groups} (workspace=[current])

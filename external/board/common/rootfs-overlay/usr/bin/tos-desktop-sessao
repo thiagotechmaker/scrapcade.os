@@ -1,4 +1,4 @@
 #!/bin/sh
-# Sessao do desktop: fundo de tela e o Fluxbox
-feh --no-fehbg --bg-fill /usr/share/scrapcade/fundo.jpg 2>/dev/null
+# Sessao do desktop: o Fluxbox pinta o fundo com a cor do tema ao abrir; o papel de parede vem depois dele
+( sleep 2; feh --no-fehbg --bg-fill /usr/share/scrapcade/fundo.jpg ) &
 exec fluxbox
