@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.5 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.6 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -568,11 +568,25 @@ static const Game *current() { return view.empty() ? nullptr : &view[mod(target,
 
 static void quad(SDL_Texture *t, float x0, float x1, float y0t, float y0b, float y1t, float y1b,
                  uint32_t c0, uint32_t c1, float u0, float u1, float v0, float v1) {
+    // Em faixas verticais finas, com a textura corrigida pela perspectiva: com so dois triangulos a imagem
+    // "dobra" na diagonal (capas tortas nas laterais do carrossel)
+    const int N = 24;
     SDL_Color a = cor(c0), b = cor(c1);
-    SDL_Vertex v[4] = {{{x0, y0t}, a, {u0, v0}}, {{x1, y1t}, a, {u1, v0}},
-                       {{x1, y1b}, b, {u1, v1}}, {{x0, y0b}, b, {u0, v1}}};
-    int idx[6] = {0, 1, 2, 0, 2, 3};
-    SDL_RenderGeometry(G.r, t, v, 4, idx, 6);
+    SDL_Vertex v[2 * (N + 1)];
+    int idx[6 * N];
+    float h0 = std::max(0.01f, y0b - y0t), h1 = std::max(0.01f, y1b - y1t);
+    for (int i = 0; i <= N; i++) {
+        float f = float(i) / N, x = x0 + (x1 - x0) * f;
+        float pf = (f * h1) / ((1 - f) * h0 + f * h1);   // o lado mais baixo (mais longe) fica mais apertado
+        float uu = u0 + (u1 - u0) * pf;
+        v[2 * i] = {{x, y0t + (y1t - y0t) * f}, a, {uu, v0}};
+        v[2 * i + 1] = {{x, y0b + (y1b - y0b) * f}, b, {uu, v1}};
+    }
+    for (int i = 0; i < N; i++) {
+        int k = 2 * i, *q = idx + 6 * i;
+        q[0] = k; q[1] = k + 2; q[2] = k + 3; q[3] = k; q[4] = k + 3; q[5] = k + 1;
+    }
+    SDL_RenderGeometry(G.r, t, v, 2 * (N + 1), idx, 6 * N);
 }
 
 static void drawCover(const Game &g, float off) {
@@ -870,7 +884,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_ENERGIA, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_JOGOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static std::string perfilNome();
@@ -928,12 +942,18 @@ static void readUsage() {
     diskPct = statvfs(ROMS.c_str(), &fs) == 0 && fs.f_blocks ? int(100 - fs.f_bavail * 100 / fs.f_blocks) : 0;
 }
 
+static const char *FONTES[] = {"Normal", "Grande", "Maior"};
+static int nivelFonte() { return std::max(0, std::min(2, atoi(prefs["fonte"].c_str()))); }
+static float escalaFonte() { return nivelFonte() == 2 ? 1.3f : nivelFonte() == 1 ? 1.15f : 1.0f; }
+
 static std::string optLabel(int i) {
     switch (i) {
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
                                                  : "Energia:   (fixa neste computador)";
-    case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›";
+    case OPT_JOGOS: return "Trazer jogos do pen drive";
+    case OPT_FONTE: return std::string("Tamanho do texto:   ‹ ") + FONTES[nivelFonte()] + " ›";
+    case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›   (A: imagem)";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
     case OPT_BG: return std::string("Fundo do jogo:   ‹ ") + (showBackdrop ? "Mostrar" : "Ocultar") + " ›";
@@ -997,9 +1017,52 @@ static void panelHints(const char *const *H, int n, float x, float y, float w) {
 
 static std::string ipAddr();
 
+static const char *optAjuda(int o) {
+    if (o == OPT_FONTE) return "Deixa as letras do ScrapCade maiores: bom para TV longe do sofá ou para quem enxerga pouco. Vale para o menu, o painel e os nomes dos jogos.";
+    switch (o) {
+    case OPT_PERFIL: return "Troca quem está jogando. Cada perfil tem os seus favoritos, saves, tema e preferências. A abre a tela \"Quem vai jogar?\".";
+    case OPT_JOGOS: return "Abre os arquivos do pen drive aqui mesmo: escolha um jogo (ou uma pasta inteira) e ele vai para \"Jogos novos\". O T-OS leva cada jogo ao console certo, com capa e dados.";
+    case OPT_ENERGIA: return "Economia: gasta menos bateria e esquenta menos, mas jogos pesados podem engasgar. Moderado: o meio-termo. Máximo: o processador sempre no talo, para PS2, GameCube e PSP.";
+    case OPT_THEME: return "Muda as cores, o fundo e o jeito das capas. Com A você escolhe uma imagem (do pen drive ou da TOS-DADOS) e ela vira o fundo de um tema seu.";
+    case OPT_ANIM: return "Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.";
+    case OPT_COVERS: return "Mostrar: desenha a capa de cada jogo. Ocultar: só o nome e a cor do console, mais leve para computadores antigos.";
+    case OPT_BG: return "Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.";
+    case OPT_ENGINE: return "GPU (OpenGL ES): usa a placa de vídeo, mais suave. Software: desenha pelo processador; use se a tela ficar preta ou piscando. Vale ao reiniciar o ScrapCade.";
+    case OPT_VOLUME: return "Volume de tudo: menu e jogos. A toca um som de teste para conferir as caixas ou o fone.";
+    case OPT_REDE: return "Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o T-OS acha capas e atualizações.";
+    case OPT_BLUETOOTH: return "Pareia controles sem fio (PS4, PS5, Switch, Xbox) e fones. Coloque o controle em modo de pareamento antes.";
+    case OPT_SAMBA: return "Ligada: a pasta dos jogos aparece na rede do Windows (\\\\ e o endereço IP). Dá para copiar jogos e saves direto pelo Explorador de Arquivos.";
+    case OPT_SSH: return "Acesso pelo terminal de outro computador, para manutenção. Deixe desligado se não usa: é mais seguro.";
+    case OPT_CONTROLE: return "Ensina ao T-OS os botões de um controle que ele não conhece (os genéricos). Aperte cada botão que aparecer na tela.";
+    case OPT_DESKTOP: return "Abre uma área de trabalho com gerenciador de arquivos, navegador e editor de texto. Para sair, feche a sessão e o ScrapCade volta.";
+    case OPT_HELP: return "Mostra os atalhos que valem em todo jogo: Select + Start sai, Select + X abre o menu do emulador, salvar e carregar.";
+    case OPT_BIOS: return "Confere as BIOS de cada console (PS1, PS2, Saturn, DS...). Verde: certa. Vermelho: falta ou é o arquivo errado.";
+    case OPT_ATUALIZAR: return "Procura a versão nova do T-OS na internet, baixa e confere. Jogos e saves não são mexidos, e se a nova não ligar ele volta sozinho para a anterior.";
+    case OPT_INSTALL: return "Copia o T-OS para o HD ou SSD do computador, para ligar sem o pen drive. ATENÇÃO: apaga tudo o que estiver no disco escolhido.";
+    case OPT_INFO: return "Processador, placa de vídeo, memória, versão do T-OS e do kernel. Útil para pedir ajuda.";
+    case OPT_REBOOT: return "Reinicia o computador.";
+    case OPT_OFF: return "Desliga o computador. Os saves já ficam guardados.";
+    }
+    return "";
+}
+
+// Texto corrido quebrado em linhas que cabem na largura
+static float drawParagrafo(const std::string &t, float x, float y, float w, float units, uint32_t col, float lh, float yMax) {
+    std::stringstream ss(t);
+    std::string pal, linha;
+    auto sai = [&] { if (!linha.empty() && y + lh / 2 < yMax) T.draw(linha, x, y + lh / 2, units, false, col); y += lh; linha.clear(); };
+    while (ss >> pal) {
+        std::string tenta = linha.empty() ? pal : linha + " " + pal;
+        if (T.width(tenta, units, false) > w && !linha.empty()) { sai(); linha = pal; }
+        else linha = tenta;
+    }
+    sai();
+    return y;
+}
+
 static void drawSystem() {
     if (!sysOpen) return;
-    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u);
+    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u * T.escala);   // letra maior: painel mais largo
     float rowH = 15 * u;
     // muitas opcoes: mostra as que cabem e rola junto com a selecao
     int vis = std::max(4, std::min(int(OPT_COUNT), int((G.H - 110 * u) / (rowH + 1.6f * u))));
@@ -1028,6 +1091,11 @@ static void drawSystem() {
     drawBar("CPU", cpuPct, rx, ry + 12 * u, rw);
     drawBar("Memória", memPct, rx, ry + 25 * u, rw);
     drawBar("Disco", diskPct, rx, ry + 38 * u, rw);
+    // o que a opcao destacada faz
+    ry += 58 * u;
+    G.fillRect(rx, ry - 6 * u, rw, std::max(1.0f, u * 0.6f), 0xFFE3E5E8);
+    T.draw("Sobre esta opção", rx, ry + 4 * u, 11, false, 0xFF2B2E33);
+    drawParagrafo(optAjuda(optSel), rx, ry + 12 * u, rw, 9, 0xFF5E6269, 12.5f * u, y + h - 24 * u);
     static const char *H[] = {"ud", "escolher", "lr", "mudar", "a", "abrir", "b", "fechar"};
     panelHints(H, 8, x, y + h, w);
 }
@@ -1101,7 +1169,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.5" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.6" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -1543,6 +1611,153 @@ static void drawControle() {
     G.roundRect(x + 14 * u, top + 88 * u, std::max(6 * u, bw * ctlStep / NPASSOS), 6 * u, 3 * u, 0xFF2CCF9A);
 }
 
+// ------------------------------------------------------------------ navegador de arquivos (pen drive e TOS-DADOS)
+// Dentro do proprio ScrapCade: escolher uma imagem para um tema seu (modo 1) ou trazer jogos do pen drive (modo 2).
+
+struct ItemNav { std::string nome, caminho; bool pasta; long long tam; };
+static int navModo = 0;   // 0 fechado, 1 imagem do tema, 2 jogos
+static std::string navDir;   // "" = escolher entre pen drive e TOS-DADOS
+static std::vector<std::string> navRaizes;
+static std::vector<ItemNav> navItens;
+static int navSel = 0;
+static std::atomic<bool> navCopiando{false};
+static std::mutex navMu;
+static std::string navMsg;
+
+static bool navImagem(const std::string &n) { return endsWith(n, ".png") || endsWith(n, ".jpg") || endsWith(n, ".jpeg"); }
+
+static void navListar() {
+    navItens.clear();
+    navSel = 0;
+    if (navDir.empty()) {
+        navRaizes.clear();
+        if (Usb::attach()) { navItens.push_back({"Pen drive", Usb::MOUNT, true, 0}); navRaizes.push_back(Usb::MOUNT); }
+        navItens.push_back({"TOS-DADOS (jogos, temas, saves)", "/userdata", true, 0});
+        navRaizes.push_back("/userdata");
+        return;
+    }
+    std::vector<ItemNav> ps, fs;
+    if (DIR *d = opendir(navDir.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (n.empty() || n[0] == '.') continue;
+            std::string c = navDir + "/" + n;
+            struct stat st;
+            if (stat(c.c_str(), &st) != 0) continue;
+            if (S_ISDIR(st.st_mode)) ps.push_back({n, c, true, 0});
+            else if (navModo == 2 || navImagem(n)) fs.push_back({n, c, false, (long long)st.st_size});
+        }
+        closedir(d);
+    }
+    auto cmp = [](const ItemNav &a, const ItemNav &b) { return strcasecmp(a.nome.c_str(), b.nome.c_str()) < 0; };
+    std::sort(ps.begin(), ps.end(), cmp);
+    std::sort(fs.begin(), fs.end(), cmp);
+    navItens.push_back({"..  (voltar)", "", true, 0});
+    navItens.insert(navItens.end(), ps.begin(), ps.end());
+    navItens.insert(navItens.end(), fs.begin(), fs.end());
+}
+
+static void abrirNavegador(int modo) {
+    navModo = modo;
+    navDir = "";
+    { std::lock_guard<std::mutex> l(navMu); navMsg = ""; }
+    navListar();
+    // um lugar so (sem pen drive) no modo jogos: avisa; no modo imagem ja entra na TOS-DADOS
+    if (navItens.size() == 1 && modo == 1) { navDir = navItens[0].caminho; navListar(); }
+}
+
+static void navAviso(const std::string &m) { std::lock_guard<std::mutex> l(navMu); navMsg = m; redraw(); }
+
+static std::string tamBonito(long long b) {
+    char t[32];
+    if (b >= 1073741824LL) snprintf(t, sizeof t, "%.1f GB", b / 1073741824.0);
+    else if (b >= 1048576) snprintf(t, sizeof t, "%.1f MB", b / 1048576.0);
+    else snprintf(t, sizeof t, "%lld KB", (b + 1023) / 1024);
+    return t;
+}
+
+// Imagem escolhida -> tema novo em themes/<nome da imagem>/fundo.<ext>, ja aplicado
+static void navUsarImagem(const ItemNav &it) {
+    std::string base = it.nome.substr(0, it.nome.rfind('.'));
+    std::string ext = lower(it.nome.substr(it.nome.rfind('.')));
+    if (ext == ".jpeg") ext = ".jpg";
+    std::string dir = Arquivos::freeName(THEMES_DIR, base);
+    mkdirs(dir);
+    if (!Arquivos::copy(it.caminho, dir + "/fundo" + ext)) { navAviso("Não deu para copiar a imagem."); return; }
+    std::ofstream(dir + "/tema.txt") << "nome=" << dir.substr(dir.rfind('/') + 1) << "\nbase=" << THEME_NAMES[theme] << "\n";
+    sync();
+    temaUser = -1;
+    scanTemas();
+    std::string pasta = dir.substr(dir.rfind('/') + 1);
+    for (size_t i = 0; i < temasUser.size(); i++)
+        if (temasUser[i].pasta == pasta) { temaUser = int(i); theme = temasUser[i].base; }
+    prefs["tema_usuario"] = pasta;
+    prefs["theme"] = std::to_string(theme);
+    savePrefs();
+    clearCards();
+    clearBacks();
+    navModo = 0;
+    toast("Tema \"" + pasta + "\" criado. Mude o nome ou a cor em themes/" + pasta + "/tema.txt", 6000);
+}
+
+// Jogo (arquivo ou pasta) -> "Jogos novos": o organizador leva ao console certo, com capa e dados
+static void navCopiarJogo(const ItemNav &it) {
+    if (navCopiando) return;
+    navCopiando = true;
+    navAviso("Copiando " + it.nome + "...");
+    std::thread([it] {
+        std::string tmp = "/userdata/.copiando";
+        mkdirs(tmp);
+        std::string dst = tmp + "/" + it.nome;
+        Arquivos::del(dst);
+        bool ok = Arquivos::copy(it.caminho, dst);
+        if (ok) ok = rename(dst.c_str(), Arquivos::freeName(INBOX, it.nome).c_str()) == 0;
+        if (!ok) Arquivos::del(dst);
+        sync();
+        navCopiando = false;
+        navAviso(ok ? it.nome + " copiado: vai aparecer no console certo em alguns segundos."
+                    : "Não deu para copiar " + it.nome + " (falta espaço?).");
+    }).detach();
+}
+
+static void drawNavegador() {
+    if (!navModo) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 520 * u), lh = 14 * u;
+    int vis = std::max(5, std::min(12, int((G.H - 150 * u) / lh)));
+    std::string msg;
+    { std::lock_guard<std::mutex> l(navMu); msg = navMsg; }
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t cc = 0xFF2B2E33) { L.push_back(t); C.push_back(cc); };
+    add(navDir.empty() ? "Onde procurar?" : (navDir.rfind(Usb::MOUNT, 0) == 0 ? "Pen drive" + navDir.substr(Usb::MOUNT.size())
+                                                                               : "TOS-DADOS" + navDir.substr(9)),
+        0xFF5E6269);
+    int n = int(navItens.size()), first = std::max(0, std::min(n - vis, navSel - vis / 2));
+    if (n == 0) add(navModo == 1 ? "Nenhuma imagem (.png ou .jpg) aqui." : "Pasta vazia.", 0xFF5E6269);
+    for (int i = first; i < n && i < first + vis; i++) {
+        const ItemNav &it = navItens[i];
+        std::string t = std::string(i == navSel ? "▶  " : "    ") + (it.pasta && !it.caminho.empty() ? "📁 " : "") + it.nome;
+        if (!it.pasta) t += "   (" + tamBonito(it.tam) + ")";
+        add(t, i == navSel ? 0xFF1E9C4A : 0xFF2B2E33);
+    }
+    if (navDir.empty() && navRaizes.size() == 1) add("Nenhum pen drive encontrado: coloque um e abra de novo.", 0xFF5E6269);
+    add("");
+    add(msg.empty() ? (navModo == 1 ? "Escolha uma imagem: ela vira o fundo de um tema seu."
+                                    : "A copia o jogo (ou a pasta) para \"Jogos novos\"; ele vai sozinho ao console certo.")
+                    : msg,
+        msg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
+    bool naPasta = navSel < n && navItens[navSel].pasta;
+    const char *H1[] = {"ud", "escolher", "a", naPasta ? "abrir" : (navModo == 1 ? "usar esta imagem" : "copiar"), "b", "voltar"};
+    const char *H2[] = {"ud", "escolher", "a", "abrir", "x", "copiar a pasta toda", "b", "voltar"};
+    bool pastaJogo = navModo == 2 && naPasta && !navDir.empty() && !navItens[navSel].caminho.empty();
+    float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel(navModo == 1 ? "Imagem para o tema" : "Trazer jogos", x, y, w, h) + 10 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    panelHints(pastaJogo ? H2 : H1, pastaJogo ? 8 : 6, x, y + h, w);
+}
+
+
 // ------------------------------------------------------------------ atualizar o T-OS (tos-atualizar, A/B)
 
 static int updStage = 0;   // 0 fechado, 1 procurando, 2 resultado da procura, 3 baixando, 4 terminou
@@ -1748,7 +1963,14 @@ static bool installInput(int b);
 static void optAction(int dir) {
     int d = dir == 0 ? 1 : dir;
     switch (optSel) {
+    case OPT_JOGOS: if (dir == 0) { sysOpen = false; abrirNavegador(2); } return;
+    case OPT_FONTE:
+        prefs["fonte"] = std::to_string((nivelFonte() + d + 3) % 3);
+        T.escala = escalaFonte();
+        T.clear();
+        break;
     case OPT_THEME:
+        if (dir == 0) { sysOpen = false; abrirNavegador(1); return; }
     {
         scanTemas();
         int total = NTEMAS + int(temasUser.size());
@@ -1891,6 +2113,33 @@ static bool netInput(int b) {
     return true;
 }
 
+static bool navInput(int b) {
+    if (!navModo) return false;
+    int n = int(navItens.size());
+    if (b == B_UP && n) navSel = (navSel + n - 1) % n;
+    if (b == B_DOWN && n) navSel = (navSel + 1) % n;
+    auto subir = [] {
+        bool raiz = std::find(navRaizes.begin(), navRaizes.end(), navDir) != navRaizes.end();
+        navDir = raiz ? "" : navDir.substr(0, navDir.rfind('/'));
+        navListar();
+    };
+    if (b == B_B) {
+        if (navDir.empty()) { navModo = 0; sysOpen = true; }
+        else subir();
+        return true;
+    }
+    if (b == B_A && navSel < n) {
+        ItemNav it = navItens[navSel];
+        if (it.pasta && it.caminho.empty()) subir();
+        else if (it.pasta) { navDir = it.caminho; navListar(); }
+        else if (navModo == 1) navUsarImagem(it);
+        else navCopiarJogo(it);
+    }
+    if (b == B_X && navModo == 2 && navSel < n && !navDir.empty() && navItens[navSel].pasta && !navItens[navSel].caminho.empty())
+        navCopiarJogo(navItens[navSel]);
+    return true;
+}
+
 static bool updInput(int b) {
     if (!updStage) return false;
     std::string nova;
@@ -1947,6 +2196,7 @@ static bool panelInput(Btn b) {
     if (netInput(b)) return true;
     if (btInput(b)) return true;
     if (updInput(b)) return true;
+    if (navInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -2080,6 +2330,8 @@ static void login(int i) {
     loadPrefs();
     if (!engine.empty() && prefs["engine"].empty()) prefs["engine"] = engine;
     aplicarTemaPrefs();
+    T.escala = escalaFonte();
+    T.clear();
     ANIM_MS = prefs["anim"] == "rapida" ? 130 : 200;
     showCovers = prefs["covers"] != "0";
     showBackdrop = prefs["backdrop"] != "0";
@@ -2384,6 +2636,7 @@ static void render() {
     drawRede();
     drawBluetooth();
     drawAtualizar();
+    drawNavegador();
     drawControle();
     drawTeclado();
     drawToast();
@@ -2619,6 +2872,7 @@ int main() {
     loadPrefs();
     scanTemas();
     aplicarTemaPrefs();
+    T.escala = escalaFonte();
     if (prefs["anim"] == "rapida") ANIM_MS = 130;
     if (prefs["covers"] == "0") showCovers = false;
     if (prefs["backdrop"] == "0") showBackdrop = false;
@@ -2762,7 +3016,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -2804,7 +3058,7 @@ int main() {
             redraw();
         }
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {

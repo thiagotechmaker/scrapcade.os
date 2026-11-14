@@ -45,7 +45,6 @@ cp "$BINARIES_DIR/bzImage" "$U/bzImage"
 cp "$BINARIES_DIR/tos-initrd.gz" "$U/initrd.gz"
 V=$(sed -n 's/^BUILD_ID=//p' "$TARGET_DIR/etc/os-release")
 echo "$V" > "$U/BUILD_ID"
-# para baixar e instalar do zero: o .iso e a imagem do pen drive (com o tipo de PC no nome)
+# para baixar e instalar do zero: um .iso so (com o tipo de PC no nome), que vale para qualquer jeito de gravar
 cp "$BINARIES_DIR"/t-os-*-x86_64.iso "$U/t-os-$V-pc-64bits.iso"
-gzip -1 -c "$BINARIES_DIR/disk.img" > "$U/t-os-$V-pc-64bits-pendrive.img.gz"
-( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz t-os-$V-pc-64bits.iso t-os-$V-pc-64bits-pendrive.img.gz > SHA256SUMS )
+( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz t-os-$V-pc-64bits.iso > SHA256SUMS )

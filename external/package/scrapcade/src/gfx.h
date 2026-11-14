@@ -132,6 +132,7 @@ struct Text {
     std::unordered_map<int, TTF_Font *> fonts;
     struct T { SDL_Texture *t; int w, h; };
     std::unordered_map<std::string, T> cache;
+    float escala = 1;   // "Tamanho do texto" do painel Sistema (Normal 1, Grande 1,15, Maior 1,3)
 
     TTF_Font *font(int px, bool b) {
         int key = px * 2 + (b ? 1 : 0);
@@ -144,7 +145,7 @@ struct Text {
     }
 
     // tamanho em unidades de tela, como no iChroma (text(8.5f, ...))
-    int px(float units) const { return std::max(6, int(units * g->u + 0.5f)); }
+    int px(float units) const { return std::max(6, int(units * g->u * escala + 0.5f)); }
 
     int width(const std::string &s, float units, bool b) {
         TTF_Font *f = font(px(units), b);

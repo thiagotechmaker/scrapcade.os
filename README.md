@@ -121,27 +121,29 @@ Cada versão fica em [Releases](https://github.com/thiagotechmaker/t-os/releases
 
 | Arquivo | Para quê |
 |---|---|
-| `t-os-<versão>-pc-64bits.iso` | instalar do zero num PC de 64 bits (BIOS antigo e UEFI): Rufus (modo ISO guarda os jogos no próprio pen drive), Ventoy ou DVD |
-| `t-os-<versão>-pc-64bits-pendrive.img.gz` | imagem do pen drive: Rufus ou balenaEtcher (cria a partição TOS-DADOS) |
+| `t-os-<versão>-pc-64bits.iso` | **o T-OS inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
 | `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
 | `SHA256SUMS` | confere todos os arquivos |
 
 Quem já tem o T-OS não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o T-OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
-## Testar num notebook ou PC
+## Gravar e ligar
 
-A compilação gera dois arquivos em `output/x86_64/images/`:
+Um arquivo só: o `.iso`. Grave num pen drive de **4 GB ou mais** com o [Rufus](https://rufus.ie) (modo ISO ou modo DD, tanto faz) ou o [balenaEtcher](https://etcher.balena.io).
 
-- **`disk.img`** (1 GB): para usar de verdade. Grave num pen drive ou HD com o [Rufus](https://rufus.ie) (modo **DD**) ou o [balenaEtcher](https://etcher.balena.io). No primeiro boot ele cria a TOS-DADOS no resto do espaço.
-- **`t-os-2026.11-x86_64.iso`** (cerca de 170 MB): para experimentar. Grave com o Rufus (modo DD), o balenaEtcher ou copie para um pen drive com [Ventoy](https://www.ventoy.net). Os jogos ficam na memória, a não ser que haja uma TOS-DADOS em algum disco ligado.
+No **primeiro boot** o T-OS se copia para a memória e arruma o pen drive sozinho, do mesmo jeito qualquer que tenha sido a gravação:
+
+| Partição | O que fica |
+|---|---|
+| **TOS-BOOT** (FAT32, 1 GB) | o sistema, somente leitura (atualização automática A/B) |
+| **TOS-DADOS** (exFAT, o resto) | jogos, BIOS, saves, temas e perfis, sem limite de 4 GB por arquivo |
+
+Daí em diante o T-OS **roda direto do pen drive**, como o Batocera. Para ligar sem o pen drive, quando quiser: *Sistema > Instalar no disco do computador* (copia o T-OS, e se quiser os jogos, para o HD ou SSD).
+
+- Gravado em **DVD**, ou com `tos.vivo` acrescentado aos parâmetros no menu de boot (tecla Tab no BIOS, `e` no UEFI), o T-OS só roda, sem mexer em nada (os jogos ficam na memória até desligar).
+- Precisa de 1,5 GB de memória para arrumar o pen drive; com menos, roda sem arrumar.
 
 No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. No primeiro boot o T-OS pede a senha do administrador.
-
-| Como gravar | Liga | Guarda jogos e saves |
-|---|---|---|
-| `disk.img` no Rufus (modo DD) ou balenaEtcher | UEFI e BIOS | Sim: cria a partição TOS-DADOS no resto do pen drive |
-| `.iso` no Rufus **modo ISO** | UEFI e BIOS | Sim: na pasta `tos-dados` do próprio pen drive (FAT32: arquivos de até 4 GB) |
-| `.iso` no Rufus modo DD, balenaEtcher ou DVD | UEFI e BIOS | Não: fica na memória (a não ser que haja uma TOS-DADOS em outro disco) |
 
 O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
 

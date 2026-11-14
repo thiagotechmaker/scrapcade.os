@@ -34,6 +34,16 @@ criar() {
 case "$1" in
   start)
     mkdir -p /userdata
+    # primeiro boot de um .iso gravado no pen drive: o sistema ja esta na memoria; arruma o pen drive
+    if [ -f /run-tos-converter ]; then
+      dev=$(cat /run-tos-converter); rm -f /run-tos-converter
+      msg "T-OS: arrumando o pen drive (so no primeiro boot, leva alguns minutos; nao desligue)..."
+      if /usr/bin/tos-instalar "$dev" converter >/dev/null 2>&1; then
+        msg "T-OS: pen drive pronto: sistema + particao de dados TOS-DADOS."
+      else
+        msg "T-OS: nao deu para arrumar o pen drive ($(cut -d' ' -f2- /tmp/tos-instalar.txt)); os jogos ficam na memoria."
+      fi
+    fi
     d=$(dados)
     [ -z "$d" ] && criar && d=$(dados)
     if [ -n "$d" ] && mount "$d" /userdata 2>/dev/null; then

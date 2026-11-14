@@ -25,6 +25,31 @@ if [ -z "$achou" ]; then
   exec sh
 fi
 
+# .iso gravado num pen drive (Rufus modo DD ou modo ISO, balenaEtcher): no primeiro boot o T-OS se copia
+# para a memoria e o sistema (S00dados + tos-instalar) arruma o pen drive no formato definitivo:
+# TOS-BOOT (sistema) + TOS-DADOS (jogos, sem limite de 4 GB). DVD e "tos.vivo" no menu: so roda, sem mexer.
+conv=""
+fs=$(awk '$2 == "/boot" {print $3}' /proc/mounts)
+case "$achou" in /dev/sr*) ;; *)
+  if ! grep -q "tos.vivo" /proc/cmdline && { [ "$fs" = iso9660 ] ||
+       { [ "$fs" = vfat ] && [ -d /boot/isolinux ] && [ ! -e /boot/tos-dados ]; }; }; then
+    p=${achou##*/}; disco=$p
+    [ -e /sys/class/block/$p/partition ] && disco=$(basename "$(readlink -f /sys/class/block/$p/..)")
+    mem=$(awk '/^MemTotal/ {print $2}' /proc/meminfo)
+    tam=$(cat /sys/class/block/$disco/size 2>/dev/null)
+    if [ "${mem:-0}" -ge 1500000 ] && [ "${tam:-0}" -ge 4194304 ]; then   # 1,5 GB de memoria, pen drive de 2 GB
+      echo "T-OS: primeiro boot pelo .iso: copiando o sistema para a memoria (o pen drive vai ser arrumado)..."
+      mkdir -p /copia
+      mount -t tmpfs -o size=90% tmpfs /copia
+      if cp -a /boot/. /copia/ 2>/dev/null; then
+        umount /boot && mount --move /copia /boot && conv=/dev/$disco
+      else
+        umount /copia
+      fi
+    fi
+  fi ;;
+esac
+
 # atualizacao A/B: "tos.sistema=" no menu de boot escolhe o arquivo (versao anterior)
 SIS=tos.squashfs
 for a in $(cat /proc/cmdline); do case "$a" in tos.sistema=*) SIS=${a#tos.sistema=} ;; esac; done
@@ -57,6 +82,7 @@ mount -t overlay overlay -o lowerdir=/lower,upperdir=/rw/upper,workdir=/rw/work 
 mkdir -p /newroot/boot
 mount --move /boot /newroot/boot
 echo "$achou" > /newroot/run-tos-boot 2>/dev/null || true
+[ -n "$conv" ] && echo "$conv" > /newroot/run-tos-converter
 mount --move /dev /newroot/dev
 umount /proc /sys
 exec switch_root /newroot /sbin/init
