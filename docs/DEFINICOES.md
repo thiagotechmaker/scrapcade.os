@@ -1,4 +1,4 @@
-# T-OS — definições do sistema Linux (11/11/2026)
+# ScrapCade — definições do sistema Linux (11/11/2026)
 
 Sistema próprio, baseado em Linux e montado com **Buildroot**, voltado para emulação de jogos e para dar uma segunda vida a equipamentos que iriam para o lixo. Menu próprio: **ScrapCade**.
 
@@ -22,12 +22,12 @@ Sistema próprio, baseado em Linux e montado com **Buildroot**, voltado para emu
 | Idioma | Português do Brasil, com opção de inglês |
 | Contas | Sem conta no modo jogo; senha só no modo desktop e no acesso remoto |
 | Menu durante o jogo | **Select + Start** abre o menu rápido (salvar, carregar, trocar disco, sair) |
-| Tela de boot | Logo fixa do T-OS, sem textos do Linux |
+| Tela de boot | Logo fixa do ScrapCade, sem textos do Linux |
 | Tempo de boot | Meta de até 15 segundos até o menu |
 
-## ScrapCade no T-OS: igual ao do iChroma
+## ScrapCade no ScrapCade: igual ao do iChroma
 
-O ScrapCade do T-OS deve ter o mesmo visual e as mesmas funções do ScrapCade do iChroma:
+O ScrapCade deve ter o mesmo visual e as mesmas funções do ScrapCade do iChroma:
 
 - Carrossel de **capas dos jogos** (não de consoles), com a faixa e o logo do console no topo de cada capa, reflexo no chão e borda na selecionada.
 - Filtros com **LB/RB**: Todos, Favoritos, Mais jogados e cada console.
@@ -56,7 +56,7 @@ O ScrapCade do T-OS deve ter o mesmo visual e as mesmas funções do ScrapCade d
 | 3DS | Azahar (sucessor do Citra) | Não precisa (jogos descriptografados) |
 | PC antigo | DOSBox-Pure, ScummVM, ports nativos (Doom, Quake) | Não precisa |
 
-- **BIOS:** o T-OS só distribui BIOS livres. Aceita a BIOS que o usuário tiver do próprio console, e avisa quais faltam.
+- **BIOS:** o ScrapCade só distribui BIOS livres. Aceita a BIOS que o usuário tiver do próprio console, e avisa quais faltam.
 - **Controles:** USB (Xbox, PlayStation, genéricos), Bluetooth sem fio, teclado e mouse, painéis de fliperama (encoders USB).
 - **Capas e dados:** acervo da libretro (sem conta) e ScreenScraper opcional (com a conta do usuário).
 - **Conquistas:** RetroAchievements opcional, desligado por padrão.
@@ -77,7 +77,7 @@ O ScrapCade do T-OS deve ter o mesmo visual e as mesmas funções do ScrapCade d
 | Atualização | Manual: baixar a imagem nova e gravar de novo |
 | Versões | Por data (ex.: `2026.11`) |
 | Site de download | Domínio próprio (nome e custo a definir); arquivos nas GitHub Releases |
-| Licença | GPLv3 para o T-OS e o ScrapCade |
+| Licença | GPLv3 para o ScrapCade e o ScrapCade |
 
 ## Pontos de atenção
 
@@ -92,7 +92,7 @@ O ScrapCade do T-OS deve ter o mesmo visual e as mesmas funções do ScrapCade d
 
 1. Ambiente de compilação (Buildroot no WSL2 com Ubuntu).
 2. Imagem x64 mínima: liga pelo pen drive e mostra a logo e uma tela de teste.
-3. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64). O RetroArch não existe no Buildroot: o T-OS empacota ele e os núcleos, como o Batocera.
+3. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64). O RetroArch não existe no Buildroot: o ScrapCade empacota ele e os núcleos, como o Batocera.
 4. ScrapCade em SDL2: carrossel, capas, organização por console.
 5. Transferência (página, Samba, pen drive) e menu Select + Start.
 6. Imagem x86 32 bits, depois Raspberry Pi, depois TV boxes.

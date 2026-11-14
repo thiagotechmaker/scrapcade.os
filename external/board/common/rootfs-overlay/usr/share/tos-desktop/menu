@@ -1,4 +1,4 @@
-[begin] (T-OS)
+[begin] (ScrapCade)
 	[exec] (Navegador) {tos-navegador}
 	[exec] (Arquivos) {pcmanfm /userdata}
 	[exec] (Terminal) {xterm -fa "DejaVu Sans Mono" -fs 11 -bg "#101418" -fg "#e6e9f0"}

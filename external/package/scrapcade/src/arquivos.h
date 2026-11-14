@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - gerenciador de arquivos: listar, renomear, mover, copiar, clonar, criar pasta e apagar.
+// ScrapCade - gerenciador de arquivos: listar, renomear, mover, copiar, clonar, criar pasta e apagar.
 // Conversao do Arquivos.java do iChroma, usado pela pagina http://<ip>:8080/arquivos. Licenca: GPLv3.
 //
 // So enxerga as pastas de jogos e o pen drive. Todo caminho e resolvido (realpath) e precisa cair dentro de

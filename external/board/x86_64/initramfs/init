@@ -1,5 +1,5 @@
 #!/bin/busybox sh
-# T-OS: acha o tos.squashfs (pen drive, HD, DVD ou .iso), monta ele somente leitura com uma camada
+# ScrapCade: acha o tos.squashfs (pen drive, HD, DVD ou .iso), monta ele somente leitura com uma camada
 # na memoria por cima, e passa para o sistema. Desligar da tomada nao estraga o sistema.
 /bin/busybox --install -s /bin
 export PATH=/bin
@@ -17,15 +17,15 @@ for t in $(seq 1 40); do      # pen drive USB demora alguns segundos para aparec
     if [ -f /boot/boot/tos.squashfs ]; then achou=$d; break 2; fi
     umount /boot
   done
-  [ $t = 3 ] && echo "T-OS: procurando o sistema..."
+  [ $t = 3 ] && echo "ScrapCade: procurando o sistema..."
   sleep 0.5
 done
 if [ -z "$achou" ]; then
-  echo "T-OS: nao achei o arquivo boot/tos.squashfs. Confira o pen drive."
+  echo "ScrapCade: nao achei o arquivo boot/tos.squashfs. Confira o pen drive."
   exec sh
 fi
 
-# .iso gravado num pen drive (Rufus modo DD ou modo ISO, balenaEtcher): no primeiro boot o T-OS se copia
+# .iso gravado num pen drive (Rufus modo DD ou modo ISO, balenaEtcher): no primeiro boot o ScrapCade se copia
 # para a memoria e o sistema (S00dados + tos-instalar) arruma o pen drive no formato definitivo:
 # TOS-BOOT (sistema) + TOS-DADOS (jogos, sem limite de 4 GB). DVD e "tos.vivo" no menu: so roda, sem mexer.
 conv=""
@@ -38,7 +38,7 @@ case "$achou" in /dev/sr*) ;; *)
     mem=$(awk '/^MemTotal/ {print $2}' /proc/meminfo)
     tam=$(cat /sys/class/block/$disco/size 2>/dev/null)
     if [ "${mem:-0}" -ge 1500000 ] && [ "${tam:-0}" -ge 4194304 ]; then   # 1,5 GB de memoria, pen drive de 2 GB
-      echo "T-OS: primeiro boot pelo .iso: copiando o sistema para a memoria (o pen drive vai ser arrumado)..."
+      echo "ScrapCade: primeiro boot pelo .iso: copiando o sistema para a memoria (o pen drive vai ser arrumado)..."
       mkdir -p /copia
       mount -t tmpfs -o size=90% tmpfs /copia
       if cp -a /boot/. /copia/ 2>/dev/null; then
@@ -58,7 +58,7 @@ if [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boo
   mount -o remount,rw /boot 2>/dev/null
   n=$(cat /boot/boot/tos-testando 2>/dev/null); n=$((${n:-0} + 1))
   if [ "$n" -ge 3 ]; then
-    echo "T-OS: a versao nova nao ligou 3 vezes; voltando para a anterior."
+    echo "ScrapCade: a versao nova nao ligou 3 vezes; voltando para a anterior."
     cd /boot/boot
     mv tos.squashfs tos-com-problema.squashfs
     mv tos-anterior.squashfs tos.squashfs

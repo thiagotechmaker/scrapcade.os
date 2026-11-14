@@ -45,7 +45,7 @@ BR2_PACKAGE_HOST_MTOOLS=y
 BR2_TOOLCHAIN_EXTERNAL=y
 BR2_TOOLCHAIN_EXTERNAL_BOOTLIN=y
 BR2_TARGET_GENERIC_HOSTNAME="t-os"
-BR2_TARGET_GENERIC_ISSUE="T-OS 2026.11"
+BR2_TARGET_GENERIC_ISSUE="ScrapCade 2026.11"
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_TOS_PATH)/board/common/rootfs-overlay"
 BR2_CCACHE=y
 BR2_TOOLCHAIN_EXTERNAL_BOOTLIN_X86_64_GLIBC_STABLE=y
@@ -56,7 +56,7 @@ BR2_PACKAGE_DEJAVU=y
 # BR2_PACKAGE_DEJAVU_SERIF is not set
 # BR2_PACKAGE_DEJAVU_SANS_CONDENSED is not set
 # BR2_PACKAGE_DEJAVU_SERIF_CONDENSED is not set
-# --- graficos T-OS ---
+# --- graficos ScrapCade ---
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_TOS_PATH)/board/x86_64/linux-tos.fragment"
 BR2_PACKAGE_LINUX_FIRMWARE_AMDGPU=y
 BR2_PACKAGE_LINUX_FIRMWARE_RADEON=y
@@ -90,7 +90,7 @@ BR2_PACKAGE_OPENSSL=y
 BR2_PACKAGE_LIBOPENSSL=y
 BR2_PACKAGE_LIBCURL_OPENSSL=y
 BR2_PACKAGE_HOST_XORRISO=y
-BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_msdos part_gpt normal efi_gop iso9660 search search_fs_file all_video test"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_msdos part_gpt normal efi_gop iso9660 search search_fs_file all_video test chain"
 # --- modo desktop (Fluxbox): so X, Fluxbox, terminal e fundo de tela
 BR2_PACKAGE_XORG7=y
 BR2_PACKAGE_XSERVER_XORG_SERVER=y
@@ -141,7 +141,7 @@ BR2_PACKAGE_DOSFSTOOLS_MKFS_FAT=y
 BR2_PACKAGE_EFIBOOTMGR=y
 BR2_TARGET_GRUB2_I386_PC=y
 BR2_TARGET_GRUB2_BOOT_PARTITION="hd0,msdos1"
-BR2_TARGET_GRUB2_BUILTIN_MODULES_PC="boot linux ext2 fat part_msdos part_gpt normal biosdisk iso9660 search search_fs_file configfile test"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_PC="boot linux ext2 fat part_msdos part_gpt normal biosdisk iso9660 search search_fs_file configfile test linux16"
 BR2_TARGET_SYSLINUX=y
 BR2_TARGET_SYSLINUX_ISOLINUX=y
 BR2_TARGET_SYSLINUX_MBR=y

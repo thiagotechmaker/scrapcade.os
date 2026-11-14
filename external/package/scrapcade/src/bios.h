@@ -1,5 +1,5 @@
-// ScrapCade (T-OS) - tela "BIOS dos consoles": quais BIOS cada emulador usa, se estao na pasta e se
-// o arquivo e o certo (MD5). O T-OS so traz BIOS livres; as originais sao do proprio console do usuario.
+// ScrapCade - tela "BIOS dos consoles": quais BIOS cada emulador usa, se estao na pasta e se
+// o arquivo e o certo (MD5). O ScrapCade so traz BIOS livres; as originais sao do proprio console do usuario.
 // Licenca: GPLv3.
 #pragma once
 #include "catalogo.h"

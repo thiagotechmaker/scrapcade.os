@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - pagina para enviar jogos pelo navegador do PC ou celular: http://<ip>:8080
+// ScrapCade - pagina para enviar jogos pelo navegador do PC ou celular: http://<ip>:8080
 // Conversao do Envio.java do iChroma. Licenca: GPLv3.
 //
 //   GET  /             lista de jogos, area para arrastar arquivos

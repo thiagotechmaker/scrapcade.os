@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - funcoes de desenho sobre o SDL2.
+// ScrapCade - funcoes de desenho sobre o SDL2.
 // Cores no formato 0xAARRGGBB, como no ScrapCade do iChroma. Licenca: GPLv3.
 #pragma once
 #include <SDL2/SDL.h>

@@ -1,6 +1,6 @@
-# Do que o T-OS é feito
+# Do que o ScrapCade é feito
 
-Visão geral de cada peça do T-OS, com versão e função, e pontos para pesquisar melhorias.
+Visão geral de cada peça do ScrapCade, com versão e função, e pontos para pesquisar melhorias.
 Estado de novembro de 2026.
 
 O sistema é montado em camadas: construção → boot → kernel → sistema base → gráficos e som → ScrapCade → emuladores → desktop.
@@ -22,7 +22,7 @@ Arquivos principais do repositório:
 
 - `external/configs/tos_x86_64_defconfig`: o que entra no sistema.
 - `external/board/x86_64/`: boot, kernel e montagem das imagens.
-- `external/board/common/rootfs-overlay/`: scripts próprios do T-OS.
+- `external/board/common/rootfs-overlay/`: scripts próprios do ScrapCade.
 - `external/package/`: ScrapCade, RetroArch e os núcleos.
 
 **Para pesquisar:**
@@ -44,7 +44,7 @@ Arquivos principais do repositório:
 
 Opções do menu:
 
-- Iniciar o T-OS.
+- Iniciar o ScrapCade.
 - **Modo de compatibilidade** (`tos.seguro=1`: desenho em software).
 - Iniciar mostrando as mensagens.
 - Teste de memória.
@@ -64,7 +64,7 @@ Opções do menu:
 | Peça | Versão / ajuste | Função |
 |---|---|---|
 | **Kernel Linux** | 6.12.47 LTS | Conversa com o hardware |
-| **Ajustes do T-OS** | `PREEMPT`, 1000 Hz | Menos atraso no controle e no áudio |
+| **Ajustes do ScrapCade** | `PREEMPT`, 1000 Hz | Menos atraso no controle e no áudio |
 | **Drivers embutidos** | USB 1.1/2.0/3.0, SATA (AHCI), NVMe, cartão SD, exFAT, FAT, squashfs (zstd), OverlayFS, ISO9660 | Achar o pen drive e o HD em qualquer máquina |
 | **Drivers em módulo** | Vídeo: i915 (Intel), amdgpu e radeon (AMD), nouveau (NVIDIA). Som: codecs HDA. Rede: cabo, Wi-Fi e USB | Só o da máquina é carregado |
 | **initrd próprio** | BusyBox + glibc, 1,4 MB | Acha o `tos.squashfs` e monta o sistema |
@@ -91,7 +91,7 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 
 - A TOS-DADOS é criada no primeiro boot, no espaço livre, sem redimensionar nada.
 - Gravado pelo **modo ISO do Rufus** (sem espaço para partição), os dados ficam na pasta `tos-dados` do próprio pen drive.
-- Atualizar o T-OS é trocar só o `tos.squashfs`; a TOS-DADOS nunca é mexida.
+- Atualizar o ScrapCade é trocar só o `tos.squashfs`; a TOS-DADOS nunca é mexida.
 
 ---
 
@@ -107,7 +107,7 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 | **util-linux** | `sfdisk`, `blkid`, `partx` (partições) |
 | **exfatprogs, dosfstools** | Formatar TOS-DADOS (exFAT) e TOS-BOOT (FAT32) |
 | **iptables** | Firewall |
-| **efibootmgr** | Registra o T-OS no menu de boot da placa-mãe (instalador) |
+| **efibootmgr** | Registra o ScrapCade no menu de boot da placa-mãe (instalador) |
 
 Scripts próprios em `/etc/init.d`:
 
@@ -259,7 +259,7 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 ## Onde pesquisar
 
-- **Batocera** (`github.com/batocera-linux/batocera.linux`): o mais parecido com o T-OS. Mostra como empacotar emuladores, Bluetooth e Vulkan no Buildroot.
+- **Batocera** (`github.com/batocera-linux/batocera.linux`): o mais parecido com o ScrapCade. Mostra como empacotar emuladores, Bluetooth e Vulkan no Buildroot.
 - **Lakka** e **ROCKNIX**: focados em leveza e em TV boxes e portáteis ARM.
 - **Manual do Buildroot:** `buildroot.org/manual`.
 - **Documentação do RetroArch:** `docs.libretro.com`.

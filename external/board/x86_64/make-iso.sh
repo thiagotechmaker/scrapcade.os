@@ -1,5 +1,5 @@
 #!/bin/sh
-# Monta o .iso do T-OS: o sistema (tos.squashfs) e lido do proprio pen drive ou DVD, somente leitura.
+# Monta o .iso do ScrapCade: o sistema (tos.squashfs) e lido do proprio pen drive ou DVD, somente leitura.
 # Liga por BIOS antigo (isolinux com menu, hibrido para pen drive) e por UEFI (GRUB na imagem EFI).
 set -e
 B=$BINARIES_DIR
@@ -27,9 +27,10 @@ cp "$B/syslinux/isolinux.bin" "$B"/syslinux/*.c32 "$HOST_DIR/share/syslinux/ldli
 cp "$B/tos-syslinux/syslinux.cfg" "$T/isolinux/isolinux.cfg"
 cp "$B/tos-syslinux/fundo.png" "$T/isolinux/"
 cp "$B/tos-memtest.bin" "$T/boot/memtest.bin"
+cp "$B/tos-memtest.efi" "$T/boot/memtest.efi"
 HYB=$(ls "$BUILD_DIR"/syslinux-*/bios/mbr/isohdpfx.bin | head -1)
-ISO=$B/t-os-$VER-x86_64.iso
-"$HOST_DIR/bin/xorriso" -as mkisofs -iso-level 3 -J -R -V "T-OS_$VER" \
+ISO=$B/scrapcade-$VER-x86_64.iso
+"$HOST_DIR/bin/xorriso" -as mkisofs -iso-level 3 -J -R -V "SCRAPCADE_$VER" \
 	-isohybrid-mbr "$HYB" \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table \
 	-eltorito-alt-boot -e boot/efi.img -no-emul-boot -isohybrid-gpt-basdat \

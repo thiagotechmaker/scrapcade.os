@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - dados de cada jogo: nome oficial, ano, empresa e genero. Licenca: GPLv3.
+// ScrapCade - dados de cada jogo: nome oficial, ano, empresa e genero. Licenca: GPLv3.
 //
 // Conversao do Meta.java do iChroma. Vem dos indices em DATA/crc/*.idx e DATA/fbneo.idx (gzip), sem rede
 // e sem conta: o jogo e reconhecido pelo CRC do arquivo. O resultado fica em ROMS/.meta, para so procurar

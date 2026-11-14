@@ -1,5 +1,5 @@
 #!/bin/sh
-# Modo desktop do T-OS: Fluxbox no X, aberto pelo painel Sistema do ScrapCade.
+# Modo desktop do ScrapCade: Fluxbox no X, aberto pelo painel Sistema do ScrapCade.
 # "Voltar ao modo jogo" no menu do Fluxbox fecha o X e o ScrapCade volta.
 export HOME=/userdata/system/desktop
 # a TOS-DADOS e exFAT (sem sockets nem links): o que o programa cria enquanto roda vai para a memoria

@@ -1,4 +1,4 @@
-# Atalhos do desktop do T-OS: o menu abre pelo teclado tambem (botao direito na area de trabalho continua valendo)
+# Atalhos do desktop do ScrapCade: o menu abre pelo teclado tambem (botao direito na area de trabalho continua valendo)
 OnDesktop Mouse3 :RootMenu
 Mod1 F1 :RootMenu
 Control Escape :RootMenu

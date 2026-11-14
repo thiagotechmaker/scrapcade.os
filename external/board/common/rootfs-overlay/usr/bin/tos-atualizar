@@ -1,10 +1,10 @@
 #!/bin/sh
-# T-OS: atualizacao segura A/B pelas GitHub Releases do projeto.
+# ScrapCade: atualizacao segura A/B pelas GitHub Releases do projeto.
 #   tos-atualizar verificar  -> "atual|nova|MB" (nova vazia = ja esta em dia; "erro" = sem internet)
 #   tos-atualizar instalar   -> baixa, confere o SHA-256 e troca; a versao de agora vira a "anterior"
 #   tos-atualizar confirmar  -> a versao nova ligou bem (o ScrapCade chama): nao volta mais sozinha
 # Progresso em /tmp/tos-atualizar.txt ("porcentagem mensagem"), mostrado no painel Sistema.
-REPO=thiagotechmaker/t-os
+REPO=thiagotechmaker/scrapcade
 API=https://api.github.com/repos/$REPO/releases/latest
 P=/tmp/tos-atualizar.txt
 D=/boot/boot
@@ -33,7 +33,7 @@ case "$1" in
     else echo "$(atual)||0"; fi
     ;;
   instalar)
-    grep -q " /boot vfat" /proc/mounts || { p 0 "ERRO: este T-OS roda de um .iso ou DVD: grave a imagem nova no pen drive"; exit 1; }
+    grep -q " /boot vfat" /proc/mounts || { p 0 "ERRO: este ScrapCade roda de um .iso ou DVD: grave a imagem nova no pen drive"; exit 1; }
     p 2 "Procurando a versão nova"
     info || { p 0 "ERRO: sem internet"; exit 1; }
     n=$(nova)

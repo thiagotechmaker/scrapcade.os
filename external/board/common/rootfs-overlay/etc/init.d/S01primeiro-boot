@@ -1,5 +1,5 @@
 #!/bin/sh
-# T-OS: no primeiro boot, pede a senha do administrador (root). A imagem nao traz senha fixa: uma senha
+# ScrapCade: no primeiro boot, pede a senha do administrador (root). A imagem nao traz senha fixa: uma senha
 # publicada seria a mesma em todo aparelho. A senha fica em TOS-DADOS (o sistema e somente leitura).
 SALVA=/userdata/system/shadow
 case "$1" in
@@ -9,7 +9,7 @@ case "$1" in
       {
         echo
         echo "=============================================="
-        echo " T-OS: primeiro boot"
+        echo " ScrapCade: primeiro boot"
         echo " Crie a senha do administrador (root)."
         echo " Ela sera pedida no login e no acesso remoto."
         echo "=============================================="

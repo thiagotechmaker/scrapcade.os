@@ -1,6 +1,6 @@
 #!/bin/sh
-# Navegador do T-OS (NetSurf). O que for baixado vai para "Jogos novos": o ScrapCade leva cada jogo
-# para o console certo, com capa e dados. O T-OS nao traz endereco de jogos: cada um escolhe de onde baixar.
+# Navegador do ScrapCade (NetSurf). O que for baixado vai para "Jogos novos": o ScrapCade leva cada jogo
+# para o console certo, com capa e dados. O ScrapCade nao traz endereco de jogos: cada um escolhe de onde baixar.
 C="$HOME/.config/netsurf"
 mkdir -p "$C"
 touch "$C/Choices"

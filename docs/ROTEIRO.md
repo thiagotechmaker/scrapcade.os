@@ -1,8 +1,8 @@
-# T-OS: Rumo ao Steam Deck — Programas, Bibliotecas e Linguagens
+# ScrapCade: Rumo ao Steam Deck — Programas, Bibliotecas e Linguagens
 
-*Levantamento técnico das camadas que faltam para o T-OS funcionar como console (ScrapCade) e também como desktop completo, no nível do SteamOS/Steam Deck.*
+*Levantamento técnico das camadas que faltam para o ScrapCade funcionar como console (ScrapCade) e também como desktop completo, no nível do SteamOS/Steam Deck.*
 
-Este documento junta o que já está definido nos dois documentos de arquitetura do T-OS com o que foi levantado nas discussões sobre universalidade de hardware e modo desktop. Cada tabela traz: a peça, pra que serve, em que linguagem ela é escrita (a maioria são projetos prontos — você integra, não reescreve) e se já está no seu plano ou é novo.
+Este documento junta o que já está definido nos dois documentos de arquitetura do ScrapCade com o que foi levantado nas discussões sobre universalidade de hardware e modo desktop. Cada tabela traz: a peça, pra que serve, em que linguagem ela é escrita (a maioria são projetos prontos — você integra, não reescreve) e se já está no seu plano ou é novo.
 
 ## 1. Build e automação
 
@@ -114,14 +114,14 @@ Por isso o QEMU continua sendo a escolha certa pro teste do dia a dia, deixando 
 | xpadneo | Xbox Wireless e 8BitDo via Bluetooth | C | novo (ver seção 3) |
 | udev rules de permissão | dá acesso ao usuário sem precisar de root | regras de texto | novo |
 
-## 11. Linguagem recomendada para o código próprio do T-OS
+## 11. Linguagem recomendada para o código próprio do ScrapCade
 
 As peças acima são projetos prontos — você as integra como estão. A escolha de linguagem importa mesmo é no código que é seu:
 
 | Código próprio | Linguagem recomendada | Por quê |
 | --- | --- | --- |
 | ScrapCade (frontend) | **C++17** (já escolhido) | acesso direto a SDL2/DRM/KMS, zero overhead — manter |
-| Scripts de init, hardware probe, troca de sessão (kiosk ↔ desktop) | **Bash / POSIX shell** | já é o padrão em `/etc/init.d` e `/usr/bin` do T-OS; não vale introduzir outra linguagem só pra isso |
+| Scripts de init, hardware probe, troca de sessão (kiosk ↔ desktop) | **Bash / POSIX shell** | já é o padrão em `/etc/init.d` e `/usr/bin` do ScrapCade; não vale introduzir outra linguagem só pra isso |
 | Lógica de atualização OTA com slots A/B | **Rust** | é código crítico — se corromper, o sistema não boota mais; memory safety ajuda bastante aqui. C também funciona, se preferir manter tudo no mesmo ecossistema do kernel |
 | Scraping nativo via API REST (ScreenScraper) | **C++**, dentro do próprio ScrapCade | evita depender de um processo externo e de outro runtime |
 | Scripts de build e CI (multi-arch, detecção de hardware) | **Python** ou **Bash** | GitHub Actions roda bem com os dois; Python ajuda se a lógica de detecção crescer além de um script simples |
@@ -164,7 +164,7 @@ Conferindo o consenso atual da comunidade RetroArch/libretro por sistema. A maio
 | `/sys/class/power_supply/BAT0/status` | estado: Charging / Discharging / Full / Not charging | leitura de arquivo | novo |
 | **upower** (D-Bus) | abstração padrão com estimativa de tempo restante e eventos de bateria fraca | C | novo — opcional, só pro modo desktop |
 
-Como encaixar no T-OS: pro ScrapCade (modo console), o caminho mais enxuto — e mais coerente com a filosofia do projeto — é um módulo próprio (um `bateria.h`, no mesmo estilo de `bios.h`/`capas.h`) que só lê esses dois arquivos de `/sys/class/power_supply/BAT0/` direto, sem precisar de upower nem D-Bus. Pro modo desktop, aí vale ativar o upower, porque os aplicativos GTK3 (Falkon, PCManFM) já esperam esse serviço rodando pra mostrar ícone de bateria.
+Como encaixar no ScrapCade: pro ScrapCade (modo console), o caminho mais enxuto — e mais coerente com a filosofia do projeto — é um módulo próprio (um `bateria.h`, no mesmo estilo de `bios.h`/`capas.h`) que só lê esses dois arquivos de `/sys/class/power_supply/BAT0/` direto, sem precisar de upower nem D-Bus. Pro modo desktop, aí vale ativar o upower, porque os aplicativos GTK3 (Falkon, PCManFM) já esperam esse serviço rodando pra mostrar ícone de bateria.
 
 Dá pra aproveitar essa detecção além de só mostrar o percentual: o script de governador de CPU que você já tem planejado pode checar `/sys/class/power_supply/AC/online` — se estiver em `0` (rodando na bateria), força o governador pra economia mesmo dentro do RetroArch, em vez de deixar sempre em modo "performance" só porque um jogo abriu.
 
@@ -172,7 +172,7 @@ Dá pra aproveitar essa detecção além de só mostrar o percentual: o script d
 
 Isso formaliza o "script de governador de CPU" que você já tinha planejado, virando um menu real com três modos escolhidos pelo usuário — no painel Sistema do ScrapCade e também no modo desktop — em vez de só alternar sozinho quando abre ou fecha o RetroArch.
 
-A peça certa aqui é o **TLP**, não o power-profiles-daemon (PPD): o PPD é o padrão em GNOME/KDE, mas pensado pra rodar com systemd; o TLP, desde a versão 1.11, já traz um **script de inicialização SysVinit** pronto — o mesmo estilo que o T-OS já usa em `/etc/init.d` — e tem de fábrica os três perfis: `performance`, `balanced` e `power-saver`, mapeando direto pros seus três modos.
+A peça certa aqui é o **TLP**, não o power-profiles-daemon (PPD): o PPD é o padrão em GNOME/KDE, mas pensado pra rodar com systemd; o TLP, desde a versão 1.11, já traz um **script de inicialização SysVinit** pronto — o mesmo estilo que o ScrapCade já usa em `/etc/init.d` — e tem de fábrica os três perfis: `performance`, `balanced` e `power-saver`, mapeando direto pros seus três modos.
 
 | Modo pedido | Perfil TLP | Governador de CPU | EPP (energy performance preference) | Turbo Boost |
 | --- | --- | --- | --- | --- |

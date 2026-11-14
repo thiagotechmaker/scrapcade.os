@@ -1,6 +1,6 @@
-// ScrapCade para o T-OS - versao 1.7 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.8 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
-// Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
+// Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
 // faixa com o nome do jogo e barra de botoes. Mesmas medidas e cores do iChroma (Carousel.java,
 // CarouselGL.java, Theme.java, Home.java, HintBar.java).
@@ -167,7 +167,7 @@ static int theme = AURORA;
 //   fundo.png / fundo.jpg  imagem de fundo (preenche a tela)
 //   tema.txt               nome=Meu tema | base=Aurora (cartoes e cores de um tema pronto) | destaque=#32E6A8
 //   avatares/*.png         avatares a mais para escolher ao criar um perfil (tambem em themes/avatares)
-// As imagens ficam so no aparelho de quem colocou: o T-OS nao traz nenhuma.
+// As imagens ficam so no aparelho de quem colocou: o ScrapCade nao traz nenhuma.
 static const std::string THEMES_DIR = "/userdata/themes";
 struct TemaUser { std::string pasta, nome, fundo; int base; uint32_t destaque; bool temDestaque; };
 static std::vector<TemaUser> temasUser;
@@ -194,7 +194,7 @@ static void lerAvatares(const std::string &dir) {
     for (auto &x : v) if (avatarExtras.size() < 24) avatarExtras.push_back(x);
 }
 
-// Le a pasta themes de novo (temas colocados com o T-OS ligado aparecem sem reiniciar)
+// Le a pasta themes de novo (temas colocados com o ScrapCade ligado aparecem sem reiniciar)
 static void scanTemas() {
     std::string atual = temaUser >= 0 && temaUser < int(temasUser.size()) ? temasUser[temaUser].pasta : "";
     temasUser.clear();
@@ -969,7 +969,7 @@ static std::string optLabel(int i) {
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_BIOS: return "BIOS dos consoles";
-    case OPT_ATUALIZAR: return "Atualizar o T-OS";
+    case OPT_ATUALIZAR: return "Atualizar o ScrapCade";
     case OPT_INSTALL: return "Instalar no disco do computador";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
@@ -1021,7 +1021,7 @@ static const char *optAjuda(int o) {
     if (o == OPT_FONTE) return "Deixa as letras do ScrapCade maiores: bom para TV longe do sofá ou para quem enxerga pouco. Vale para o menu, o painel e os nomes dos jogos.";
     switch (o) {
     case OPT_PERFIL: return "Troca quem está jogando. Cada perfil tem os seus favoritos, saves, tema e preferências. A abre a tela \"Quem vai jogar?\".";
-    case OPT_JOGOS: return "Abre os arquivos do pen drive aqui mesmo: escolha um jogo (ou uma pasta inteira) e ele vai para \"Jogos novos\". O T-OS leva cada jogo ao console certo, com capa e dados.";
+    case OPT_JOGOS: return "Abre os arquivos do pen drive aqui mesmo: escolha um jogo (ou uma pasta inteira) e ele vai para \"Jogos novos\". O ScrapCade leva cada jogo ao console certo, com capa e dados.";
     case OPT_ENERGIA: return "Economia: gasta menos bateria e esquenta menos, mas jogos pesados podem engasgar. Moderado: o meio-termo. Máximo: o processador sempre no talo, para PS2, GameCube e PSP.";
     case OPT_THEME: return "Muda as cores, o fundo e o jeito das capas. Com A você escolhe uma imagem (do pen drive ou da TOS-DADOS) e ela vira o fundo de um tema seu.";
     case OPT_ANIM: return "Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.";
@@ -1029,17 +1029,17 @@ static const char *optAjuda(int o) {
     case OPT_BG: return "Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.";
     case OPT_ENGINE: return "GPU (OpenGL ES): usa a placa de vídeo, mais suave. Software: desenha pelo processador; use se a tela ficar preta ou piscando. Vale ao reiniciar o ScrapCade.";
     case OPT_VOLUME: return "Volume de tudo: menu e jogos. A toca um som de teste para conferir as caixas ou o fone.";
-    case OPT_REDE: return "Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o T-OS acha capas e atualizações.";
+    case OPT_REDE: return "Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o ScrapCade acha capas e atualizações.";
     case OPT_BLUETOOTH: return "Pareia controles sem fio (PS4, PS5, Switch, Xbox) e fones. Coloque o controle em modo de pareamento antes.";
     case OPT_SAMBA: return "Ligada: a pasta dos jogos aparece na rede do Windows (\\\\ e o endereço IP). Dá para copiar jogos e saves direto pelo Explorador de Arquivos.";
     case OPT_SSH: return "Acesso pelo terminal de outro computador, para manutenção. Deixe desligado se não usa: é mais seguro.";
-    case OPT_CONTROLE: return "Ensina ao T-OS os botões de um controle que ele não conhece (os genéricos). Aperte cada botão que aparecer na tela.";
+    case OPT_CONTROLE: return "Ensina ao ScrapCade os botões de um controle que ele não conhece (os genéricos). Aperte cada botão que aparecer na tela.";
     case OPT_DESKTOP: return "Abre uma área de trabalho com gerenciador de arquivos, navegador e editor de texto. Para sair, feche a sessão e o ScrapCade volta.";
     case OPT_HELP: return "Mostra os atalhos que valem em todo jogo: Select + Start sai, Select + X abre o menu do emulador, salvar e carregar.";
     case OPT_BIOS: return "Confere as BIOS de cada console (PS1, PS2, Saturn, DS...). Verde: certa. Vermelho: falta ou é o arquivo errado.";
-    case OPT_ATUALIZAR: return "Procura a versão nova do T-OS na internet, baixa e confere. Jogos e saves não são mexidos, e se a nova não ligar ele volta sozinho para a anterior.";
-    case OPT_INSTALL: return "Copia o T-OS para o HD ou SSD do computador, para ligar sem o pen drive. ATENÇÃO: apaga tudo o que estiver no disco escolhido.";
-    case OPT_INFO: return "Processador, placa de vídeo, memória, versão do T-OS e do kernel. Útil para pedir ajuda.";
+    case OPT_ATUALIZAR: return "Procura a versão nova do ScrapCade na internet, baixa e confere. Jogos e saves não são mexidos, e se a nova não ligar ele volta sozinho para a anterior.";
+    case OPT_INSTALL: return "Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. ATENÇÃO: apaga tudo o que estiver no disco escolhido.";
+    case OPT_INFO: return "Processador, placa de vídeo, memória, versão do ScrapCade e do kernel. Útil para pedir ajuda.";
     case OPT_REBOOT: return "Reinicia o computador.";
     case OPT_OFF: return "Desliga o computador. Os saves já ficam guardados.";
     }
@@ -1169,9 +1169,9 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.7" + buf);
+    textLines.push_back("Sistema: ScrapCade " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.8" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
-    textLines.push_back("Emuladores previstos: " + emus);
+    textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
     textLines.push_back("Botões: Xelu's Free Controller Prompts (CC0)  •  Logos: es-theme-carbon");
     textLines.push_back("Capas: libretro-thumbnails  •  Dados dos jogos: libretro-database e FBNeo");
@@ -1221,7 +1221,7 @@ static void trocarServico(const std::string &nome, const char *padrao) {
     mkdirs("/userdata/system/configs");
     std::ofstream("/userdata/system/configs/" + nome) << (on ? "on" : "off") << "\n";
     std::thread([] { if (system("/etc/init.d/S91tos-rede restart") != 0) {} }).detach();
-    if (nome == "samba") toast(on ? "Pasta na rede ligada: no Windows, abra \\\\T-OS\\jogos" : "Pasta na rede desligada.", 4000);
+    if (nome == "samba") toast(on ? "Pasta na rede ligada: no Windows, abra \\\\ScrapCade\\jogos" : "Pasta na rede desligada.", 4000);
     else toast(on ? "SSH ligado: entre com root e a senha do administrador." : "SSH desligado.", 4000);
 }
 
@@ -1362,7 +1362,7 @@ static void setVolume(int v) {
     std::ofstream("/userdata/system/configs/volume") << pct << (volume == 0 ? " mute" : " unmute") << "\n";
 }
 
-// Toca dois tons curtos (o som do T-OS) para conferir se o som sai
+// Toca dois tons curtos (o som do ScrapCade) para conferir se o som sai
 static void testSound() {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) { toast("Sem som: " + std::string(SDL_GetError()), 4000); return; }
     SDL_AudioSpec want{}, got{};
@@ -1471,7 +1471,7 @@ static void drawRede() {
         add(ip.empty() || ip == "sem rede" ? "Sem conexão." : "Conectado. Endereço: " + ip, 0xFF2B2E33);
         add("");
         if (!Rede::temWifi()) {
-            add("Nenhuma placa de Wi-Fi encontrada (ou ela precisa de um driver que o T-OS", 0xFFD0362B);
+            add("Nenhuma placa de Wi-Fi encontrada (ou ela precisa de um driver que o ScrapCade", 0xFFD0362B);
             add("ainda não tem). Veja Registros/diagnostico.txt na página de Arquivos.", 0xFFD0362B);
         } else if (busy && v.empty()) {
             add("Procurando redes Wi-Fi...");
@@ -1758,7 +1758,7 @@ static void drawNavegador() {
 }
 
 
-// ------------------------------------------------------------------ atualizar o T-OS (tos-atualizar, A/B)
+// ------------------------------------------------------------------ atualizar o ScrapCade (tos-atualizar, A/B)
 
 static int updStage = 0;   // 0 fechado, 1 procurando, 2 resultado da procura, 3 baixando, 4 terminou
 static std::string updAtual, updNova, updMB, updMsg;
@@ -1821,12 +1821,12 @@ static void drawAtualizar() {
         if (nova == "erro") {
             add("Não deu para procurar: confira a internet (Rede e Wi-Fi).", 0xFFD0362B);
         } else if (nova.empty()) {
-            add("O T-OS já está na versão mais nova.", 0xFF1E9C4A);
+            add("O ScrapCade já está na versão mais nova.", 0xFF1E9C4A);
         } else {
             add("Versão nova: " + versaoBonita(nova) + "   (" + mb + " MB)", 0xFF1E9C4A);
             add("");
             add("Os jogos e os saves não são mexidos. A versão de agora fica guardada:");
-            add("se a nova não ligar, o T-OS volta para ela sozinho.", 0xFF5E6269);
+            add("se a nova não ligar, o ScrapCade volta para ela sozinho.", 0xFF5E6269);
             H = H2;
             nh = 4;
         }
@@ -1839,7 +1839,7 @@ static void drawAtualizar() {
             if (updPct >= 100 || updMsg.rfind("ERRO", 0) == 0) updStage = 4;
         }
         bool erro = updMsg.rfind("ERRO", 0) == 0;
-        add(updStage == 3 ? "Atualizando... não desligue." : (erro ? "A atualização não terminou." : "T-OS atualizado!"),
+        add(updStage == 3 ? "Atualizando... não desligue." : (erro ? "A atualização não terminou." : "ScrapCade atualizado!"),
             erro ? 0xFFD0362B : 0xFF2B2E33);
         add(updMsg + (updStage == 3 ? "  (" + std::to_string(updPct) + "%)" : ""), erro ? 0xFFD0362B : 0xFF1E9C4A);
         nh = updStage == 4 ? 2 : 0;
@@ -1847,7 +1847,7 @@ static void drawAtualizar() {
     }
     float h = 22 * u + 16 * u + L.size() * lh + 22 * u + (updStage == 3 ? 14 * u : 0);
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
-    float top = whitePanel("Atualizar o T-OS", x, y, w, h) + 12 * u;
+    float top = whitePanel("Atualizar o ScrapCade", x, y, w, h) + 12 * u;
     for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
     if (updStage == 3) {
         float by = top + L.size() * lh, bw = w - 28 * u;
@@ -1906,7 +1906,7 @@ static void drawInstall() {
     const char *const *H = H1;
     int nh = 6;
     if (instStage == 1) {
-        add("Escolha o disco onde o T-OS vai ficar:");
+        add("Escolha o disco onde o ScrapCade vai ficar:");
         add("");
         if (disks.empty()) add("Nenhum outro disco encontrado (mínimo 4 GB).", 0xFFD0362B);
         for (size_t i = 0; i < disks.size(); i++)
@@ -1914,7 +1914,7 @@ static void drawInstall() {
                     disks[i].dev + ")",
                 int(i) == diskSel ? 0xFF1E9C4A : 0xFF2B2E33);
         add("");
-        add("O pen drive de onde o T-OS está rodando não aparece na lista.", 0xFF5E6269);
+        add("O pen drive de onde o ScrapCade está rodando não aparece na lista.", 0xFF5E6269);
     } else if (instStage == 2) {
         const Disk &d = disks[diskSel];
         add("ATENÇÃO: isso APAGA TUDO o que está no disco:", 0xFFD0362B);
@@ -1933,12 +1933,12 @@ static void drawInstall() {
             if (instPct >= 100 || instMsg.rfind("ERRO", 0) == 0) instStage = 4;
         }
         bool erro = instMsg.rfind("ERRO", 0) == 0;
-        add(instStage == 3 ? "Instalando... não desligue o computador." : (erro ? "A instalação não terminou." : "T-OS instalado!"),
+        add(instStage == 3 ? "Instalando... não desligue o computador." : (erro ? "A instalação não terminou." : "ScrapCade instalado!"),
             erro ? 0xFFD0362B : 0xFF2B2E33);
         add("");
         add(instMsg + (instStage == 3 ? "  (" + std::to_string(instPct) + "%)" : ""), erro ? 0xFFD0362B : 0xFF1E9C4A);
         add("");
-        if (instStage == 4 && !erro) add("Desligue, tire o pen drive e ligue de novo: o T-OS abre direto do disco.");
+        if (instStage == 4 && !erro) add("Desligue, tire o pen drive e ligue de novo: o ScrapCade abre direto do disco.");
         if (instStage == 4 && erro) add("Detalhes em Registros/instalar.log, na página de Arquivos.", 0xFF5E6269);
         H = H4;
         nh = instStage == 4 ? 2 : 0;
@@ -1994,7 +1994,7 @@ static void respondeuHD() {
 static void drawPerguntaHD() {
     if (!hdStage) return;
     float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u * T.escala), lh = 15 * u * T.escala;
-    const char *L[] = {"O T-OS está rodando do pen drive.",
+    const char *L[] = {"O ScrapCade está rodando do pen drive.",
                        "Dá para instalar no HD ou SSD deste computador e ligar sem o pen drive",
                        "(os jogos podem ir junto). Você escolhe o disco na próxima tela.",
                        "",
@@ -2085,7 +2085,7 @@ static void optAction(int dir) {
     case OPT_SSH: trocarServico("ssh", "off"); return;
     case OPT_CONTROLE:
         if (dir != 0) return;
-        if (SDL_NumJoysticks() == 0) { toast("Ligue um controle primeiro.", 3000); return; }
+        if (SDL_NumJoysticks() == 0) { toast("Nenhum controle ligado: ligue um controle USB ou pareie pelo Bluetooth.", 6000); return; }
         sysOpen = false;
         ctlStart(SDL_JoystickOpen(SDL_NumJoysticks() - 1));
         return;
@@ -2097,7 +2097,7 @@ static void optAction(int dir) {
             savePrefs();
             restartMenu = true;
         } else {
-            toast("O modo desktop entra numa próxima versão do T-OS", 4000);
+            toast("O modo desktop entra numa próxima versão do ScrapCade", 4000);
         }
         return;
     case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
@@ -2501,7 +2501,11 @@ static void drawPerfis() {
     G.fillRect(0, 0, float(G.W), float(G.H), 0x50000000);
     int n = int(perfis.size()) + 1;   // + "Novo perfil"
     if (profStage == 1 || profStage == 3) {
-        T.draw(perfis.empty() ? "Bem-vindo ao T-OS!" : "Quem vai jogar?", G.W / 2.0f, G.H * 0.18f, 20, true, 0xFFFFFFFF, 1);
+        if (SDL_Texture *lg = image(DATA + "/web/logo.jpg")) {   // logo do ScrapCade em cima
+            float lh = G.H * 0.11f, lw = lh * 800 / 288;
+            G.imageFit(lg, (G.W - lw) / 2, G.H * 0.02f, lw, lh, true);
+        }
+        T.draw(perfis.empty() ? "Bem-vindo ao ScrapCade!" : "Quem vai jogar?", G.W / 2.0f, G.H * 0.18f, 20, true, 0xFFFFFFFF, 1);
         T.draw(perfis.empty() ? "Crie o seu perfil: cada pessoa tem os seus favoritos e os seus saves." :
                                 "Cada perfil tem os seus favoritos e os seus saves.",
                G.W / 2.0f, G.H * 0.18f + 22 * u, 10, false, 0xDDFFFFFF, 1);
@@ -2779,7 +2783,7 @@ static void play() {
     if (!g) return;
     std::string core = coreEscolhido(g->sys->id);
     if (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so")) {
-        toast("O " + g->sys->emu + " entra numa próxima versão do T-OS", 3500);
+        toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
     }
     prefs["plays|" + g->key()] = std::to_string(plays(*g) + 1);
@@ -3040,7 +3044,7 @@ int main() {
                 case SDLK_LEFT: move(-1); break;
                 case SDLK_RIGHT: move(1); break;
                 case SDLK_RETURN: case SDLK_SPACE: play(); break;
-                case SDLK_f: toggleFav(); break;
+                case SDLK_f: case SDLK_x: toggleFav(); break;   // X como no controle
                 case SDLK_d: details = !details; break;
                 case SDLK_ESCAPE: case SDLK_BACKSPACE: details = false; break;
                 case SDLK_q: case SDLK_PAGEUP: nextFilter(-1); break;
@@ -3121,7 +3125,7 @@ int main() {
         }
         if (novaVersao == 2 && !updStage) {
             novaVersao = 3;
-            toast("Versão nova do T-OS disponível: Sistema > Atualizar o T-OS", 9000);
+            toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade", 9000);
             redraw();
         }
         // segurando o direcional: anda sozinho

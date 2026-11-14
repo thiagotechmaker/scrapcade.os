@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - capa e imagem de fundo que faltam, baixadas do acervo libretro-thumbnails (sem conta).
+// ScrapCade - capa e imagem de fundo que faltam, baixadas do acervo libretro-thumbnails (sem conta).
 // Conversao do Capas.java do iChroma. O que o acervo nao tem fica anotado em ROMS/.sem_capa e ROMS/.sem_fundo,
 // para nao tentar de novo a cada vez. Licenca: GPLv3.
 #pragma once
@@ -67,7 +67,7 @@ static int download(const std::string &url, const std::string &dest, long timeou
     curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 8L);
     curl_easy_setopt(c, CURLOPT_TIMEOUT, timeout);
-    curl_easy_setopt(c, CURLOPT_USERAGENT, "ScrapCade/0.3 (T-OS)");
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "ScrapCade/0.3 (ScrapCade)");
     curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
     CURLcode r = curl_easy_perform(c);

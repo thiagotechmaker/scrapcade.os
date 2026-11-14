@@ -1,12 +1,12 @@
 #!/bin/sh
-# T-OS: resumo do hardware e da rede a cada boot, em TOS-DADOS/system/logs/diagnostico.txt
+# ScrapCade: resumo do hardware e da rede a cada boot, em TOS-DADOS/system/logs/diagnostico.txt
 # (ajuda a descobrir driver que falta: o usuario copia o arquivo para o PC ou baixa pela pagina, em Registros)
 [ "$1" = start ] || exit 0
 (
   sleep 15
   D=/userdata/system/logs/diagnostico.txt
   {
-    echo "== T-OS $(sed -n 's/^VERSION=//p' /etc/os-release)  $(date)"
+    echo "== ScrapCade $(sed -n 's/^VERSION=//p' /etc/os-release)  $(date)"
     echo "== processador: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2)"
     echo "== memoria: $(grep MemTotal /proc/meminfo)"
     echo "== placas (PCI: fabricante:modelo classe -> driver)"

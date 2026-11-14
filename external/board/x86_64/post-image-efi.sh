@@ -1,9 +1,9 @@
 #!/bin/sh
-# T-OS: initrd pequeno, GRUB que acha o sistema em qualquer disco, disk.img e .iso
+# ScrapCade: initrd pequeno, GRUB que acha o sistema em qualquer disco, disk.img e .iso
 set -e
 B=$(dirname "$0")
 VER=$(sed -n 's/^VERSION="\{0,1\}\([^"]*\)"\{0,1\}/\1/p' "$TARGET_DIR/etc/os-release")
-echo "T-OS $VER" > "$BINARIES_DIR/tos-live"
+echo "ScrapCade $VER" > "$BINARIES_DIR/tos-live"
 
 # initrd: so o busybox e as bibliotecas dele
 I=$BUILD_DIR/tos-initramfs
@@ -28,6 +28,7 @@ cp "$B/boot-fundo.png" "$S/fundo.png"
 cp "$BINARIES_DIR"/syslinux/*.c32 "$S/"
 MT=$(ls "$BINARIES_DIR"/memtest*.bin "$TARGET_DIR"/boot/memtest*.bin 2>/dev/null | head -1)
 cp "$MT" "$BINARIES_DIR/tos-memtest.bin"
+cp "$BINARIES_DIR/memtest.efi" "$BINARIES_DIR/tos-memtest.efi"   # teste de memoria pelo UEFI (GRUB)
 
 support/scripts/genimage.sh -c "$B/genimage-efi.cfg"
 
@@ -37,7 +38,7 @@ SL=$(ls "$BUILD_DIR"/syslinux-*/bios/mtools/syslinux | head -1)
 dd if="$BINARIES_DIR/syslinux/mbr.bin" of="$BINARIES_DIR/disk.img" bs=440 count=1 conv=notrunc status=none
 sh "$B/make-iso.sh"
 
-# T-OS: arquivos para publicar como versao nova (GitHub Releases, tag v<BUILD_ID>): o tos-atualizar baixa estes
+# ScrapCade: arquivos para publicar como versao nova (GitHub Releases, tag v<BUILD_ID>): o tos-atualizar baixa estes
 U=$BINARIES_DIR/atualizacao
 rm -rf "$U"; mkdir -p "$U"
 cp "$BINARIES_DIR/rootfs.squashfs" "$U/tos.squashfs"
@@ -46,5 +47,5 @@ cp "$BINARIES_DIR/tos-initrd.gz" "$U/initrd.gz"
 V=$(sed -n 's/^BUILD_ID=//p' "$TARGET_DIR/etc/os-release")
 echo "$V" > "$U/BUILD_ID"
 # para baixar e instalar do zero: um .iso so (com o tipo de PC no nome), que vale para qualquer jeito de gravar
-cp "$BINARIES_DIR"/t-os-*-x86_64.iso "$U/t-os-$V-pc-64bits.iso"
-( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz t-os-$V-pc-64bits.iso > SHA256SUMS )
+cp "$BINARIES_DIR"/scrapcade-*-x86_64.iso "$U/scrapcade-$V-pc-64bits.iso"
+( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz scrapcade-$V-pc-64bits.iso > SHA256SUMS )

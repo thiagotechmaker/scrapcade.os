@@ -1,14 +1,27 @@
-# T-OS
+# ScrapCade
 
-Sistema operacional próprio, baseado em Linux, voltado para **emulação de jogos** e para dar uma **segunda vida a computadores e aparelhos que iriam para o lixo**.
+<p align="center"><img src="docs/logo.jpg" width="560" alt="ScrapCade"></p>
 
-O T-OS é montado com o [Buildroot](https://buildroot.org), a mesma ferramenta usada pelo Batocera. Ele não é uma distribuição pronta: o Buildroot compila do código-fonte só o que o sistema precisa, e gera uma imagem pronta para gravar.
+<p align="center"><b>Jogos em qualquer computador.</b><br>
+Sistema próprio, baseado em Linux, para <b>emulação de jogos</b> e para dar uma <b>segunda vida a computadores que iriam para o lixo</b>.</p>
 
-> **Estado atual (2026.11):** o sistema liga no PC com UEFI direto no **modo jogo**, com o menu ScrapCade em tela cheia. Ainda não tem emuladores: eles vêm na próxima etapa.
+<p align="center"><a href="https://github.com/thiagotechmaker/scrapcade/releases/latest"><b>⬇️ Baixar a versão mais nova (.iso, PC 64 bits)</b></a></p>
+
+## Baixar e instalar
+
+1. **Baixe** o `scrapcade-<versão>-pc-64bits.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade/releases/latest). É um arquivo só, que liga por BIOS antigo e por UEFI.
+2. **Grave** num pen drive de 4 GB ou mais com o [Rufus](https://rufus.ie) (modo ISO ou DD, tanto faz) ou o [balenaEtcher](https://etcher.balena.io).
+3. **Ligue o PC pelo pen drive** (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot o ScrapCade arruma o pen drive sozinho (sistema + partição TOS-DADOS para os jogos), pede a senha do administrador e abre a criação do seu perfil.
+4. **Coloque jogos** pelo navegador do PC ou celular (o endereço aparece na tela), pela pasta na rede do Windows ou por um pen drive (*Sistema > Trazer jogos do pen drive*).
+5. **Quer ligar sem o pen drive?** O ScrapCade pergunta uma vez se quer instalar no HD/SSD (também em *Sistema > Instalar no disco do computador*).
+
+As versões novas chegam sozinhas: o ScrapCade avisa na tela e atualiza em *Sistema > Atualizar o ScrapCade*, sem mexer nos jogos e saves. Jogos, BIOS e ROMs não acompanham o sistema.
+
+O ScrapCade é montado com o [Buildroot](https://buildroot.org), a mesma ferramenta usada pelo Batocera: compila do código-fonte só o que o sistema precisa.
 
 ## Capturas
 
-**1. GRUB iniciando o T-OS** (espera de 1 segundo):
+**1. GRUB iniciando o ScrapCade** (espera de 1 segundo):
 
 ![GRUB](docs/capturas/1_grub.png)
 
@@ -20,13 +33,13 @@ O T-OS é montado com o [Buildroot](https://buildroot.org), a mesma ferramenta u
 
 ![Sistema](docs/capturas/3_sistema.png)
 
-Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
+Depois de ligar, o ScrapCade usa **26 MB de RAM** e **62 MB de disco**.
 
-## Modo jogo: ScrapCade
+## Modo jogo
 
-Como numa Steam Machine, o T-OS liga direto no **modo jogo**: o ScrapCade abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O **modo desktop** (Fluxbox, gerenciador de arquivos, navegador) é uma opção à parte, no painel Sistema.
+Como numa Steam Machine, o ScrapCade liga direto no **modo jogo**: o menu abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O **modo desktop** (Fluxbox, gerenciador de arquivos, navegador) é uma opção à parte, no painel Sistema.
 
-O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2**, com as mesmas medidas, cores e funções.
+O menu do ScrapCade é a conversão do ScrapCade do iChroma (Android) para **C++ com SDL2**, com as mesmas medidas, cores e funções.
 
 **Carrossel de capas** com perspectiva, reflexo, faixa e logo do console, borda na selecionada e fundo do jogo borrado:
 
@@ -53,21 +66,21 @@ themes/
   avatares/          avatares que valem para qualquer tema
 ```
 
-As imagens ficam só no aparelho de quem colocou: o T-OS não traz nenhuma imagem de marca.
+As imagens ficam só no aparelho de quem colocou: o ScrapCade não traz nenhuma imagem de marca.
 
-**Perfis de jogador**, no estilo dos painéis de console: cada perfil tem avatar, favoritos, preferências e saves próprios, com senha opcional. Ao ligar, o T-OS pergunta "Quem vai jogar?":
+**Perfis de jogador**, no estilo dos painéis de console: cada perfil tem avatar, favoritos, preferências e saves próprios, com senha opcional. Ao ligar, o ScrapCade pergunta "Quem vai jogar?":
 
 ![Perfil](docs/capturas/10_perfil_avatar.png)
 
-**Painel Sistema** (botão Select ou Tab): perfil, energia, tema, volume, Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, configurar controle, modo desktop, BIOS, atualizar o T-OS, instalar no HD:
+**Painel Sistema** (botão Select ou Tab): perfil, energia, tema, volume, Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, configurar controle, modo desktop, BIOS, atualizar o ScrapCade, instalar no HD:
 
 ![Painel Sistema](docs/capturas/11_painel_sistema.png)
 
-**Atualizar o T-OS** pelo próprio painel: baixa a versão nova das [Releases](https://github.com/thiagotechmaker/t-os/releases), confere o SHA-256 e guarda a versão de agora. Se a nova não ligar 3 vezes, volta sozinho para a anterior (também dá para escolher "Sistema anterior do T-OS" no menu de boot). Jogos e saves não são mexidos.
+**Atualizar o ScrapCade** pelo próprio painel: baixa a versão nova das [Releases](https://github.com/thiagotechmaker/scrapcade/releases), confere o SHA-256 e guarda a versão de agora. Se a nova não ligar 3 vezes, volta sozinho para a anterior (também dá para escolher "Sistema anterior do ScrapCade" no menu de boot). Jogos e saves não são mexidos.
 
 ![Atualizar](docs/capturas/9_atualizar.png)
 
-As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pela GPU (OpenGL ES pela Mesa) e lê teclado e controle pelo SDL2. Código em `external/package/scrapcade/src`.
+As capas das capturas são de teste, feitas para o projeto. O menu desenha pela GPU (OpenGL ES pela Mesa) e lê teclado e controle pelo SDL2. Código em `external/package/scrapcade/src`.
 
 **Capas, dados e organização automática (ScrapCade 0.3):**
 
@@ -78,7 +91,7 @@ As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pel
 
 ## Emuladores
 
-O T-OS empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS, sem X, menu RGUI em português) e estes núcleos libretro:
+O ScrapCade empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS, sem X, menu RGUI em português) e estes núcleos libretro:
 
 | Console | Núcleo |
 |---|---|
@@ -101,7 +114,7 @@ O T-OS empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS, sem 
 - **Controles:** reconhecidos pelo banco de dados do SDL2 (Xbox, PlayStation, Nintendo, genéricos), sem configurar.
 - **Pastas na TOS-DADOS:** `saves/<console>`, `bios`, `screenshots`. O gerenciador da página mostra também `bios`, `saves` e `Registros` (logs, para pedir ajuda).
 
-## Como o T-OS fica no disco
+## Como o ScrapCade fica no disco
 
 Parecido com o Batocera, mas pensado para não perder jogos:
 
@@ -112,52 +125,52 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 
 - **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
 - **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
-- **Atualizar o T-OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
+- **Atualizar o ScrapCade** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
 - **exFAT** para o Windows ler e gravar os jogos direto.
 
-## Baixar o T-OS
+## Arquivos de cada versão
 
-Cada versão fica em [Releases](https://github.com/thiagotechmaker/t-os/releases), já com a atualização automática dentro:
+Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade/releases), já com a atualização automática dentro:
 
 | Arquivo | Para quê |
 |---|---|
-| `t-os-<versão>-pc-64bits.iso` | **o T-OS inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
+| `t-os-<versão>-pc-64bits.iso` | **o ScrapCade inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
 | `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
 | `SHA256SUMS` | confere todos os arquivos |
 
-Quem já tem o T-OS não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o T-OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
+Quem já tem o ScrapCade não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o ScrapCade*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
 ## Gravar e ligar
 
 Um arquivo só: o `.iso`. Grave num pen drive de **4 GB ou mais** com o [Rufus](https://rufus.ie) (modo ISO ou modo DD, tanto faz) ou o [balenaEtcher](https://etcher.balena.io).
 
-No **primeiro boot** o T-OS se copia para a memória e arruma o pen drive sozinho, do mesmo jeito qualquer que tenha sido a gravação:
+No **primeiro boot** o ScrapCade se copia para a memória e arruma o pen drive sozinho, do mesmo jeito qualquer que tenha sido a gravação:
 
 | Partição | O que fica |
 |---|---|
 | **TOS-BOOT** (FAT32, 1 GB) | o sistema, somente leitura (atualização automática A/B) |
 | **TOS-DADOS** (exFAT, o resto) | jogos, BIOS, saves, temas e perfis, sem limite de 4 GB por arquivo |
 
-Daí em diante o T-OS **roda direto do pen drive**, como o Batocera. Para ligar sem o pen drive, quando quiser: *Sistema > Instalar no disco do computador* (copia o T-OS, e se quiser os jogos, para o HD ou SSD).
+Daí em diante o ScrapCade **roda direto do pen drive**, como o Batocera. Para ligar sem o pen drive, quando quiser: *Sistema > Instalar no disco do computador* (copia o ScrapCade, e se quiser os jogos, para o HD ou SSD).
 
-- Gravado em **DVD**, ou com `tos.vivo` acrescentado aos parâmetros no menu de boot (tecla Tab no BIOS, `e` no UEFI), o T-OS só roda, sem mexer em nada (os jogos ficam na memória até desligar).
+- Gravado em **DVD**, ou com `tos.vivo` acrescentado aos parâmetros no menu de boot (tecla Tab no BIOS, `e` no UEFI), o ScrapCade só roda, sem mexer em nada (os jogos ficam na memória até desligar).
 - Precisa de 1,5 GB de memória para arrumar o pen drive; com menos, roda sem arrumar.
 
-No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. No primeiro boot o T-OS pede a senha do administrador.
+No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. No primeiro boot o ScrapCade pede a senha do administrador.
 
 O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
 
 **Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, **motor gráfico**, **modo desktop**, como jogar, informações do sistema, reiniciar e desligar, com IP, endereço da página e uso de CPU, memória e disco.
 
-**Modo desktop** (Sistema > Modo desktop): Fluxbox com um pacote leve de programas: **navegador** (NetSurf), **arquivos** (PCManFM), **terminal**, **editor de texto** (nano), **vídeos e músicas** (mpv), **imagens** (feh), **PDF** (MuPDF) e **volume do som**. O menu abre com o botão direito ou **Alt + F1**. **O que o navegador baixa vai para "Jogos novos"** e entra sozinho no console certo (o T-OS não traz endereço de jogos). "Voltar ao modo jogo" reabre o ScrapCade. LibreOffice não existe no Buildroot.
+**Modo desktop** (Sistema > Modo desktop): Fluxbox com um pacote leve de programas: **navegador** (NetSurf), **arquivos** (PCManFM), **terminal**, **editor de texto** (nano), **vídeos e músicas** (mpv), **imagens** (feh), **PDF** (MuPDF) e **volume do som**. O menu abre com o botão direito ou **Alt + F1**. **O que o navegador baixa vai para "Jogos novos"** e entra sozinho no console certo (o ScrapCade não traz endereço de jogos). "Voltar ao modo jogo" reabre o ScrapCade. LibreOffice não existe no Buildroot.
 
 ## Pen drive com jogos
 
-Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o T-OS aberto: ele é lido **somente leitura**, os jogos que ainda não vieram são copiados para "Jogos novos" e vão sozinhos para o console certo. No fim aparece "Pode tirar". O T-OS lembra o que já copiou de cada pen drive.
+Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto: ele é lido **somente leitura**, os jogos que ainda não vieram são copiados para "Jogos novos" e vão sozinhos para o console certo. No fim aparece "Pode tirar". O ScrapCade lembra o que já copiou de cada pen drive.
 
 ## Instalar no computador
 
-**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do T-OS não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o T-OS no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
+**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do ScrapCade não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o ScrapCade no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
 
 ## O que cada parte faz
 
@@ -185,12 +198,12 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o T-OS aberto: ele
 
 1. **Ambiente:** Ubuntu 24.04 no WSL2 (Windows), com as ferramentas que o Buildroot exige (`build-essential`, `git`, `rsync`, `bc`, `cpio`, `unzip`, `wget`, `file`, `python3`, `libncurses-dev`...).
 2. **Buildroot 2026.02.3 (LTS)**, baixado do repositório oficial.
-3. **Árvore externa própria** (`external/`): tudo que é do T-OS fica separado do Buildroot. Assim dá para atualizar o Buildroot sem perder as mudanças.
+3. **Árvore externa própria** (`external/`): tudo que é do ScrapCade fica separado do Buildroot. Assim dá para atualizar o Buildroot sem perder as mudanças.
 4. **Configuração `tos_x86_64_defconfig`**, partindo da configuração de PC com UEFI do Buildroot, com:
-   - nome, versão e hostname do T-OS (`/etc/os-release`, `/etc/issue`);
+   - nome, versão e hostname do ScrapCade (`/etc/os-release`, `/etc/issue`);
    - compilador estável da Bootlin;
    - partição do sistema de 512 MB;
-   - menu do GRUB com o nome T-OS e espera de 1 segundo;
+   - menu do GRUB com o nome ScrapCade e espera de 1 segundo;
    - boot silencioso (`quiet`), sem os textos do kernel na tela;
    - pedido de senha do administrador no primeiro boot.
 5. **Compilação:** cerca de 27 minutos na primeira vez (Ryzen 7, 16 threads), poucos minutos nas seguintes.
@@ -201,13 +214,13 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o T-OS aberto: ele
 ```
 external/
   external.desc              nome da árvore externa (TOS)
-  Config.in, external.mk     pacotes próprios do T-OS
+  Config.in, external.mk     pacotes próprios do ScrapCade
   package/scrapcade/         menu de jogos (código em C, serviço de início)
   configs/
     tos_x86_64_defconfig     configuração da imagem para PC 64 bits
   board/
     x86_64/                  GRUB, kernel, scripts de imagem do PC (base do Buildroot)
-    common/rootfs-overlay/   arquivos que entram em todas as imagens (identidade do T-OS)
+    common/rootfs-overlay/   arquivos que entram em todas as imagens (identidade do ScrapCade)
 build-x86_64.sh              compila a imagem x64
 docs/capturas/               prints do sistema
 ```
@@ -218,7 +231,7 @@ No Ubuntu (ou WSL2 com Ubuntu):
 
 ```bash
 sudo apt install -y build-essential git rsync bc cpio unzip wget file python3 libncurses-dev perl patch gzip bzip2 tar
-git clone https://github.com/thiagotechmaker/t-os.git ~/t-os
+git clone https://github.com/thiagotechmaker/scrapcade.git ~/t-os
 git clone --depth 1 --branch 2026.02.3 https://gitlab.com/buildroot.org/buildroot.git ~/t-os/buildroot
 bash ~/t-os/build-x86_64.sh
 ```
@@ -233,7 +246,7 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
   -drive file=$HOME/t-os/output/x86_64/images/disk.img,format=raw,if=virtio -snapshot
 ```
 
-**Primeiro boot:** o T-OS pede para criar a senha do administrador (`root`) antes de liberar o login. A imagem não traz senha fixa, porque uma senha publicada seria a mesma em todo aparelho.
+**Primeiro boot:** o ScrapCade pede para criar a senha do administrador (`root`) antes de liberar o login. A imagem não traz senha fixa, porque uma senha publicada seria a mesma em todo aparelho.
 
 ![Primeiro boot](docs/capturas/4_primeiro_boot.png)
 
@@ -241,7 +254,7 @@ qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
 
 1. RetroArch e os primeiros núcleos (8/16 bits, PS1, N64).
 2. ScrapCade: abrir o emulador certo, painel Sistema (Select) e menu Select + Start durante o jogo.
-3. Logo de boot do T-OS e início direto no menu.
+3. Logo de boot do ScrapCade e início direto no menu.
 4. Transferência de jogos (página web, pasta na rede, pen drive) e menu Select + Start.
 5. Imagens x86 32 bits, Raspberry Pi e TV boxes.
 
@@ -249,4 +262,4 @@ As definições completas do sistema estão em [docs/DEFINICOES.md](docs/DEFINIC
 
 ## Licença
 
-Código do T-OS: **GPLv3** (ver [LICENSE](LICENSE)). Os arquivos em `external/board/x86_64/` vêm da configuração de PC do Buildroot (GPL-2.0 ou posterior). Os programas incluídos na imagem mantêm as licenças dos seus autores.
+Código do ScrapCade: **GPLv3** (ver [LICENSE](LICENSE)). Os arquivos em `external/board/x86_64/` vêm da configuração de PC do Buildroot (GPL-2.0 ou posterior). Os programas incluídos na imagem mantêm as licenças dos seus autores.

@@ -10,5 +10,5 @@ config BR2_PACKAGE_RETROARCH
 	select BR2_PACKAGE_FREETYPE
 	select BR2_PACKAGE_EUDEV
 	help
-	  RetroArch: roda os nucleos libretro (emuladores). No T-OS abre
+	  RetroArch: roda os nucleos libretro (emuladores). No ScrapCade abre
 	  direto pela placa de video (KMS), sem X, com o menu RGUI.

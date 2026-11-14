@@ -14,6 +14,6 @@ config BR2_PACKAGE_SCRAPCADE
 	select BR2_PACKAGE_OPENSSL
 	select BR2_PACKAGE_CA_CERTIFICATES
 	help
-	  ScrapCade: menu de jogos do T-OS (modo jogo), em C++ com SDL2.
+	  ScrapCade: menu de jogos do ScrapCade (modo jogo), em C++ com SDL2.
 	  Mesmo visual do ScrapCade do iChroma: dados dos jogos pelo CRC,
 	  capas do acervo libretro e organizacao da pasta "Jogos novos".

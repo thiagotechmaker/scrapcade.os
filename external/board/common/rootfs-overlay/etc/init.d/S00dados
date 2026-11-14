@@ -1,6 +1,6 @@
 #!/bin/sh
-# T-OS: particao de dados TOS-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
-# Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o T-OS
+# ScrapCade: particao de dados TOS-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
+# Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o ScrapCade
 # troca so o tos.squashfs da particao TOS-BOOT: a TOS-DADOS nunca e mexida.
 msg() { echo "$1" > /dev/console; }
 
@@ -19,7 +19,7 @@ criar() {
   [ "$tipo" = gpt ] && sfdisk --relocate gpt-bak-std "$dev" >/dev/null 2>&1
   livre=$(sfdisk -F "$dev" 2>/dev/null | sed -n 's/.* \([0-9]*\) bytes.*/\1/p' | head -1)
   [ -n "$livre" ] && [ "$livre" -gt 1073741824 ] || return 1   # menos de 1 GB livre: deixa quieto
-  msg "T-OS: criando a particao de dados (TOS-DADOS) no espaco livre do disco..."
+  msg "ScrapCade: criando a particao de dados (TOS-DADOS) no espaco livre do disco..."
   if [ "$tipo" = gpt ]; then novotipo=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7; else novotipo=7; fi
   echo ",,$novotipo" | sfdisk --append --no-reread "$dev" >/dev/null 2>&1 || return 1
   n=$(sfdisk -l "$dev" 2>/dev/null | grep -c "^$dev")
@@ -28,7 +28,7 @@ criar() {
   case "$disco" in nvme*|mmcblk*|loop*) novo=${dev}p$n ;; *) novo=$dev$n ;; esac
   [ -b "$novo" ] || return 1
   mkfs.exfat -L TOS-DADOS "$novo" >/dev/null 2>&1 || return 1
-  msg "T-OS: particao de dados pronta."
+  msg "ScrapCade: particao de dados pronta."
 }
 
 case "$1" in
@@ -37,11 +37,11 @@ case "$1" in
     # primeiro boot de um .iso gravado no pen drive: o sistema ja esta na memoria; arruma o pen drive
     if [ -f /run-tos-converter ]; then
       dev=$(cat /run-tos-converter); rm -f /run-tos-converter
-      msg "T-OS: arrumando o pen drive (so no primeiro boot, leva alguns minutos; nao desligue)..."
+      msg "ScrapCade: arrumando o pen drive (so no primeiro boot, leva alguns minutos; nao desligue)..."
       if /usr/bin/tos-instalar "$dev" converter >/dev/null 2>&1; then
-        msg "T-OS: pen drive pronto: sistema + particao de dados TOS-DADOS."
+        msg "ScrapCade: pen drive pronto: sistema + particao de dados TOS-DADOS."
       else
-        msg "T-OS: nao deu para arrumar o pen drive ($(cut -d' ' -f2- /tmp/tos-instalar.txt)); os jogos ficam na memoria."
+        msg "ScrapCade: nao deu para arrumar o pen drive ($(cut -d' ' -f2- /tmp/tos-instalar.txt)); os jogos ficam na memoria."
       fi
     fi
     d=$(dados)
@@ -52,10 +52,10 @@ case "$1" in
       # gravado pelo modo ISO do Rufus (sem espaco para particao): os dados ficam numa pasta do proprio pen drive
       mkdir -p /boot/tos-dados
       mount --bind /boot/tos-dados /userdata
-      msg "T-OS: jogos e saves na pasta tos-dados do pen drive."
+      msg "ScrapCade: jogos e saves na pasta tos-dados do pen drive."
     else
       mount -t tmpfs -o size=60% tmpfs /userdata
-      msg "T-OS: sem particao de dados; os jogos ficam na memoria ate desligar."
+      msg "ScrapCade: sem particao de dados; os jogos ficam na memoria ate desligar."
     fi
     mkdir -p /userdata/roms /userdata/bios /userdata/saves /userdata/themes "/userdata/Jogos novos" \
              /userdata/system/logs /userdata/system/connman

@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - rede: cabo e Wi-Fi pelo ConnMan. A senha do Wi-Fi vai num arquivo de configuracao do
+// ScrapCade - rede: cabo e Wi-Fi pelo ConnMan. A senha do Wi-Fi vai num arquivo de configuracao do
 // ConnMan (/var/lib/connman, guardado em TOS-DADOS/system/connman), e ele conecta sozinho nas proximas vezes.
 // Licenca: GPLv3.
 #pragma once

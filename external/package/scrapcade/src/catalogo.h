@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - consoles, jogos e pastas. Licenca: GPLv3.
+// ScrapCade - consoles, jogos e pastas. Licenca: GPLv3.
 #pragma once
 #include <algorithm>
 #include <cstdlib>

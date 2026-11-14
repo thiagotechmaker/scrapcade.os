@@ -1,5 +1,5 @@
 #!/bin/sh
-# T-OS: PipeWire + WirePlumber (som, fones e caixas Bluetooth). Os emuladores continuam usando o ALSA,
+# ScrapCade: PipeWire + WirePlumber (som, fones e caixas Bluetooth). Os emuladores continuam usando o ALSA,
 # que passa a tocar pelo PipeWire. Se o PipeWire nao subir, apaga o /etc/asound.conf e o som vai direto.
 export XDG_RUNTIME_DIR=/run/pipewire PIPEWIRE_RUNTIME_DIR=/run/pipewire
 case "$1" in

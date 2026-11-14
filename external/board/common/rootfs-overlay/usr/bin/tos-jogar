@@ -1,5 +1,5 @@
 #!/bin/sh
-# T-OS: abre o jogo no emulador certo, com a configuracao central, e volta para o ScrapCade.
+# ScrapCade: abre o jogo no emulador certo, com a configuracao central, e volta para o ScrapCade.
 # Uso: tos-jogar <console> <arquivo do jogo>
 export HOME=/userdata/system   # historico e favoritos do RetroArch ficam em TOS-DADOS
 SIS=$1

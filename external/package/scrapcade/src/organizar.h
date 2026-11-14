@@ -1,4 +1,4 @@
-// ScrapCade (T-OS) - caixa de entrada: tudo que cai em "Jogos novos" vai sozinho para a pasta do console.
+// ScrapCade - caixa de entrada: tudo que cai em "Jogos novos" vai sozinho para a pasta do console.
 // Conversao do Organizer.java do iChroma. Licenca: GPLv3.
 //
 //  - ROM solta: vai para o console pela extensao. .bin grande ou citado por um .cue: CD de PlayStation.
