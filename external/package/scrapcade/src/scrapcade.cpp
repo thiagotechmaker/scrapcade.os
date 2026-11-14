@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.3 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.4 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -766,7 +766,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_ENERGIA, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_ENERGIA, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static std::string perfilNome();
@@ -845,6 +845,7 @@ static std::string optLabel(int i) {
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_BIOS: return "BIOS dos consoles";
+    case OPT_ATUALIZAR: return "Atualizar o T-OS";
     case OPT_INSTALL: return "Instalar no disco do computador";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
@@ -996,7 +997,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.3" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.4" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -1438,6 +1439,103 @@ static void drawControle() {
     G.roundRect(x + 14 * u, top + 88 * u, std::max(6 * u, bw * ctlStep / NPASSOS), 6 * u, 3 * u, 0xFF2CCF9A);
 }
 
+// ------------------------------------------------------------------ atualizar o T-OS (tos-atualizar, A/B)
+
+static int updStage = 0;   // 0 fechado, 1 procurando, 2 resultado da procura, 3 baixando, 4 terminou
+static std::string updAtual, updNova, updMB, updMsg;
+static int updPct = 0;
+static std::mutex updMu;
+
+static std::string versaoBonita(const std::string &b) {   // 202611132145 -> 13/11/2026 21:45
+    if (b.size() < 12) return b;
+    return b.substr(6, 2) + "/" + b.substr(4, 2) + "/" + b.substr(0, 4) + " " + b.substr(8, 2) + ":" + b.substr(10, 2);
+}
+
+static void abrirAtualizar() {
+    updStage = 1;
+    std::thread([] {
+        std::string r = Rede::run("/usr/bin/tos-atualizar verificar");
+        while (!r.empty() && (r.back() == '\n' || r.back() == '\r')) r.pop_back();
+        std::vector<std::string> f;
+        std::stringstream ss(r);
+        std::string x;
+        while (std::getline(ss, x, '|')) f.push_back(x);
+        std::lock_guard<std::mutex> l(updMu);
+        updAtual = f.size() > 0 ? f[0] : "";
+        updNova = f.size() > 1 ? f[1] : "erro";
+        updMB = f.size() > 2 ? f[2] : "0";
+        updStage = 2;
+        redraw();
+    }).detach();
+}
+
+static void instalarAtualizacao() {
+    remove("/tmp/tos-atualizar.txt");
+    updPct = 0;
+    updMsg = "Começando";
+    updStage = 3;
+    std::thread([] {
+        if (system("/usr/bin/tos-atualizar instalar >> /userdata/system/logs/atualizar.log 2>&1") != 0) {}
+    }).detach();
+}
+
+static void drawAtualizar() {
+    if (!updStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), lh = 15 * u;
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t cc = 0xFF2B2E33) { L.push_back(t); C.push_back(cc); };
+    std::string atual, nova, mb;
+    {
+        std::lock_guard<std::mutex> l(updMu);
+        atual = updAtual; nova = updNova; mb = updMB;
+    }
+    const char *H2[] = {"a", "atualizar", "b", "voltar"};
+    const char *H1[] = {"b", "voltar"};
+    const char *const *H = H1;
+    int nh = 2;
+    if (updStage == 1) {
+        add("Procurando a versão mais nova...");
+    } else if (updStage == 2) {
+        add("Versão instalada: " + versaoBonita(atual));
+        if (nova == "erro") {
+            add("Não deu para procurar: confira a internet (Rede e Wi-Fi).", 0xFFD0362B);
+        } else if (nova.empty()) {
+            add("O T-OS já está na versão mais nova.", 0xFF1E9C4A);
+        } else {
+            add("Versão nova: " + versaoBonita(nova) + "   (" + mb + " MB)", 0xFF1E9C4A);
+            add("");
+            add("Os jogos e os saves não são mexidos. A versão de agora fica guardada:");
+            add("se a nova não ligar, o T-OS volta para ela sozinho.", 0xFF5E6269);
+            H = H2;
+            nh = 4;
+        }
+    } else {
+        if (updStage == 3) {
+            std::ifstream in("/tmp/tos-atualizar.txt");
+            int pc = 0;
+            std::string msg;
+            if (in >> pc) { std::getline(in, msg); updPct = pc; if (!msg.empty()) updMsg = msg.substr(1); }
+            if (updPct >= 100 || updMsg.rfind("ERRO", 0) == 0) updStage = 4;
+        }
+        bool erro = updMsg.rfind("ERRO", 0) == 0;
+        add(updStage == 3 ? "Atualizando... não desligue." : (erro ? "A atualização não terminou." : "T-OS atualizado!"),
+            erro ? 0xFFD0362B : 0xFF2B2E33);
+        add(updMsg + (updStage == 3 ? "  (" + std::to_string(updPct) + "%)" : ""), erro ? 0xFFD0362B : 0xFF1E9C4A);
+        nh = updStage == 4 ? 2 : 0;
+    }
+    float h = 22 * u + 16 * u + L.size() * lh + 22 * u + (updStage == 3 ? 14 * u : 0);
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Atualizar o T-OS", x, y, w, h) + 12 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    if (updStage == 3) {
+        float by = top + L.size() * lh, bw = w - 28 * u;
+        G.roundRect(x + 14 * u, by, bw, 8 * u, 4 * u, 0xFFE3E5E8);
+        G.roundRect(x + 14 * u, by, std::max(8 * u, bw * updPct / 100.0f), 8 * u, 4 * u, 0xFF2CCF9A);
+    }
+    if (nh) panelHints(H, nh, x, y + h, w);
+}
+
 // ------------------------------------------------------------------ instalar no disco (tos-instalar)
 
 static int instStage = 0;   // 0 fechado, 1 escolher o disco, 2 confirmar, 3 instalando, 4 terminou
@@ -1619,6 +1717,7 @@ static void optAction(int dir) {
         return;
     case OPT_HELP: if (dir == 0) { sysOpen = false; openHelp(); } return;
     case OPT_INSTALL: if (dir == 0) { sysOpen = false; openInstall(); } return;
+    case OPT_ATUALIZAR: if (dir == 0) { sysOpen = false; abrirAtualizar(); } return;
     case OPT_BIOS:
         if (dir != 0) return;
         sysOpen = false;
@@ -1679,6 +1778,18 @@ static bool netInput(int b) {
     return true;
 }
 
+static bool updInput(int b) {
+    if (!updStage) return false;
+    std::string nova;
+    {
+        std::lock_guard<std::mutex> l(updMu);
+        nova = updNova;
+    }
+    if (updStage == 2 && b == B_A && !nova.empty() && nova != "erro") instalarAtualizacao();
+    else if ((updStage == 2 || updStage == 4) && (b == B_B || b == B_A)) { updStage = 0; sysOpen = true; }
+    return true;
+}
+
 static bool btInput(int b) {
     if (!btStage) return false;
     int n;
@@ -1721,6 +1832,7 @@ static bool panelInput(Btn b) {
     if (perfisInput(b)) return true;
     if (netInput(b)) return true;
     if (btInput(b)) return true;
+    if (updInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -2142,6 +2254,7 @@ static void render() {
     drawInstall();
     drawRede();
     drawBluetooth();
+    drawAtualizar();
     drawControle();
     drawTeclado();
     drawToast();
@@ -2186,7 +2299,7 @@ static std::string coreOf(const std::string &id) {
         {"nes", "mesen"}, {"snes", "snes9x"}, {"megadrive", "genesis_plus_gx"}, {"gb", "gambatte"},
         {"gbc", "gambatte"}, {"gba", "mgba"}, {"psx", "pcsx_rearmed"}, {"n64", "mupen64plus_next"},
         {"arcade", "fbneo"}, {"neogeo", "fbneo"}, {"psp", "ppsspp"}, {"nds", "melonds"},
-        {"saturn", "mednafen_saturn"}};
+        {"saturn", "mednafen_saturn"}, {"dreamcast", "flycast"}};
     auto it = m.find(id);
     return it == m.end() ? "" : it->second;
 }
@@ -2519,7 +2632,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -2539,8 +2652,13 @@ int main() {
             }
         }
         Uint32 now = SDL_GetTicks();
+        static bool confirmado = false;
+        if (!confirmado && now > 60000) {
+            confirmado = true;
+            std::thread([] { if (system("/usr/bin/tos-atualizar confirmar") != 0) {} }).detach();
+        }
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -2559,7 +2677,7 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage) && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage) && now - lastBars > 1000;
         if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {

@@ -139,6 +139,7 @@ static std::string folder(const std::string &file) {
         {"gamecube", {".gcm", ".ciso"}},
         {"wii", {".wbfs"}},
         {"psp", {".cso"}},
+        {"dreamcast", {".cdi", ".gdi"}},
         {"dos", {".dosz"}},
         {"?", {".iso", ".rvz"}},
     };

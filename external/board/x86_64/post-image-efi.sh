@@ -36,3 +36,12 @@ SL=$(ls "$BUILD_DIR"/syslinux-*/bios/mtools/syslinux | head -1)
 "$SL" --offset 1048576 --directory /syslinux --install "$BINARIES_DIR/disk.img"
 dd if="$BINARIES_DIR/syslinux/mbr.bin" of="$BINARIES_DIR/disk.img" bs=440 count=1 conv=notrunc status=none
 sh "$B/make-iso.sh"
+
+# T-OS: arquivos para publicar como versao nova (GitHub Releases, tag v<BUILD_ID>): o tos-atualizar baixa estes
+U=$BINARIES_DIR/atualizacao
+rm -rf "$U"; mkdir -p "$U"
+cp "$BINARIES_DIR/rootfs.squashfs" "$U/tos.squashfs"
+cp "$BINARIES_DIR/bzImage" "$U/bzImage"
+cp "$BINARIES_DIR/tos-initrd.gz" "$U/initrd.gz"
+( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz > SHA256SUMS )
+sed -n 's/^BUILD_ID=//p' "$TARGET_DIR/etc/os-release" > "$U/BUILD_ID"

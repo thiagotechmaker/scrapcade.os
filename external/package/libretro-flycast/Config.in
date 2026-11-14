@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_FLYCAST
+	bool "libretro-flycast"
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Nucleo libretro Flycast (Dreamcast, NAOMI, Atomiswave).

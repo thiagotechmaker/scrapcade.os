@@ -25,7 +25,32 @@ if [ -z "$achou" ]; then
   exec sh
 fi
 
-mount -t squashfs -o ro /boot/boot/tos.squashfs /lower
+# atualizacao A/B: "tos.sistema=" no menu de boot escolhe o arquivo (versao anterior)
+SIS=tos.squashfs
+for a in $(cat /proc/cmdline); do case "$a" in tos.sistema=*) SIS=${a#tos.sistema=} ;; esac; done
+# versao nova ainda em teste: conta as tentativas; na terceira sem chegar ao ScrapCade, volta para a anterior
+if [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boot/tos-anterior.squashfs ]; then
+  mount -o remount,rw /boot 2>/dev/null
+  n=$(cat /boot/boot/tos-testando 2>/dev/null); n=$((${n:-0} + 1))
+  if [ "$n" -ge 3 ]; then
+    echo "T-OS: a versao nova nao ligou 3 vezes; voltando para a anterior."
+    cd /boot/boot
+    mv tos.squashfs tos-com-problema.squashfs
+    mv tos-anterior.squashfs tos.squashfs
+    [ -f bzImage-anterior ] && mv bzImage bzImage-com-problema && mv bzImage-anterior bzImage
+    [ -f initrd-anterior.gz ] && mv initrd.gz initrd-com-problema.gz && mv initrd-anterior.gz initrd.gz
+    rm -f tos-testando
+    cd /
+    sync
+    mount -o remount,ro /boot 2>/dev/null
+    echo b > /proc/sysrq-trigger 2>/dev/null || reboot -f
+  fi
+  echo "$n" > /boot/boot/tos-testando
+  sync
+  mount -o remount,ro /boot 2>/dev/null
+fi
+[ -f "/boot/boot/$SIS" ] || SIS=tos.squashfs
+mount -t squashfs -o ro "/boot/boot/$SIS" /lower
 mount -t tmpfs -o mode=755 tmpfs /rw
 mkdir -p /rw/upper /rw/work
 mount -t overlay overlay -o lowerdir=/lower,upperdir=/rw/upper,workdir=/rw/work /newroot

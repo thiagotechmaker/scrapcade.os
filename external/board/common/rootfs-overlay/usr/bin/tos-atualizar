@@ -1,0 +1,70 @@
+#!/bin/sh
+# T-OS: atualizacao segura A/B pelas GitHub Releases do projeto.
+#   tos-atualizar verificar  -> "atual|nova|MB" (nova vazia = ja esta em dia; "erro" = sem internet)
+#   tos-atualizar instalar   -> baixa, confere o SHA-256 e troca; a versao de agora vira a "anterior"
+#   tos-atualizar confirmar  -> a versao nova ligou bem (o ScrapCade chama): nao volta mais sozinha
+# Progresso em /tmp/tos-atualizar.txt ("porcentagem mensagem"), mostrado no painel Sistema.
+REPO=thiagotechmaker/t-os
+API=https://api.github.com/repos/$REPO/releases/latest
+P=/tmp/tos-atualizar.txt
+D=/boot/boot
+p() { echo "$1 $2" > $P; }
+atual() { sed -n 's/^BUILD_ID=//p' /etc/os-release; }
+
+info() {   # baixa a descricao da ultima versao publicada (404 = nenhuma versao publicada ainda: conta como em dia)
+  c=$(curl -sSL -m 20 -H "Accept: application/vnd.github+json" "$API" -o /tmp/tos-release.json -w '%{http_code}' 2>/dev/null)
+  [ "$c" = 404 ] && : > /tmp/tos-release.json
+  [ "$c" = 200 ] || [ "$c" = 404 ]
+}
+asset() {   # endereco de download de um arquivo da versao
+  grep -o "\"browser_download_url\": *\"[^\"]*/$1\"" /tmp/tos-release.json | sed 's/.*"\(http[^"]*\)"/\1/'
+}
+nova() {   # numero da compilacao da versao publicada (tag "v<BUILD_ID>")
+  sed -n 's/.*"tag_name": *"v\{0,1\}\([0-9]\{12\}\)".*/\1/p' /tmp/tos-release.json | head -1
+}
+
+case "$1" in
+  verificar)
+    info || { echo "$(atual)|erro|0"; exit 0; }
+    n=$(nova)
+    tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
+    if [ -n "$n" ] && [ "$n" -gt "$(atual)" ] 2>/dev/null; then echo "$(atual)|$n|$(( ${tam:-0} / 1048576 ))"
+    else echo "$(atual)||0"; fi
+    ;;
+  instalar)
+    grep -q " /boot vfat" /proc/mounts || { p 0 "ERRO: este T-OS roda de um .iso ou DVD: grave a imagem nova no pen drive"; exit 1; }
+    p 2 "Procurando a versão nova"
+    info || { p 0 "ERRO: sem internet"; exit 1; }
+    n=$(nova)
+    [ -n "$n" ] && [ "$n" -gt "$(atual)" ] || { p 0 "ERRO: já está na versão mais nova"; exit 1; }
+    mount -o remount,rw /boot || { p 0 "ERRO: não consegui gravar no pen drive"; exit 1; }
+    T=$D/novo
+    rm -rf $T; mkdir -p $T
+    i=0
+    for f in tos.squashfs bzImage initrd.gz SHA256SUMS; do
+      i=$((i + 1))
+      p $((5 + i * 20)) "Baixando $f"
+      u=$(asset $f)
+      [ -n "$u" ] && curl -fsSL -m 3600 "$u" -o $T/$f || { rm -rf $T; mount -o remount,ro /boot; p 0 "ERRO: download de $f falhou"; exit 1; }
+    done
+    p 88 "Conferindo os arquivos (SHA-256)"
+    ( cd $T && grep -E " (tos.squashfs|bzImage|initrd.gz)$" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
+      || { rm -rf $T; mount -o remount,ro /boot; p 0 "ERRO: os arquivos baixados não conferem; nada foi trocado"; exit 1; }
+    p 94 "Trocando (a versão de agora fica guardada como anterior)"
+    cd $D
+    mv tos.squashfs tos-anterior.squashfs
+    mv bzImage bzImage-anterior
+    mv initrd.gz initrd-anterior.gz
+    mv $T/tos.squashfs $T/bzImage $T/initrd.gz .
+    rm -rf $T tos-com-problema.squashfs bzImage-com-problema initrd-com-problema.gz
+    echo 0 > tos-testando
+    sync
+    mount -o remount,ro /boot
+    p 100 "Pronto! Reinicie para usar a versão nova."
+    ;;
+  confirmar)
+    [ -f $D/tos-testando ] || exit 0
+    mount -o remount,rw /boot && rm -f $D/tos-testando && sync && mount -o remount,ro /boot
+    ;;
+esac
+exit 0

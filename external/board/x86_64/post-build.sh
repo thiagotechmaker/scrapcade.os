@@ -53,3 +53,7 @@ esac >/dev/null 2>&1
 exit 0
 EOF
 chmod 755 "$TARGET_DIR/etc/init.d/S91tos-rede"
+
+# T-OS: numero da compilacao (ano mes dia hora minuto); a atualizacao so troca por uma mais nova
+sed -i '/^BUILD_ID=/d' "$TARGET_DIR/etc/os-release"
+echo "BUILD_ID=$(date +%Y%m%d%H%M)" >> "$TARGET_DIR/etc/os-release"

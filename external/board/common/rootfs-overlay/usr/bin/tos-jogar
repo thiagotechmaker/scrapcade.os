@@ -19,6 +19,7 @@ case "$SIS" in
   psp) CORE=ppsspp ;;
   nds) CORE=melonds ;;
   saturn) CORE=mednafen_saturn ;;
+  dreamcast) CORE=flycast ;;
   *) CORE="" ;;
 esac
 # o ScrapCade pode mandar o nucleo escolhido pelo usuario (ex.: bsnes no lugar do snes9x)
