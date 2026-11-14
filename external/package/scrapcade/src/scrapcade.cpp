@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.2 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.3 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -70,6 +70,84 @@ struct Perfil { std::string id, nome, hash; int avatar; };
 extern std::vector<Perfil> perfis;
 extern int perfilAtual;
 static void drawAvatar(const Perfil *p, int av, float x, float y, float s);
+static std::string emuNome(const Sys *s);
+static bool servico(const std::string &nome, const char *padrao);
+static void redraw();
+// Consoles com mais de um emulador: o primeiro e o padrao
+struct Nucleo { const char *so, *nome; };
+static std::vector<Nucleo> nucleos(const std::string &id) {
+    if (id == "snes") return {{"snes9x", "Snes9x"}, {"bsnes", "bsnes (mais preciso, mais pesado)"}};
+    return {};
+}
+
+// ------------------------------------------------------------------ bateria (notebooks) e modos de energia
+// Le direto do kernel (/sys/class/power_supply e /sys/devices/system/cpu), sem programa extra.
+
+struct Bateria { bool tem = false, carregando = false; int pct = 0; };
+static std::string lerSys(const std::string &p) {
+    std::ifstream in(p);
+    std::string v;
+    std::getline(in, v);
+    return v;
+}
+static Bateria lerBateria() {
+    Bateria b;
+    DIR *d = opendir("/sys/class/power_supply");
+    if (!d) return b;
+    while (dirent *e = readdir(d)) {
+        std::string n = e->d_name, base = "/sys/class/power_supply/" + n;
+        if (n[0] == '.' || lerSys(base + "/type") != "Battery") continue;
+        std::string c = lerSys(base + "/capacity");
+        if (c.empty()) continue;
+        b.tem = true;
+        b.pct = atoi(c.c_str());
+        std::string st = lerSys(base + "/status");
+        b.carregando = st == "Charging" || st == "Full";
+        break;
+    }
+    closedir(d);
+    return b;
+}
+
+static const char *ENERGIA[] = {"Economia", "Moderado", "Máximo"};
+static int energia = 1;
+static const std::string ENERGIA_FILE = "/userdata/system/configs/energia";
+
+static bool energiaDisponivel() { return isFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"); }
+
+static void escreverSys(const std::string &p, const std::string &v) {
+    FILE *f = fopen(p.c_str(), "w");
+    if (f) { fputs(v.c_str(), f); fclose(f); }
+}
+
+// Economia: menos frequencia e sem turbo. Moderado: equilibrado. Maximo: frequencia alta o tempo todo.
+static void aplicarEnergia(int m) {
+    energia = std::max(0, std::min(2, m));
+    std::string driver = lerSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver");
+    bool pstate = driver == "intel_pstate" || driver == "amd-pstate-epp";
+    std::string disp = lerSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors");
+    std::string gov;
+    if (pstate) gov = energia == 2 ? "performance" : "powersave";   // nesses drivers o EPP faz o ajuste fino
+    else if (energia == 0) gov = "powersave";
+    else if (energia == 2) gov = "performance";
+    else gov = disp.find("schedutil") != std::string::npos ? "schedutil" : "ondemand";
+    static const char *EPP[] = {"power", "balance_performance", "performance"};
+    DIR *d = opendir("/sys/devices/system/cpu");
+    while (d) {
+        dirent *e = readdir(d);
+        if (!e) break;
+        std::string n = e->d_name;
+        if (n.compare(0, 3, "cpu") != 0 || !isdigit((unsigned char)n[3 < n.size() ? 3 : 0])) continue;
+        std::string c = "/sys/devices/system/cpu/" + n + "/cpufreq/";
+        escreverSys(c + "scaling_governor", gov);
+        if (pstate) escreverSys(c + "energy_performance_preference", EPP[energia]);
+    }
+    if (d) closedir(d);
+    escreverSys("/sys/devices/system/cpu/intel_pstate/no_turbo", energia == 0 ? "1" : "0");
+    escreverSys("/sys/devices/system/cpu/cpufreq/boost", energia == 0 ? "0" : "1");
+    mkdirs("/userdata/system/configs");
+    std::ofstream(ENERGIA_FILE) << energia << "\n";
+}
 
 static bool isFav(const Game &g) { return prefs.count("fav|" + g.key()) > 0; }
 static int plays(const Game &g) {
@@ -528,7 +606,7 @@ static void topBar(const Game *g) {
     x += 92 * u + 8 * u;
     G.fillRect(x, cy - 7 * u, std::max(1.0f, 0.7f * u), 14 * u, 0x55FFFFFF);
     x += 7 * u + std::max(1.0f, 0.7f * u);
-    if (g) T.draw(g->sys->emu, x, cy, 8, false, 0xCCFFFFFF, 0, G.W * 0.30f - x);
+    if (g) T.draw(emuNome(g->sys), x, cy, 8, false, 0xCCFFFFFF, 0, G.W * 0.30f - x);
     // filtro no meio
     if (filters.size() >= 2) {
         std::string f = filterName(filter) + "  (" + std::to_string(view.size()) + ")";
@@ -551,9 +629,24 @@ static void topBar(const Game *g) {
     static Uint32 ipAt = 0;
     if (!ipAt || SDL_GetTicks() - ipAt > 5000) { ip = ipAddr(); ipAt = SDL_GetTicks(); }
     float rx = G.W - 10 * u;
+    static Bateria bat;
+    static Uint32 batAt = 0;
+    if (!batAt || SDL_GetTicks() - batAt > 30000) { bat = lerBateria(); batAt = SDL_GetTicks(); }
+    float bloco = std::max(T.width(hora, 12.5f, true), T.width(std::string(data) + "  •  " + ip, 7, false));
+    float ax = rx - bloco - 12 * u;
+    if (bat.tem) {   // bateria do notebook: icone, porcentagem e raio quando esta na tomada
+        std::string pc = std::to_string(bat.pct) + "%";
+        float tw = T.width(pc, 9, true), bw = 16 * u, bh = 8 * u, bx = ax - tw - bw - 8 * u, by = cy - bh / 2;
+        uint32_t cb = bat.pct <= 15 && !bat.carregando ? 0xFFE0564A : 0xFFFFFFFF;
+        G.roundRectStroke(bx, by, bw, bh, 1.5f * u, std::max(1.0f, 0.8f * u), cb);
+        G.fillRect(bx + bw, by + bh * 0.3f, 1.6f * u, bh * 0.4f, cb);
+        G.fillRect(bx + 1.6f * u, by + 1.6f * u, (bw - 3.2f * u) * std::min(100, bat.pct) / 100.0f, bh - 3.2f * u, cb);
+        T.draw(pc, bx + bw + 3 * u + tw, cy, 9, true, cb, 2);
+        if (bat.carregando) T.draw("⚡", bx - 2 * u, cy, 9, true, 0xFFFFD34E, 2);
+        ax = bx - (bat.carregando ? 14 : 6) * u;
+    }
     if (perfilAtual >= 0) {   // quem esta jogando, ao lado do relogio
-        float bloco = std::max(T.width(hora, 12.5f, true), T.width(std::string(data) + "  •  " + ip, 7, false));
-        float ax = rx - bloco - 12 * u - 19 * u;
+        ax -= 19 * u;
         drawAvatar(&perfis[perfilAtual], 0, ax, cy - 9.5f * u, 19 * u);
         T.draw(perfis[perfilAtual].nome, ax - 6 * u, cy, 9.5f, true, 0xFFFFFFFF, 2, 120 * u);
     }
@@ -637,7 +730,8 @@ static void drawDetails() {
     float u = G.u;
     G.fillRect(0, 0, float(G.W), float(G.H), 0xA0000000);
     std::vector<std::string> L;
-    L.push_back("Console: " + g->sys->name + "     Emulador: " + g->sys->emu);
+    L.push_back("Console: " + g->sys->name + "     Emulador: " + emuNome(g->sys) +
+                (nucleos(g->sys->id).size() > 1 ? "   (X troca)" : ""));
     Meta::Info m;
     bool has = Meta::get(g->key(), m);
     if (has && (!m.year.empty() || !m.dev.empty() || !m.genre.empty())) {
@@ -672,7 +766,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_ENERGIA, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static std::string perfilNome();
@@ -733,6 +827,8 @@ static void readUsage() {
 static std::string optLabel(int i) {
     switch (i) {
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
+    case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
+                                                 : "Energia:   (este computador não permite ajustar)";
     case OPT_THEME: return std::string("Tema:   ‹ ") + THEME_NAMES[theme] + " ›";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
@@ -742,6 +838,9 @@ static std::string optLabel(int i) {
     case OPT_VOLUME: return volume < 0 ? "Volume:   (sem placa de som)" :
                             std::string("Volume:   ‹ ") + (volume == 0 ? "mudo" : std::to_string(volume) + "%") + " ›   A testa";
     case OPT_REDE: return "Rede e Wi-Fi";
+    case OPT_BLUETOOTH: return "Bluetooth (controles sem fio)";
+    case OPT_SAMBA: return std::string("Pasta na rede do Windows:   ‹ ") + (servico("samba", "on") ? "Ligada" : "Desligada") + " ›";
+    case OPT_SSH: return std::string("Acesso remoto (SSH):   ‹ ") + (servico("ssh", "off") ? "Ligado" : "Desligado") + " ›";
     case OPT_CONTROLE: return "Configurar controle";
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
@@ -796,14 +895,19 @@ static std::string ipAddr();
 static void drawSystem() {
     if (!sysOpen) return;
     float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u);
-    float rowH = std::min(15 * u, (G.H - 96 * u) / OPT_COUNT - 1.6f * u);
-    float h = 22 * u + 10 * u + OPT_COUNT * (rowH + 1.6f * u) + 14 * u + 22 * u;
+    float rowH = 15 * u;
+    // muitas opcoes: mostra as que cabem e rola junto com a selecao
+    int vis = std::max(4, std::min(int(OPT_COUNT), int((G.H - 110 * u) / (rowH + 1.6f * u))));
+    int first = std::max(0, std::min(OPT_COUNT - vis, optSel - vis / 2));
+    float h = 22 * u + 10 * u + vis * (rowH + 1.6f * u) + 14 * u + 22 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
     float top = whitePanel("Sistema", x, y, w, h) + 8 * u;
     float lx = x + 12 * u, lw = (w - 24 * u) * 0.53f, rx = lx + lw + 14 * u, rw = x + w - 12 * u - rx;
     T.draw("Opções", lx, top + 5 * u, 11, false, 0xFF2B2E33);
-    for (int i = 0; i < OPT_COUNT; i++) {
-        float ry = top + 13 * u + i * (rowH + 1.6f * u);
+    if (first > 0) T.draw("▲", lx + lw, top + 5 * u, 8, false, 0xFF5E6269, 2);
+    if (first + vis < OPT_COUNT) T.draw("▼", lx + lw, top + 13 * u + vis * (rowH + 1.6f * u) + 3 * u, 8, false, 0xFF5E6269, 2);
+    for (int i = first; i < first + vis; i++) {
+        float ry = top + 13 * u + (i - first) * (rowH + 1.6f * u);
         G.fillRect(lx, ry, lw, rowH, i == optSel ? 0xFF2CCF9A : 0xFF4A4D52);
         T.draw(optLabel(i), lx + 8 * u, ry + rowH / 2, 9.5f, false, 0xFFFFFFFF, 0, lw - 16 * u);
     }
@@ -892,7 +996,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.2" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.3" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -930,6 +1034,139 @@ static void powerOff(bool restart) {
 
 static void clearCards();
 static void clearBacks();
+
+// ------------------------------------------------------------------ Samba e SSH (liga e desliga)
+
+static bool servico(const std::string &nome, const char *padrao) {
+    std::ifstream in("/userdata/system/configs/" + nome);
+    std::string v;
+    if (!(in >> v)) v = padrao;
+    return v == "on";
+}
+static void trocarServico(const std::string &nome, const char *padrao) {
+    bool on = !servico(nome, padrao);
+    mkdirs("/userdata/system/configs");
+    std::ofstream("/userdata/system/configs/" + nome) << (on ? "on" : "off") << "\n";
+    std::thread([] { if (system("/etc/init.d/S91tos-rede restart") != 0) {} }).detach();
+    if (nome == "samba") toast(on ? "Pasta na rede ligada: no Windows, abra \\\\T-OS\\jogos" : "Pasta na rede desligada.", 4000);
+    else toast(on ? "SSH ligado: entre com root e a senha do administrador." : "SSH desligado.", 4000);
+}
+
+// ------------------------------------------------------------------ Bluetooth (bluetoothctl)
+
+struct Disp { std::string mac, nome; bool pareado; };
+static int btStage = 0;   // 0 fechado, 1 lista, 2 conectando, 3 resultado
+static std::vector<Disp> btLista;
+static bool btBusy = false;
+static int btSel = 0;
+static std::string btMsg;
+static std::mutex btMu;
+
+static bool temBluetooth() {
+    DIR *d = opendir("/sys/class/bluetooth");
+    if (!d) return false;
+    bool tem = false;
+    while (dirent *e = readdir(d)) if (e->d_name[0] != '.') tem = true;
+    closedir(d);
+    return tem;
+}
+
+static std::vector<Disp> btDevices(const std::string &filtro) {
+    std::vector<Disp> v;
+    std::stringstream ss(Rede::run("bluetoothctl devices " + filtro));
+    std::string l;
+    while (std::getline(ss, l)) {   // "Device AA:BB:CC:DD:EE:FF Nome"
+        if (l.compare(0, 7, "Device ") != 0 || l.size() < 25) continue;
+        std::string mac = l.substr(7, 17), nome = l.size() > 25 ? l.substr(25) : mac;
+        v.push_back({mac, nome, false});
+    }
+    return v;
+}
+
+static void btScan() {
+    if (btBusy) return;
+    btBusy = true;
+    std::thread([] {
+        Rede::run("bluetoothctl power on");
+        Rede::run("bluetoothctl --timeout 10 scan on");
+        auto todos = btDevices("");
+        auto par = btDevices("Paired");
+        for (auto &d : todos)
+            for (auto &p : par)
+                if (p.mac == d.mac) d.pareado = true;
+        std::sort(todos.begin(), todos.end(), [](const Disp &a, const Disp &b) { return a.pareado > b.pareado; });
+        std::lock_guard<std::mutex> l(btMu);
+        btLista = todos;
+        btBusy = false;
+        redraw();
+    }).detach();
+}
+
+static void btConnect() {
+    Disp d;
+    {
+        std::lock_guard<std::mutex> l(btMu);
+        if (btSel >= int(btLista.size())) return;
+        d = btLista[btSel];
+    }
+    btStage = 2;
+    std::thread([d] {
+        if (!d.pareado) Rede::run("bluetoothctl --timeout 15 pair " + d.mac);
+        Rede::run("bluetoothctl trust " + d.mac);
+        std::string r = Rede::run("bluetoothctl --timeout 10 connect " + d.mac);
+        bool ok = r.find("Connection successful") != std::string::npos ||
+                  Rede::run("bluetoothctl info " + d.mac).find("Connected: yes") != std::string::npos;
+        std::lock_guard<std::mutex> l(btMu);
+        btMsg = ok ? d.nome + " conectado. Nas próximas vezes ele conecta sozinho."
+                   : "Não conectou em " + d.nome + ". Deixe o controle em modo de pareamento e tente de novo.";
+        btStage = 3;
+        redraw();
+    }).detach();
+}
+
+static void drawBluetooth() {
+    if (!btStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u), lh = 14 * u;
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t cc = 0xFF2B2E33) { L.push_back(t); C.push_back(cc); };
+    std::vector<Disp> v;
+    bool busy;
+    {
+        std::lock_guard<std::mutex> l(btMu);
+        v = btLista;
+        busy = btBusy;
+    }
+    const char *H1[] = {"ud", "escolher", "a", "conectar", "x", "procurar de novo", "b", "voltar"};
+    const char *H3[] = {"b", "voltar"};
+    const char *const *H = H1;
+    int nh = 8;
+    if (btStage == 1) {
+        if (!temBluetooth()) {
+            add("Nenhum Bluetooth encontrado neste computador.", 0xFFD0362B);
+            add("Um adaptador USB de Bluetooth resolve (são baratos).", 0xFF5E6269);
+        } else {
+            add("Coloque o controle em modo de pareamento:", 0xFF5E6269);
+            add("PS4/PS5: Share + PS   •   Switch: botão do pareamento   •   Xbox: botão de conectar", 0xFF5E6269);
+            add("");
+            if (busy && v.empty()) add("Procurando...");
+            else if (v.empty()) add("Nenhum aparelho encontrado. Aperte X para procurar de novo.");
+            for (size_t i = 0; i < v.size() && i < 9; i++)
+                add(std::string(int(i) == btSel ? "▶  " : "    ") + v[i].nome + (v[i].pareado ? "   (pareado)" : ""),
+                    int(i) == btSel ? 0xFF1E9C4A : 0xFF2B2E33);
+            if (busy && !v.empty()) add("procurando mais...", 0xFF5E6269);
+        }
+    } else {
+        add(btStage == 2 ? "Conectando..." : btMsg, btMsg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
+        H = H3;
+        nh = btStage == 2 ? 0 : 2;
+    }
+    float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Bluetooth", x, y, w, h) + 10 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    if (nh) panelHints(H, nh, x, y + h, w);
+}
 
 // ------------------------------------------------------------------ som (amixer) e teste de som
 
@@ -1342,12 +1579,27 @@ static void optAction(int dir) {
         return;
     }
     case OPT_PERFIL: if (dir == 0) { sysOpen = false; abrirPerfis(); } return;
+    case OPT_ENERGIA:
+        if (!energiaDisponivel()) return;
+        aplicarEnergia((energia + (dir == 0 ? 1 : dir) + 3) % 3);
+        toast(std::string("Energia: ") + ENERGIA[energia] +
+              (energia == 0 ? " (bateria dura mais)" : energia == 2 ? " (o mais rápido possível)" : ""), 2500);
+        return;
     case OPT_VOLUME:
         if (volume == -2) readVolume();
         if (dir == 0) testSound();
         else setVolume((volume < 0 ? 0 : volume) + dir * 10);
         return;
     case OPT_REDE: if (dir == 0) { sysOpen = false; openRede(); } return;
+    case OPT_BLUETOOTH:
+        if (dir != 0) return;
+        sysOpen = false;
+        btStage = 1;
+        btSel = 0;
+        btScan();
+        return;
+    case OPT_SAMBA: trocarServico("samba", "on"); return;
+    case OPT_SSH: trocarServico("ssh", "off"); return;
     case OPT_CONTROLE:
         if (dir != 0) return;
         if (SDL_NumJoysticks() == 0) { toast("Ligue um controle primeiro.", 3000); return; }
@@ -1427,6 +1679,25 @@ static bool netInput(int b) {
     return true;
 }
 
+static bool btInput(int b) {
+    if (!btStage) return false;
+    int n;
+    {
+        std::lock_guard<std::mutex> l(btMu);
+        n = int(btLista.size());
+    }
+    if (btStage == 1) {
+        if (b == B_UP && n) btSel = (btSel + n - 1) % n;
+        if (b == B_DOWN && n) btSel = (btSel + 1) % n;
+        if (b == B_X) btScan();
+        if (b == B_A && n) btConnect();
+        if (b == B_B || b == B_SELECT) { btStage = 0; sysOpen = true; }
+    } else if (btStage == 3) {
+        if (b == B_A || b == B_B) { btStage = 1; btScan(); }
+    }
+    return true;
+}
+
 static bool installInput(int b) {
     if (!instStage) return false;
     if (instStage == 1) {
@@ -1449,6 +1720,7 @@ static bool panelInput(Btn b) {
     if (tecladoInput(b)) return true;
     if (perfisInput(b)) return true;
     if (netInput(b)) return true;
+    if (btInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -1869,6 +2141,7 @@ static void render() {
     drawTextPanel();
     drawInstall();
     drawRede();
+    drawBluetooth();
     drawControle();
     drawTeclado();
     drawToast();
@@ -1912,18 +2185,45 @@ static std::string coreOf(const std::string &id) {
     static const std::map<std::string, std::string> m = {
         {"nes", "mesen"}, {"snes", "snes9x"}, {"megadrive", "genesis_plus_gx"}, {"gb", "gambatte"},
         {"gbc", "gambatte"}, {"gba", "mgba"}, {"psx", "pcsx_rearmed"}, {"n64", "mupen64plus_next"},
-        {"arcade", "fbneo"}, {"neogeo", "fbneo"}};
+        {"arcade", "fbneo"}, {"neogeo", "fbneo"}, {"psp", "ppsspp"}, {"nds", "melonds"},
+        {"saturn", "mednafen_saturn"}};
     auto it = m.find(id);
     return it == m.end() ? "" : it->second;
 }
 
-static std::string launchSys, launchRom;   // jogo que abre quando a tela fecha
+static std::string launchSys, launchRom, launchCore;   // jogo que abre quando a tela fecha
+
+static std::string coreEscolhido(const std::string &id) {
+    std::string pref = prefs["core|" + id];
+    for (auto &n : nucleos(id))
+        if (pref == n.so && isFile("/usr/lib/libretro/" + pref + "_libretro.so")) return pref;
+    return coreOf(id);
+}
+static std::string emuNome(const Sys *s) {
+    std::string esc = coreEscolhido(s->id);
+    for (auto &n : nucleos(s->id))
+        if (esc == n.so) { std::string t = n.nome; return t.substr(0, t.find(" (")); }
+    return s->emu;
+}
+static void trocarNucleo(const Game *g) {
+    auto v = nucleos(g->sys->id);
+    std::vector<Nucleo> ok;
+    for (auto &n : v) if (isFile(std::string("/usr/lib/libretro/") + n.so + "_libretro.so")) ok.push_back(n);
+    if (ok.size() < 2) { toast("Este console tem um emulador só.", 2500); return; }
+    std::string atual = coreEscolhido(g->sys->id);
+    size_t i = 0;
+    while (i < ok.size() && atual != ok[i].so) i++;
+    const Nucleo &n = ok[(i + 1) % ok.size()];
+    prefs["core|" + g->sys->id] = n.so;
+    savePrefs();
+    toast(std::string("Emulador do ") + g->sys->name + ": " + n.nome, 3000);
+}
 
 // A: abre o jogo. Antes, uma tela com os atalhos (a duvida mais comum: como sair do jogo).
 static void play() {
     const Game *g = current();
     if (!g) return;
-    std::string core = coreOf(g->sys->id);
+    std::string core = coreEscolhido(g->sys->id);
     if (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so")) {
         toast("O " + g->sys->emu + " entra numa próxima versão do T-OS", 3500);
         return;
@@ -1943,6 +2243,7 @@ static void play() {
     SDL_Delay(1800);
     launchSys = g->sys->id;
     launchRom = g->dir + "/" + g->file;
+    launchCore = core;
     restartMenu = true;   // o laco principal solta a tela e o tos-jogar abre o emulador
 }
 
@@ -2104,6 +2405,11 @@ int main() {
     EV_WEB = EV_TOAST + 3;
     std::thread work(worker);
     SDL_StartTextInput();
+    if (energiaDisponivel()) {   // modo de energia escolhido no painel (vale para todos os perfis)
+        std::ifstream ef(ENERGIA_FILE);
+        int m = 1;
+        if (ef >> m) aplicarEnergia(m);
+    }
     Envio::changed = [] { post(EV_WEB); };
     Envio::start();
 
@@ -2199,7 +2505,7 @@ int main() {
                 case SDL_CONTROLLER_BUTTON_DPAD_LEFT: move(-1); holdDir = Uint32(-1); holdNext = SDL_GetTicks() + 380; break;
                 case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: move(1); holdDir = 1; holdNext = SDL_GetTicks() + 380; break;
                 case SDL_CONTROLLER_BUTTON_A: play(); break;
-                case SDL_CONTROLLER_BUTTON_X: toggleFav(); break;
+                case SDL_CONTROLLER_BUTTON_X: if (details && current()) trocarNucleo(current()); else toggleFav(); break;
                 case SDL_CONTROLLER_BUTTON_Y: details = !details; break;
                 case SDL_CONTROLLER_BUTTON_B: details = false; break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: nextFilter(-1); break;
@@ -2213,7 +2519,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -2234,7 +2540,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -2253,7 +2559,7 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3) && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage) && now - lastBars > 1000;
         if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
@@ -2269,7 +2575,7 @@ int main() {
         SDL_Quit();
         if (!launchRom.empty()) {
             fprintf(stderr, "scrapcade: abrindo %s (%s)\n", launchRom.c_str(), launchSys.c_str());
-            execl("/usr/bin/tos-jogar", "tos-jogar", launchSys.c_str(), launchRom.c_str(), (char *)nullptr);
+            execl("/usr/bin/tos-jogar", "tos-jogar", launchSys.c_str(), launchRom.c_str(), launchCore.c_str(), (char *)nullptr);
         }
         if (prefs["voltar"] == "desktop") {
             prefs.erase("voltar");

@@ -16,9 +16,16 @@ case "$SIS" in
   psx) CORE=pcsx_rearmed ;;
   n64) CORE=mupen64plus_next ;;
   arcade|neogeo) CORE=fbneo ;;
+  psp) CORE=ppsspp ;;
+  nds) CORE=melonds ;;
+  saturn) CORE=mednafen_saturn ;;
   *) CORE="" ;;
 esac
+# o ScrapCade pode mandar o nucleo escolhido pelo usuario (ex.: bsnes no lugar do snes9x)
+[ -n "$3" ] && [ -f "/usr/lib/libretro/$3_libretro.so" ] && CORE=$3
 SO=/usr/lib/libretro/${CORE}_libretro.so
+# o PPSSPP precisa das fontes e imagens dele na pasta de BIOS (copia uma vez: o exFAT nao tem atalhos)
+[ "$CORE" = ppsspp ] && [ ! -d /userdata/bios/PPSSPP ] && cp -r /usr/share/tos/ppsspp /userdata/bios/PPSSPP
 
 if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
   # configuracao central: sempre o modelo do sistema; o que o usuario quiser mudar vai em retroarch-usuario.cfg

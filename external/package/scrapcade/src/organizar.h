@@ -178,6 +178,30 @@ static bool moveTo(const std::string &from, const std::string &dir, std::string 
     return true;
 }
 
+// Console de um CD (.cue): le o comeco da primeira faixa. Saturn tem "SEGA SEGASATURN"; o resto e PlayStation.
+static std::vector<std::string> cueFiles(const std::string &cue) {
+    std::vector<std::string> v;
+    std::ifstream in(cue);
+    std::string l;
+    std::string dir = cue.substr(0, cue.rfind('/') + 1);
+    while (std::getline(in, l)) {
+        size_t a = l.find('"'), b = l.rfind('"');
+        if (l.find("FILE") != std::string::npos && a != std::string::npos && b > a) v.push_back(dir + l.substr(a + 1, b - a - 1));
+    }
+    return v;
+}
+static std::string cueKind(const std::string &cue) {
+    auto fs = cueFiles(cue);
+    if (fs.empty()) return "psx";
+    FILE *f = fopen(fs[0].c_str(), "rb");
+    if (!f) return "psx";
+    char b[64] = {0};
+    size_t n = fread(b, 1, sizeof b, f);
+    fclose(f);
+    std::string h(b, n);
+    return h.find("SEGA SEGASATURN") != std::string::npos ? "saturn" : "psx";
+}
+
 // Algum .cue (na mesma pasta ou ja em ROMS/psx) cita esse arquivo: e faixa de CD.
 static bool inSomeCue(const std::string &bin) {
     std::string want = lower(base(bin));
@@ -383,6 +407,12 @@ static std::string run() {
             bool isCd = sizeOf(f) > 16LL * 1024 * 1024 || isFile(cue) || inSomeCue(f);
             good = moveTo(f, isCd ? "psx" : "megadrive");
             counted = !isCd;
+        } else if (endsWith(n, ".cue") && cueKind(f) == "saturn") {
+            // Saturn: leva as faixas junto (o .bin solto iria para o PlayStation)
+            good = true;
+            for (auto &tr : cueFiles(f))
+                if (isFile(tr)) good = moveTo(tr, "saturn") && good;
+            good = moveTo(f, "saturn") && good;
         } else if (kind == "?") {
             std::string k = discKind(f);
             good = !k.empty() && moveTo(f, k);

@@ -30,3 +30,26 @@ if [ -n "$G" ]; then
 	cp "$BINARIES_DIR/tos-core.img" "$TARGET_DIR/usr/share/tos/grub-bios/core.img"
 	cp "$G/grub-core/boot.img" "$TARGET_DIR/usr/share/tos/grub-bios/boot.img"
 fi
+
+# T-OS: Samba e SSH so ligam se o usuario quiser (painel Sistema). Samba vem ligado; SSH desligado.
+for s in S91smb S50dropbear; do
+	[ -f "$TARGET_DIR/etc/init.d/$s" ] || continue
+	mv "$TARGET_DIR/etc/init.d/$s" "$TARGET_DIR/etc/init.d/servico-$s"
+done
+cat > "$TARGET_DIR/etc/init.d/S91tos-rede" <<'EOF'
+#!/bin/sh
+# T-OS: compartilhamento na rede (Samba, padrao ligado) e acesso remoto (SSH, padrao desligado)
+C=/userdata/system/configs
+estado() { [ -f "$C/$1" ] && cat "$C/$1" || echo "$2"; }
+case "$1" in
+  start|restart)
+    [ "$(estado samba on)" = on ] && /etc/init.d/servico-S91smb start || /etc/init.d/servico-S91smb stop
+    [ "$(estado ssh off)" = on ] && /etc/init.d/servico-S50dropbear start || /etc/init.d/servico-S50dropbear stop
+    ;;
+  stop)
+    /etc/init.d/servico-S91smb stop; /etc/init.d/servico-S50dropbear stop
+    ;;
+esac >/dev/null 2>&1
+exit 0
+EOF
+chmod 755 "$TARGET_DIR/etc/init.d/S91tos-rede"

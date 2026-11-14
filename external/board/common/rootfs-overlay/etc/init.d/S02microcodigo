@@ -1,0 +1,5 @@
+#!/bin/sh
+# T-OS: aplica o microcodigo da CPU (pacote intel-microcode, em /lib/firmware/intel-ucode)
+[ "$1" = start ] || exit 0
+[ -w /sys/devices/system/cpu/microcode/reload ] && echo 1 > /sys/devices/system/cpu/microcode/reload 2>/dev/null
+exit 0

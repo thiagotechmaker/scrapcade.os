@@ -52,6 +52,9 @@ case "$1" in
     # configuracoes que precisam sobreviver ao desligar (o sistema e somente leitura)
     mkdir -p /var/lib/connman
     mount --bind /userdata/system/connman /var/lib/connman
+    # controles Bluetooth pareados continuam pareados depois de desligar
+    mkdir -p /userdata/system/bluetooth /var/lib/bluetooth
+    mount --bind /userdata/system/bluetooth /var/lib/bluetooth
     ;;
 esac
 exit 0
