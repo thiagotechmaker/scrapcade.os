@@ -29,7 +29,7 @@ cp "$B/tos-syslinux/fundo.png" "$T/isolinux/"
 cp "$B/tos-memtest.bin" "$T/boot/memtest.bin"
 cp "$B/tos-memtest.efi" "$T/boot/memtest.efi"
 HYB=$(ls "$BUILD_DIR"/syslinux-*/bios/mbr/isohdpfx.bin | head -1)
-ISO=$B/scrapcade-$VER-x86_64.iso
+ISO=$B/scrapcade-os-$VER-x86_64.iso
 "$HOST_DIR/bin/xorriso" -as mkisofs -iso-level 3 -J -R -V "SCRAPCADE_$VER" \
 	-isohybrid-mbr "$HYB" \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table \

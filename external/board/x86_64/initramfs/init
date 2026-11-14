@@ -10,24 +10,47 @@ echo 0 > /proc/sys/kernel/printk
 mkdir -p /boot /lower /rw /newroot
 
 achou=""
-for t in $(seq 1 40); do      # pen drive USB demora alguns segundos para aparecer
-  for d in /dev/sd* /dev/nvme*n* /dev/mmcblk* /dev/vd* /dev/sr*; do
-    [ -b "$d" ] || continue
-    mount -o ro "$d" /boot 2>/dev/null || continue
-    if [ -f /boot/boot/tos.squashfs ]; then achou=$d; break 2; fi
-    umount /boot
-  done
-  [ $t = 3 ] && echo "ScrapCade: procurando o sistema..."
+# O GRUB diz de qual particao ele mesmo veio (tos.uuid=): usa essa, para o pen drive escolhido na BIOS/UEFI
+# nao ligar a instalacao do HD. Sem tos.uuid (menu syslinux, que so existe nos pen drives): prefere USB.
+UUID=""
+for a in $(cat /proc/cmdline); do case "$a" in tos.uuid=*) UUID=$(echo "${a#tos.uuid=}" | tr a-z A-Z) ;; esac; done
+uuid_de() { blkid "$1" 2>/dev/null | sed -n 's/.* UUID="\([^"]*\)".*/\1/p' | tr a-z A-Z; }
+e_usb() { readlink -f "/sys/class/block/${1##*/}" 2>/dev/null | grep -q /usb; }
+tenta() {
+  mount -o ro "$1" /boot 2>/dev/null || return 1
+  [ -f /boot/boot/tos.squashfs ] && return 0
+  umount /boot; return 1
+}
+for t in $(seq 1 120); do      # ate 60 s: pen drive USB e leitor de cartao podem demorar a aparecer
+  lista=""
+  for d in /dev/sd* /dev/nvme*n* /dev/mmcblk* /dev/vd* /dev/sr*; do [ -b "$d" ] && lista="$lista $d"; done
+  if [ -n "$UUID" ]; then
+    for d in $lista; do [ "$(uuid_de $d)" = "$UUID" ] && tenta $d && { achou=$d; break 2; }; done
+    [ $t -lt 20 ] && { sleep 0.5; continue; }   # 10 s esperando o disco certo; depois aceita outro
+  fi
+  for d in $lista; do e_usb $d && tenta $d && { achou=$d; break 2; }; done
+  if [ $t -ge 16 ] || [ -n "$UUID" ]; then        # 8 s sem achar em USB: DVD e os outros discos
+    for d in $lista; do case $d in /dev/sr*) tenta $d && { achou=$d; break 2; } ;; esac; done
+    for d in $lista; do e_usb $d || { tenta $d && { achou=$d; break 2; }; }; done
+  fi
+  [ $t = 6 ] && echo "ScrapCade OS: procurando o sistema no pen drive..."
+  [ $((t % 20)) = 0 ] && echo "  discos encontrados ate agora:${lista:- nenhum}"
   sleep 0.5
 done
 if [ -z "$achou" ]; then
-  echo "ScrapCade: nao achei o arquivo boot/tos.squashfs. Confira o pen drive."
+  echo
+  echo "ScrapCade OS: nao achei o sistema (boot/tos.squashfs) em nenhum disco."
+  echo "  Discos que apareceram:${lista:- nenhum}"
+  echo "  - Tire o pen drive e coloque em outra porta USB (de preferencia uma USB 2.0, preta) e ligue de novo."
+  echo "  - Se ligou pela UEFI, tente pela BIOS antiga (Legacy/CSM) no menu de boot, ou o contrario."
+  echo "  - Se nenhum disco apareceu, avise com o modelo do notebook: falta o controlador dele."
   exec sh
 fi
+echo "$achou" > /dev/null   # (a tela fica so com a logo; o disco escolhido vai para /run-tos-boot)
 
 # .iso gravado num pen drive (Rufus modo DD ou modo ISO, balenaEtcher): no primeiro boot o ScrapCade se copia
 # para a memoria e o sistema (S00dados + tos-instalar) arruma o pen drive no formato definitivo:
-# TOS-BOOT (sistema) + TOS-DADOS (jogos, sem limite de 4 GB). DVD e "tos.vivo" no menu: so roda, sem mexer.
+# SCRAPCADE (sistema) + SCRAP-DADOS (jogos, sem limite de 4 GB). DVD e "tos.vivo" no menu: so roda, sem mexer.
 conv=""
 fs=$(awk '$2 == "/boot" {print $3}' /proc/mounts)
 case "$achou" in /dev/sr*) ;; *)

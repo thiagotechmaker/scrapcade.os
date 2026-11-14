@@ -1,6 +1,6 @@
 #!/bin/sh
 # ScrapCade: no primeiro boot, pede a senha do administrador (root). A imagem nao traz senha fixa: uma senha
-# publicada seria a mesma em todo aparelho. A senha fica em TOS-DADOS (o sistema e somente leitura).
+# publicada seria a mesma em todo aparelho. A senha fica em SCRAP-DADOS (o sistema e somente leitura).
 SALVA=/userdata/system/shadow
 case "$1" in
   start)

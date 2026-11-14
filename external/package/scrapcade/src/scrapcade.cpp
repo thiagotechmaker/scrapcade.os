@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.8 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.10 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -19,6 +19,7 @@
 #include "bios.h"
 #include "usb.h"
 #include "rede.h"
+#include "pixel_fonte.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -163,7 +164,7 @@ enum { CARBONO, NEON, ARCADE, CLARO, AURORA, PIXEL, PORTATIL, OCEANO, NTEMAS };
 static const char *THEME_NAMES[NTEMAS] = {"Carbono", "Neon", "Arcade", "Claro", "Aurora", "8 bits", "Portátil", "Oceano"};
 static int theme = AURORA;
 
-// Temas do usuario: cada pasta em TOS-DADOS/themes/<pasta> vira um tema a mais na lista.
+// Temas do usuario: cada pasta em SCRAP-DADOS/themes/<pasta> vira um tema a mais na lista.
 //   fundo.png / fundo.jpg  imagem de fundo (preenche a tela)
 //   tema.txt               nome=Meu tema | base=Aurora (cartoes e cores de um tema pronto) | destaque=#32E6A8
 //   avatares/*.png         avatares a mais para escolher ao criar um perfil (tambem em themes/avatares)
@@ -527,7 +528,16 @@ static Card &card(const Game &g) {
     }
     // faixa do console no alto da capa, como a lombada de uma caixa de jogo
     G.roundRect(x0, y0, w, bandH + rad, rad, band(s->color));
-    G.fillRect(x0, y0 + bandH, w, rad, theme == CLARO ? 0xFFFFFFFF : (theme == AURORA ? 0xFF15171D : s->color));
+    // (recuado do contorno: senao cobre a borda da capa e aparecem "pontinhos" nos cantos da faixa)
+    G.fillRect(x0 + 2.5f * u, y0 + bandH, w - 5 * u, rad, theme == CLARO ? 0xFFFFFFFF : (theme == AURORA ? 0xFF15171D : s->color));
+    // contorno por cima da faixa: a borda de cima fica inteira e lisa (sem tracinhos nem pontinhos nos cantos)
+    switch (theme) {
+    case AURORA: G.roundRectStroke(x0, y0, w, h, rad, u, lighten(s->color, 0.15f)); break;
+    case NEON: G.roundRectStroke(x0, y0, w, h, rad, 2.5f * u, lighten(s->color, 0.45f)); break;
+    case ARCADE: G.roundRectStroke(x0, y0, w, h, rad, 2.5f * u, 0xFFFFD34E); break;
+    case CLARO: break;
+    default: G.roundRectStroke(x0, y0, w, h, rad, 2 * u, 0xA6FFFFFF); break;
+    }
     drawWhiteLogo(s, m + cw / 2 - w * 0.40f, y0 + bandH * 0.20f, w * 0.80f, bandH * 0.60f, true);
     float ax = x0 + inset, ay = y0 + bandH, aW = w - 2 * inset, aH = h - bandH - inset;
     if (art) {
@@ -670,6 +680,8 @@ static void buildFilters() {
     if (std::find(filters.begin(), filters.end(), filter) == filters.end()) filter = F_ALL;
 }
 
+static void pixelText(const std::string &txt, float cx, float cy, float units, uint32_t cor, float maxw);
+
 static std::string filterName(const std::string &id) {
     if (id == F_FAV) return "Favoritos";
     if (id == F_TOP) return "Mais jogados";
@@ -732,7 +744,8 @@ static void topBar(const Game *g) {
               rb = T.width("RB", 7.5f, true) + 10 * u;
         float sx = G.W / 2.0f - (lb + fw + rb) / 2, w1;
         pill("LB", sx, cy, w1);
-        T.draw(f, sx + lb + fw / 2, cy, 10.5f, true, 0xFFFFFFFF, 1);
+        if (theme == PIXEL) pixelText(f, sx + lb + fw / 2, cy, 9.5f, 0xFFFFFFFF, fw);
+        else T.draw(f, sx + lb + fw / 2, cy, 10.5f, true, 0xFFFFFFFF, 1);
         pill("RB", sx + lb + fw, cy, w1);
     }
     // hora, data e IP a direita
@@ -772,12 +785,31 @@ static void topBar(const Game *g) {
     T.draw(std::string(data) + "  •  " + ip, rx, cy + 7.2f * u, 7, false, 0xBBFFFFFF, 2);
 }
 
+// Texto em letras de pixel (tema "8 bits"): blocos inteiros de tela, com sombra; corta o que nao couber
+static void pixelText(const std::string &txt, float cx, float cy, float units, uint32_t cor, float maxw) {
+    std::string up = Pixel::maiuscula(txt);
+    float b = std::max(1.0f, std::floor(units * G.u / 7.0f + 0.5f));
+    while (!up.empty() && Pixel::largura(up, b) > maxw) up.pop_back();
+    float x0 = std::floor(cx - Pixel::largura(up, b) / 2), y0 = std::floor(cy - 3.5f * b);
+    for (int camada = 0; camada < 2; camada++) {
+        float d = camada == 0 ? std::max(1.0f, std::floor(b / 2)) : 0;
+        uint32_t c = camada == 0 ? 0xA0000000 : cor;
+        for (size_t i = 0; i < up.size(); i++) {
+            auto it = Pixel::G.find(up[i]);
+            if (it == Pixel::G.end()) continue;
+            for (int k = 0; k < 35; k++)
+                if (it->second[k] == '#') G.fillRect(x0 + (i * 6 + k % 5) * b + d, y0 + (k / 5) * b + d, b, b, c);
+        }
+    }
+}
+
 static void titleBar(const Game *g) {
     float u = G.u, h = TITLE_H * u, y = G.H - (TITLE_H + HINT_H) * u;
     G.fillRect(0, y, float(G.W), h, 0xB8303338);
     if (!g) return;
     std::string t = (isFav(*g) ? "★  " : "") + g->title;
-    T.draw(t, G.W / 2.0f, y + h * 0.36f, 13.5f, false, 0xFFFFFFFF, 1, G.W - 32 * u);
+    if (theme == PIXEL) pixelText((isFav(*g) ? "+ " : "") + g->title, G.W / 2.0f, y + h * 0.36f, 13, 0xFFFFD34E, G.W - 32 * u);
+    else T.draw(t, G.W / 2.0f, y + h * 0.36f, 13.5f, false, 0xFFFFFFFF, 1, G.W - 32 * u);
     std::string meta = Meta::line(*g);
     std::string sub = (meta.empty() ? "" : meta + "     ") + std::to_string(mod(target, int(view.size())) + 1) + " de " +
                       std::to_string(view.size());
@@ -969,7 +1001,7 @@ static std::string optLabel(int i) {
     case OPT_DESKTOP: return "Modo desktop";
     case OPT_HELP: return "Como jogar (botões)";
     case OPT_BIOS: return "BIOS dos consoles";
-    case OPT_ATUALIZAR: return "Atualizar o ScrapCade";
+    case OPT_ATUALIZAR: return "Atualizar o ScrapCade OS";
     case OPT_INSTALL: return "Instalar no disco do computador";
     case OPT_INFO: return "Informações do sistema";
     case OPT_REBOOT: return "Reiniciar";
@@ -1023,7 +1055,7 @@ static const char *optAjuda(int o) {
     case OPT_PERFIL: return "Troca quem está jogando. Cada perfil tem os seus favoritos, saves, tema e preferências. A abre a tela \"Quem vai jogar?\".";
     case OPT_JOGOS: return "Abre os arquivos do pen drive aqui mesmo: escolha um jogo (ou uma pasta inteira) e ele vai para \"Jogos novos\". O ScrapCade leva cada jogo ao console certo, com capa e dados.";
     case OPT_ENERGIA: return "Economia: gasta menos bateria e esquenta menos, mas jogos pesados podem engasgar. Moderado: o meio-termo. Máximo: o processador sempre no talo, para PS2, GameCube e PSP.";
-    case OPT_THEME: return "Muda as cores, o fundo e o jeito das capas. Com A você escolhe uma imagem (do pen drive ou da TOS-DADOS) e ela vira o fundo de um tema seu.";
+    case OPT_THEME: return "Muda as cores, o fundo e o jeito das capas. Com A você escolhe uma imagem (do pen drive ou da SCRAP-DADOS) e ela vira o fundo de um tema seu.";
     case OPT_ANIM: return "Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.";
     case OPT_COVERS: return "Mostrar: desenha a capa de cada jogo. Ocultar: só o nome e a cor do console, mais leve para computadores antigos.";
     case OPT_BG: return "Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.";
@@ -1169,7 +1201,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.8" + buf);
+    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.10" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -1611,12 +1643,12 @@ static void drawControle() {
     G.roundRect(x + 14 * u, top + 88 * u, std::max(6 * u, bw * ctlStep / NPASSOS), 6 * u, 3 * u, 0xFF2CCF9A);
 }
 
-// ------------------------------------------------------------------ navegador de arquivos (pen drive e TOS-DADOS)
+// ------------------------------------------------------------------ navegador de arquivos (pen drive e SCRAP-DADOS)
 // Dentro do proprio ScrapCade: escolher uma imagem para um tema seu (modo 1) ou trazer jogos do pen drive (modo 2).
 
 struct ItemNav { std::string nome, caminho; bool pasta; long long tam; };
 static int navModo = 0;   // 0 fechado, 1 imagem do tema, 2 jogos
-static std::string navDir;   // "" = escolher entre pen drive e TOS-DADOS
+static std::string navDir;   // "" = escolher entre pen drive e SCRAP-DADOS
 static std::vector<std::string> navRaizes;
 static std::vector<ItemNav> navItens;
 static int navSel = 0;
@@ -1632,7 +1664,7 @@ static void navListar() {
     if (navDir.empty()) {
         navRaizes.clear();
         if (Usb::attach()) { navItens.push_back({"Pen drive", Usb::MOUNT, true, 0}); navRaizes.push_back(Usb::MOUNT); }
-        navItens.push_back({"TOS-DADOS (jogos, temas, saves)", "/userdata", true, 0});
+        navItens.push_back({"SCRAP-DADOS (jogos, temas, saves)", "/userdata", true, 0});
         navRaizes.push_back("/userdata");
         return;
     }
@@ -1662,7 +1694,7 @@ static void abrirNavegador(int modo) {
     navDir = "";
     { std::lock_guard<std::mutex> l(navMu); navMsg = ""; }
     navListar();
-    // um lugar so (sem pen drive) no modo jogos: avisa; no modo imagem ja entra na TOS-DADOS
+    // um lugar so (sem pen drive) no modo jogos: avisa; no modo imagem ja entra na SCRAP-DADOS
     if (navItens.size() == 1 && modo == 1) { navDir = navItens[0].caminho; navListar(); }
 }
 
@@ -1730,13 +1762,13 @@ static void drawNavegador() {
     std::vector<uint32_t> C;
     auto add = [&](const std::string &t, uint32_t cc = 0xFF2B2E33) { L.push_back(t); C.push_back(cc); };
     add(navDir.empty() ? "Onde procurar?" : (navDir.rfind(Usb::MOUNT, 0) == 0 ? "Pen drive" + navDir.substr(Usb::MOUNT.size())
-                                                                               : "TOS-DADOS" + navDir.substr(9)),
+                                                                               : "SCRAP-DADOS" + navDir.substr(9)),
         0xFF5E6269);
     int n = int(navItens.size()), first = std::max(0, std::min(n - vis, navSel - vis / 2));
     if (n == 0) add(navModo == 1 ? "Nenhuma imagem (.png ou .jpg) aqui." : "Pasta vazia.", 0xFF5E6269);
     for (int i = first; i < n && i < first + vis; i++) {
         const ItemNav &it = navItens[i];
-        std::string t = std::string(i == navSel ? "▶  " : "    ") + (it.pasta && !it.caminho.empty() ? "📁 " : "") + it.nome;
+        std::string t = std::string(i == navSel ? "▶  " : "    ") + it.nome + (it.pasta && !it.caminho.empty() ? "  /" : "");   // pasta: barra no fim (a fonte nao tem o desenho de pasta)
         if (!it.pasta) t += "   (" + tamBonito(it.tam) + ")";
         add(t, i == navSel ? 0xFF1E9C4A : 0xFF2B2E33);
     }
@@ -1847,7 +1879,7 @@ static void drawAtualizar() {
     }
     float h = 22 * u + 16 * u + L.size() * lh + 22 * u + (updStage == 3 ? 14 * u : 0);
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
-    float top = whitePanel("Atualizar o ScrapCade", x, y, w, h) + 12 * u;
+    float top = whitePanel("Atualizar o ScrapCade OS", x, y, w, h) + 12 * u;
     for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
     if (updStage == 3) {
         float by = top + L.size() * lh, bw = w - 28 * u;
@@ -1906,7 +1938,7 @@ static void drawInstall() {
     const char *const *H = H1;
     int nh = 6;
     if (instStage == 1) {
-        add("Escolha o disco onde o ScrapCade vai ficar:");
+        add("Escolha o disco onde o ScrapCade OS vai ficar:");
         add("");
         if (disks.empty()) add("Nenhum outro disco encontrado (mínimo 4 GB).", 0xFFD0362B);
         for (size_t i = 0; i < disks.size(); i++)
@@ -2284,7 +2316,7 @@ static void openSystem() {
 // ------------------------------------------------------------------ perfis de jogador (tela "Quem vai jogar?")
 //
 // Cada perfil tem as suas preferencias (favoritos, mais jogados, tema, ultimo jogo) e os seus saves.
-// Os jogos sao os mesmos para todos. Dados em TOS-DADOS/system/perfis.txt e system/perfis/<id>/.
+// Os jogos sao os mesmos para todos. Dados em SCRAP-DADOS/system/perfis.txt e system/perfis/<id>/.
 // O perfil 1 usa os saves que ja existiam (saves/<console>); os outros, saves/<console>/perfil-<id>.
 
 std::vector<Perfil> perfis;
@@ -2501,11 +2533,11 @@ static void drawPerfis() {
     G.fillRect(0, 0, float(G.W), float(G.H), 0x50000000);
     int n = int(perfis.size()) + 1;   // + "Novo perfil"
     if (profStage == 1 || profStage == 3) {
-        if (SDL_Texture *lg = image(DATA + "/web/logo.jpg")) {   // logo do ScrapCade em cima
-            float lh = G.H * 0.11f, lw = lh * 800 / 288;
+        if (SDL_Texture *lg = image(DATA + "/web/logo.png")) {   // logo do ScrapCade OS em cima (fundo transparente)
+            float lh = G.H * 0.075f, lw = lh * 1489 / 200;
             G.imageFit(lg, (G.W - lw) / 2, G.H * 0.02f, lw, lh, true);
         }
-        T.draw(perfis.empty() ? "Bem-vindo ao ScrapCade!" : "Quem vai jogar?", G.W / 2.0f, G.H * 0.18f, 20, true, 0xFFFFFFFF, 1);
+        T.draw(perfis.empty() ? "Bem-vindo ao ScrapCade OS!" : "Quem vai jogar?", G.W / 2.0f, G.H * 0.18f, 20, true, 0xFFFFFFFF, 1);
         T.draw(perfis.empty() ? "Crie o seu perfil: cada pessoa tem os seus favoritos e os seus saves." :
                                 "Cada perfil tem os seus favoritos e os seus saves.",
                G.W / 2.0f, G.H * 0.18f + 22 * u, 10, false, 0xDDFFFFFF, 1);
@@ -3125,7 +3157,7 @@ int main() {
         }
         if (novaVersao == 2 && !updStage) {
             novaVersao = 3;
-            toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade", 9000);
+            toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade OS", 9000);
             redraw();
         }
         // segurando o direcional: anda sozinho

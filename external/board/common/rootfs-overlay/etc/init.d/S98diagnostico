@@ -1,5 +1,5 @@
 #!/bin/sh
-# ScrapCade: resumo do hardware e da rede a cada boot, em TOS-DADOS/system/logs/diagnostico.txt
+# ScrapCade: resumo do hardware e da rede a cada boot, em SCRAP-DADOS/system/logs/diagnostico.txt
 # (ajuda a descobrir driver que falta: o usuario copia o arquivo para o PC ou baixa pela pagina, em Registros)
 [ "$1" = start ] || exit 0
 (

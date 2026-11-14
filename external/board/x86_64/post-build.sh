@@ -24,7 +24,7 @@ if [ -n "$G" ]; then
 	"$HOST_DIR/bin/grub-mkimage" -d "$G/grub-core" -O i386-pc -o "$BINARIES_DIR/tos-core.img" -p /EFI/BOOT \
 		-c "$BOARD_DIR/grub-bios-embutido.cfg" \
 		biosdisk part_msdos part_gpt fat exfat iso9660 search search_fs_file configfile normal linux \
-		echo test boot vbe vga video video_fb all_video linux16
+		echo test boot vbe vga video video_fb all_video linux16 regexp probe
 	cp "$G/grub-core/boot.img" "$G/grub-core/cdboot.img" "$G/grub-core/boot_hybrid.img" "$BINARIES_DIR/"
 	mkdir -p "$TARGET_DIR/usr/share/tos/grub-bios"
 	cp "$BINARIES_DIR/tos-core.img" "$TARGET_DIR/usr/share/tos/grub-bios/core.img"

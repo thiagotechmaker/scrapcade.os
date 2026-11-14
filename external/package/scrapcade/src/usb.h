@@ -84,7 +84,7 @@ static bool attach() {
     for (auto &dev : candidates()) {
         for (const char *fs : {"vfat", "exfat", "ntfs3", "ext4", "iso9660"}) {
             if (mount(dev.c_str(), MOUNT.c_str(), fs, MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC, nullptr) == 0) {
-                // outro pen drive do ScrapCade (TOS-BOOT): nao e de jogos
+                // outro pen drive do ScrapCade OS (SCRAPCADE): nao e de jogos
                 if (exists(MOUNT + "/boot/tos.squashfs")) { umount2(MOUNT.c_str(), MNT_DETACH); break; }
                 mounted = dev;
                 fprintf(stderr, "scrapcade: pen drive %s montado em %s (%s)\n", dev.c_str(), MOUNT.c_str(), fs);

@@ -44,7 +44,7 @@ Arquivos principais do repositório:
 
 Opções do menu:
 
-- Iniciar o ScrapCade.
+- Iniciar o ScrapCade OS.
 - **Modo de compatibilidade** (`tos.seguro=1`: desenho em software).
 - Iniciar mostrando as mensagens.
 - Teste de memória.
@@ -86,12 +86,12 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 
 | Partição | Formato | O que tem |
 |---|---|---|
-| **TOS-BOOT** | FAT32, 1 GB, tabela MBR | Menu de boot (syslinux e GRUB), kernel, initrd e `boot/tos.squashfs` |
-| **TOS-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e `system` (senha, Wi-Fi, configurações, registros) |
+| **SCRAPCADE** | FAT32, 1 GB, tabela MBR | Menu de boot (syslinux e GRUB), kernel, initrd e `boot/tos.squashfs` |
+| **SCRAP-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e `system` (senha, Wi-Fi, configurações, registros) |
 
-- A TOS-DADOS é criada no primeiro boot, no espaço livre, sem redimensionar nada.
+- A SCRAP-DADOS é criada no primeiro boot, no espaço livre, sem redimensionar nada.
 - Gravado pelo **modo ISO do Rufus** (sem espaço para partição), os dados ficam na pasta `tos-dados` do próprio pen drive.
-- Atualizar o ScrapCade é trocar só o `tos.squashfs`; a TOS-DADOS nunca é mexida.
+- Atualizar o ScrapCade OS é trocar só o `tos.squashfs`; a SCRAP-DADOS nunca é mexida.
 
 ---
 
@@ -105,7 +105,7 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 | **ConnMan + wpa_supplicant** | Rede com cabo e Wi-Fi |
 | **linux-firmware** | Firmwares de Wi-Fi, rede e vídeo (redistribuíveis) |
 | **util-linux** | `sfdisk`, `blkid`, `partx` (partições) |
-| **exfatprogs, dosfstools** | Formatar TOS-DADOS (exFAT) e TOS-BOOT (FAT32) |
+| **exfatprogs, dosfstools** | Formatar SCRAP-DADOS (exFAT) e SCRAPCADE (FAT32) |
 | **iptables** | Firewall |
 | **efibootmgr** | Registra o ScrapCade no menu de boot da placa-mãe (instalador) |
 
@@ -113,8 +113,8 @@ Scripts próprios em `/etc/init.d`:
 
 | Script | Função |
 |---|---|
-| `S00dados` | Acha ou cria a TOS-DADOS; liga a pasta do Wi-Fi a ela |
-| `S01primeiro-boot` | Pede a senha do administrador e guarda na TOS-DADOS |
+| `S00dados` | Acha ou cria a SCRAP-DADOS; liga a pasta do Wi-Fi a ela |
+| `S01primeiro-boot` | Pede a senha do administrador e guarda na SCRAP-DADOS |
 | `S98diagnostico` | Gera `Registros/diagnostico.txt` com placas, drivers, rede e controles |
 | `S99scrapcade` | Abre o menu de jogos; ajusta controles, volume e modo de compatibilidade |
 
@@ -252,7 +252,7 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 |---|---|
 | Sistema (`tos.squashfs`) | ~250 MB (cresce com os firmwares de Wi-Fi) |
 | `.iso` | ~250 MB |
-| `disk.img` | 1 GB (a TOS-BOOT; o resto do pen drive vira TOS-DADOS) |
+| `disk.img` | 1 GB (a SCRAPCADE; o resto do pen drive vira SCRAP-DADOS) |
 | Memória usada no menu | cerca de 100 a 150 MB |
 
 ---

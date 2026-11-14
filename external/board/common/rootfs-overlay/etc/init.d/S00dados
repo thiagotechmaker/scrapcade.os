@@ -1,10 +1,11 @@
 #!/bin/sh
-# ScrapCade: particao de dados TOS-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
-# Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o ScrapCade
-# troca so o tos.squashfs da particao TOS-BOOT: a TOS-DADOS nunca e mexida.
+# ScrapCade: particao de dados SCRAP-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
+# Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o ScrapCade OS
+# troca so o tos.squashfs da particao SCRAPCADE: a SCRAP-DADOS nunca e mexida.
 msg() { echo "$1" > /dev/console; }
 
-dados() { blkid | sed -n 's/^\([^:]*\):.*LABEL="TOS-DADOS".*/\1/p' | head -1; }
+# SCRAP-DADOS; os pen drives gravados antes da troca de nome usam TOS-DADOS e continuam valendo
+dados() { blkid | sed -n 's/^\([^:]*\):.*LABEL="\(SCRAP-DADOS\|TOS-DADOS\)".*/\1/p' | head -1; }
 
 criar() {
   boot=$(cat /run-tos-boot 2>/dev/null)
@@ -19,7 +20,7 @@ criar() {
   [ "$tipo" = gpt ] && sfdisk --relocate gpt-bak-std "$dev" >/dev/null 2>&1
   livre=$(sfdisk -F "$dev" 2>/dev/null | sed -n 's/.* \([0-9]*\) bytes.*/\1/p' | head -1)
   [ -n "$livre" ] && [ "$livre" -gt 1073741824 ] || return 1   # menos de 1 GB livre: deixa quieto
-  msg "ScrapCade: criando a particao de dados (TOS-DADOS) no espaco livre do disco..."
+  msg "ScrapCade: criando a particao de dados (SCRAP-DADOS) no espaco livre do disco..."
   if [ "$tipo" = gpt ]; then novotipo=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7; else novotipo=7; fi
   echo ",,$novotipo" | sfdisk --append --no-reread "$dev" >/dev/null 2>&1 || return 1
   n=$(sfdisk -l "$dev" 2>/dev/null | grep -c "^$dev")
@@ -27,7 +28,7 @@ criar() {
   sleep 1
   case "$disco" in nvme*|mmcblk*|loop*) novo=${dev}p$n ;; *) novo=$dev$n ;; esac
   [ -b "$novo" ] || return 1
-  mkfs.exfat -L TOS-DADOS "$novo" >/dev/null 2>&1 || return 1
+  mkfs.exfat -L SCRAP-DADOS "$novo" >/dev/null 2>&1 || return 1
   msg "ScrapCade: particao de dados pronta."
 }
 
@@ -39,7 +40,7 @@ case "$1" in
       dev=$(cat /run-tos-converter); rm -f /run-tos-converter
       msg "ScrapCade: arrumando o pen drive (so no primeiro boot, leva alguns minutos; nao desligue)..."
       if /usr/bin/tos-instalar "$dev" converter >/dev/null 2>&1; then
-        msg "ScrapCade: pen drive pronto: sistema + particao de dados TOS-DADOS."
+        msg "ScrapCade: pen drive pronto: sistema + particao de dados SCRAP-DADOS."
       else
         msg "ScrapCade: nao deu para arrumar o pen drive ($(cut -d' ' -f2- /tmp/tos-instalar.txt)); os jogos ficam na memoria."
       fi

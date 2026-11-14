@@ -2,7 +2,7 @@
 # Modo desktop do ScrapCade: Fluxbox no X, aberto pelo painel Sistema do ScrapCade.
 # "Voltar ao modo jogo" no menu do Fluxbox fecha o X e o ScrapCade volta.
 export HOME=/userdata/system/desktop
-# a TOS-DADOS e exFAT (sem sockets nem links): o que o programa cria enquanto roda vai para a memoria
+# a SCRAP-DADOS e exFAT (sem sockets nem links): o que o programa cria enquanto roda vai para a memoria
 export XDG_RUNTIME_DIR=/tmp/xdg-desktop XDG_CACHE_HOME=/tmp/cache-desktop PIPEWIRE_RUNTIME_DIR=/run/pipewire
 mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CACHE_HOME"; chmod 700 "$XDG_RUNTIME_DIR"
 mkdir -p "$HOME/.fluxbox" /userdata/system/logs

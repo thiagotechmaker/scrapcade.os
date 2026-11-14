@@ -1,6 +1,6 @@
 # ScrapCade OS
 
-<p align="center"><img src="docs/logo.jpg" width="560" alt="ScrapCade OS"></p>
+<p align="center"><img src="docs/logo.png" width="620" alt="ScrapCade OS"></p>
 
 <p align="center"><b>Jogos em qualquer computador.</b><br>
 Sistema próprio, baseado em Linux, para <b>emulação de jogos</b> e para dar uma <b>segunda vida a computadores que iriam para o lixo</b>.</p>
@@ -11,7 +11,7 @@ Sistema próprio, baseado em Linux, para <b>emulação de jogos</b> e para dar u
 
 1. **Baixe** o `scrapcade-<versão>-pc-64bits.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases/latest). É um arquivo só, que liga por BIOS antigo e por UEFI.
 2. **Grave** num pen drive de 4 GB ou mais com o [Rufus](https://rufus.ie) (modo ISO ou DD, tanto faz) ou o [balenaEtcher](https://etcher.balena.io).
-3. **Ligue o PC pelo pen drive** (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot o ScrapCade OS arruma o pen drive sozinho (sistema + partição TOS-DADOS para os jogos), pede a senha do administrador e abre a criação do seu perfil.
+3. **Ligue o PC pelo pen drive** (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot o ScrapCade OS arruma o pen drive sozinho (sistema + partição SCRAP-DADOS para os jogos), pede a senha do administrador e abre a criação do seu perfil.
 4. **Coloque jogos** (veja [Colocar jogos](#colocar-jogos)).
 5. **Quer ligar sem o pen drive?** O ScrapCade OS pergunta uma vez se quer instalar no HD/SSD (também em *Sistema > Instalar no disco do computador*).
 

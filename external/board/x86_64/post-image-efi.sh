@@ -32,7 +32,7 @@ cp "$BINARIES_DIR/memtest.efi" "$BINARIES_DIR/tos-memtest.efi"   # teste de memo
 
 support/scripts/genimage.sh -c "$B/genimage-efi.cfg"
 
-# BIOS antigo: codigo do syslinux no setor 0 e o syslinux instalado dentro da TOS-BOOT (que comeca em 1 MiB)
+# BIOS antigo: codigo do syslinux no setor 0 e o syslinux instalado dentro da SCRAPCADE (que comeca em 1 MiB)
 SL=$(ls "$BUILD_DIR"/syslinux-*/bios/mtools/syslinux | head -1)
 "$SL" --offset 1048576 --directory /syslinux --install "$BINARIES_DIR/disk.img"
 dd if="$BINARIES_DIR/syslinux/mbr.bin" of="$BINARIES_DIR/disk.img" bs=440 count=1 conv=notrunc status=none
@@ -47,5 +47,5 @@ cp "$BINARIES_DIR/tos-initrd.gz" "$U/initrd.gz"
 V=$(sed -n 's/^BUILD_ID=//p' "$TARGET_DIR/etc/os-release")
 echo "$V" > "$U/BUILD_ID"
 # para baixar e instalar do zero: um .iso so (com o tipo de PC no nome), que vale para qualquer jeito de gravar
-cp "$BINARIES_DIR"/scrapcade-*-x86_64.iso "$U/scrapcade-$V-pc-64bits.iso"
-( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz scrapcade-$V-pc-64bits.iso > SHA256SUMS )
+cp "$BINARIES_DIR"/scrapcade-os-*-x86_64.iso "$U/scrapcade-os-$V-pc-64bits.iso"
+( cd "$U" && sha256sum tos.squashfs bzImage initrd.gz scrapcade-os-$V-pc-64bits.iso > SHA256SUMS )

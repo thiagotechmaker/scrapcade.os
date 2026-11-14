@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SCRAPCADE_VERSION = 1.8
+SCRAPCADE_VERSION = 1.10
 SCRAPCADE_SITE = $(BR2_EXTERNAL_TOS_PATH)/package/scrapcade/src
 SCRAPCADE_SITE_METHOD = local
 SCRAPCADE_LICENSE = GPL-3.0-or-later

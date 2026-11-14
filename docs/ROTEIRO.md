@@ -50,7 +50,7 @@ Por isso o QEMU continua sendo a escolha certa pro teste do dia a dia, deixando 
 | Peça | Função | Linguagem | Status |
 | --- | --- | --- | --- |
 | OverlayFS | une o squashfs (somente leitura) com a camada gravável | C (kernel) | já em uso |
-| exfatprogs, dosfstools | formata TOS-DADOS e TOS-BOOT | C | já em uso |
+| exfatprogs, dosfstools | formata SCRAP-DADOS e SCRAPCADE | C | já em uso |
 | **Partição de dados para apps** (ext4 ou btrfs) | guarda Flatpak (`/var/lib/flatpak`, `~/.var/app`) e a home do usuário | — | novo |
 
 ## 5. Serviços de sistema e conectividade

@@ -4,7 +4,7 @@
 #   tos-atualizar instalar   -> baixa, confere o SHA-256 e troca; a versao de agora vira a "anterior"
 #   tos-atualizar confirmar  -> a versao nova ligou bem (o ScrapCade chama): nao volta mais sozinha
 # Progresso em /tmp/tos-atualizar.txt ("porcentagem mensagem"), mostrado no painel Sistema.
-REPO=thiagotechmaker/scrapcade
+REPO=thiagotechmaker/scrapcade.os
 API=https://api.github.com/repos/$REPO/releases/latest
 P=/tmp/tos-atualizar.txt
 D=/boot/boot

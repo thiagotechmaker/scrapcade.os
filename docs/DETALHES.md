@@ -21,11 +21,11 @@ O ScrapCade empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS,
 | Sega Saturn | Beetle Saturn (precisa da BIOS do usuário) |
 | Dreamcast | Flycast (BIOS do usuário recomendada) |
 
-- **Configuração central:** o `tos-jogar` passa a mesma configuração para todo emulador (vídeo, som, controles, atalhos e pastas). Para mudar algo só seu: `TOS-DADOS/system/configs/retroarch/retroarch-usuario.cfg`.
+- **Configuração central:** o `tos-jogar` passa a mesma configuração para todo emulador (vídeo, som, controles, atalhos e pastas). Para mudar algo só seu: `SCRAP-DADOS/system/configs/retroarch/retroarch-usuario.cfg`.
 - **Atalhos iguais em todo jogo:** **Select + Start** sai, **Select + X** abre o menu, **Select + RB/LB** salva/carrega. No teclado: **Esc** sai, **F1** abre o menu. O ScrapCade mostra esses atalhos ao abrir cada jogo.
 - **Nunca perder o progresso:** o jogo salva sozinho ao sair e continua de onde parou.
 - **Controles:** reconhecidos pelo banco de dados do SDL2 (Xbox, PlayStation, Nintendo, genéricos), sem configurar.
-- **Pastas na TOS-DADOS:** `saves/<console>`, `bios`, `screenshots`. O gerenciador da página mostra também `bios`, `saves` e `Registros` (logs, para pedir ajuda).
+- **Pastas na SCRAP-DADOS:** `saves/<console>`, `bios`, `screenshots`. O gerenciador da página mostra também `bios`, `saves` e `Registros` (logs, para pedir ajuda).
 
 ## Como o ScrapCade fica no disco
 
@@ -33,12 +33,12 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 
 | Partição | Formato | O que tem |
 |---|---|---|
-| **TOS-BOOT** | FAT32, 1 GB (tabela MBR, GRUB para UEFI e para BIOS) | GRUB, kernel, um initrd pequeno e o sistema inteiro em `boot/tos.squashfs` (somente leitura) |
-| **TOS-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e as configurações (`system`: senha, rede, ScrapCade) |
+| **SCRAPCADE** | FAT32, 1 GB (tabela MBR, GRUB para UEFI e para BIOS) | GRUB, kernel, um initrd pequeno e o sistema inteiro em `boot/tos.squashfs` (somente leitura) |
+| **SCRAP-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e as configurações (`system`: senha, rede, ScrapCade) |
 
 - **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
-- **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
-- **Atualizar o ScrapCade OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
+- **A SCRAP-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
+- **Atualizar o ScrapCade OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a SCRAPCADE é FAT32). A SCRAP-DADOS nunca é mexida.
 - **exFAT** para o Windows ler e gravar os jogos direto.
 
 ## Arquivos de cada versão
@@ -61,8 +61,8 @@ No **primeiro boot** o ScrapCade se copia para a memória e arruma o pen drive s
 
 | Partição | O que fica |
 |---|---|
-| **TOS-BOOT** (FAT32, 1 GB) | o sistema, somente leitura (atualização automática A/B) |
-| **TOS-DADOS** (exFAT, o resto) | jogos, BIOS, saves, temas e perfis, sem limite de 4 GB por arquivo |
+| **SCRAPCADE** (FAT32, 1 GB) | o sistema, somente leitura (atualização automática A/B) |
+| **SCRAP-DADOS** (exFAT, o resto) | jogos, BIOS, saves, temas e perfis, sem limite de 4 GB por arquivo |
 
 Daí em diante o ScrapCade **roda direto do pen drive**, como o Batocera. Para ligar sem o pen drive, quando quiser: *Sistema > Instalar no disco do computador* (copia o ScrapCade, e se quiser os jogos, para o HD ou SSD).
 
@@ -83,7 +83,7 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 
 ## Instalar no computador
 
-**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do ScrapCade OS não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o ScrapCade no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
+**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do ScrapCade OS não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria SCRAPCADE e SCRAP-DADOS no disco e registra o ScrapCade no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
 
 ## O que cada parte faz
 
