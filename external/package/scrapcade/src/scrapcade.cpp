@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.6 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.7 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -1169,7 +1169,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.6" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.7" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -1959,6 +1959,56 @@ static void drawInstall() {
 enum Btn : int;
 static bool installInput(int b);
 
+// ------------------------------------------------------------------ pergunta: instalar no HD? (uma vez so)
+// Rodando de um pen drive USB e com um HD/SSD no computador, pergunta uma vez se quer instalar.
+// A resposta fica guardada; a opcao continua em Sistema > Instalar no disco do computador.
+static const std::string PERGUNTOU_HD = "/userdata/system/configs/perguntou-instalar";
+static std::atomic<int> hdPode{0};   // 0 vendo, 1 pode perguntar, 2 nao pergunta
+static int hdStage = 0;              // 0 fechado, 1 perguntando
+static int hdDiscos = 0;
+
+static void verSePergunta() {
+    std::thread([] {
+        bool usb = false;
+        std::string d = Usb::bootDisk();
+        char buf[512];
+        ssize_t n = d.empty() ? -1 : readlink(("/sys/block/" + d).c_str(), buf, sizeof buf - 1);
+        if (n > 0) { buf[n] = 0; usb = std::string(buf).find("/usb") != std::string::npos; }
+        int discos = 0;
+        if (usb && !isFile(PERGUNTOU_HD)) {
+            std::string l = Rede::run("/usr/bin/tos-instalar listar");
+            for (char c : l) if (c == '\n') discos++;
+        }
+        hdDiscos = discos;
+        hdPode = (usb && discos > 0 && !isFile(PERGUNTOU_HD)) ? 1 : 2;
+    }).detach();
+}
+
+static void respondeuHD() {
+    mkdirs("/userdata/system/configs");
+    std::ofstream(PERGUNTOU_HD) << "sim\n";
+    sync();
+    hdStage = 0;
+}
+
+static void drawPerguntaHD() {
+    if (!hdStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u * T.escala), lh = 15 * u * T.escala;
+    const char *L[] = {"O T-OS está rodando do pen drive.",
+                       "Dá para instalar no HD ou SSD deste computador e ligar sem o pen drive",
+                       "(os jogos podem ir junto). Você escolhe o disco na próxima tela.",
+                       "",
+                       "Atenção: o disco escolhido é apagado.",
+                       "Depois, se quiser: Sistema > Instalar no disco do computador."};
+    uint32_t C[] = {0xFF2B2E33, 0xFF2B2E33, 0xFF2B2E33, 0xFF2B2E33, 0xFFD0362B, 0xFF5E6269};
+    float h = 22 * u + 16 * u + 6 * lh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Instalar no computador?", x, y, w, h) + 10 * u;
+    for (int i = 0; i < 6; i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    static const char *H[] = {"a", "escolher o disco", "b", "agora não"};
+    panelHints(H, 4, x, y + h, w);
+}
+
 // dir: -1/+1 = mudar valor (esquerda/direita); 0 = confirmar (A)
 static void optAction(int dir) {
     int d = dir == 0 ? 1 : dir;
@@ -2140,6 +2190,13 @@ static bool navInput(int b) {
     return true;
 }
 
+static bool hdInput(int b) {
+    if (!hdStage) return false;
+    if (b == B_A) { respondeuHD(); openInstall(); }
+    else if (b == B_B || b == B_SELECT) { respondeuHD(); toast("Fica para depois: Sistema > Instalar no disco do computador", 5000); }
+    return true;
+}
+
 static bool updInput(int b) {
     if (!updStage) return false;
     std::string nova;
@@ -2196,6 +2253,7 @@ static bool panelInput(Btn b) {
     if (netInput(b)) return true;
     if (btInput(b)) return true;
     if (updInput(b)) return true;
+    if (hdInput(b)) return true;
     if (navInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
@@ -2637,6 +2695,7 @@ static void render() {
     drawBluetooth();
     drawAtualizar();
     drawNavegador();
+    drawPerguntaHD();
     drawControle();
     drawTeclado();
     drawToast();
@@ -3016,7 +3075,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || hdStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -3041,6 +3100,14 @@ int main() {
             confirmado = true;
             std::thread([] { if (system("/usr/bin/tos-atualizar confirmar") != 0) {} }).detach();
         }
+        static bool hdVisto = false;
+        if (!hdVisto) { hdVisto = true; verSePergunta(); }
+        if (hdPode == 1 && now > 20000 && perfilAtual >= 0 && !profStage && !sysOpen && !instStage && !netStage &&
+            !btStage && !updStage && !navModo && !tkOn && ctlStep < 0 && textTitle.empty()) {
+            hdPode = 2;
+            hdStage = 1;
+            redraw();
+        }
         // procura versao nova sozinho (uma vez por boot, com a rede ja de pe) e avisa na tela
         static std::atomic<int> novaVersao{0};   // 0 nao procurou, 1 procurando, 2 tem versao nova, 3 nada
         if (novaVersao == 0 && now > 40000) {
@@ -3058,7 +3125,7 @@ int main() {
             redraw();
         }
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
