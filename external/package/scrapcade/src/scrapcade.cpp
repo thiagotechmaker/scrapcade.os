@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.1 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.2 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -38,6 +38,7 @@
 #include <sys/utsname.h>
 #include <sys/reboot.h>
 #include <unistd.h>
+#include <functional>
 #include <thread>
 
 
@@ -64,6 +65,12 @@ static void savePrefs() {
     rename(tmp.c_str(), CONF_FILE.c_str());
 }
 
+// perfis de jogador (definidos mais abaixo, na secao "perfis de jogador")
+struct Perfil { std::string id, nome, hash; int avatar; };
+extern std::vector<Perfil> perfis;
+extern int perfilAtual;
+static void drawAvatar(const Perfil *p, int av, float x, float y, float s);
+
 static bool isFav(const Game &g) { return prefs.count("fav|" + g.key()) > 0; }
 static int plays(const Game &g) {
     auto it = prefs.find("plays|" + g.key());
@@ -72,20 +79,31 @@ static int plays(const Game &g) {
 
 // ------------------------------------------------------------------ temas (Theme.java)
 
-enum { CARBONO, NEON, ARCADE, CLARO, AURORA, NTEMAS };
-static const char *THEME_NAMES[NTEMAS] = {"Carbono", "Neon", "Arcade", "Claro", "Aurora"};
+// Temas proprios, desenhados aqui (sem imagem de marca): os ultimos tres lembram epocas dos videogames
+enum { CARBONO, NEON, ARCADE, CLARO, AURORA, PIXEL, PORTATIL, OCEANO, NTEMAS };
+static const char *THEME_NAMES[NTEMAS] = {"Carbono", "Neon", "Arcade", "Claro", "Aurora", "8 bits", "Portátil", "Oceano"};
 static int theme = AURORA;
 
-static uint32_t accent(uint32_t col) { return theme == AURORA ? 0xFF32E6A8 : lighten(col, 0.35f); }
+static uint32_t accent(uint32_t col) {
+    if (theme == AURORA) return 0xFF32E6A8;
+    if (theme == PIXEL) return 0xFFFFD34E;
+    if (theme == PORTATIL) return 0xFFB8DC48;
+    if (theme == OCEANO) return 0xFF5CE1E6;
+    return lighten(col, 0.35f);
+}
 static uint32_t band(uint32_t col) {
     if (theme == CLARO || theme == AURORA) return col;
     if (theme == NEON) return darken(col, 0.55f);
     if (theme == ARCADE) return blend(col, 0xFFFF3EA5, 0.45f);
+    if (theme == PIXEL) return col;
+    if (theme == PORTATIL) return blend(col, 0xFF2F5A1F, 0.65f);
+    if (theme == OCEANO) return blend(col, 0xFF0A4C6E, 0.45f);
     return darken(col, 0.30f);
 }
 static uint32_t cardText(uint32_t col) {
     if (theme == CLARO) return darken(col, 0.25f);
     if (theme == NEON) return lighten(col, 0.55f);
+    if (theme == PORTATIL) return 0xFFE4F6C8;
     return 0xFFFFFFFF;
 }
 
@@ -181,6 +199,47 @@ static SDL_Texture *background(uint32_t col) {
         break;
     case CLARO:
         G.gradientV(0, 0, W, H, 0xFFF4F6F9, blend(0xFFF4F6F9, col, 0.18f));
+        break;
+    case PIXEL: {   // ceu noturno com estrelas quadradas e chao quadriculado
+        G.gradientV(0, 0, W, H * 0.66f, 0xFF07061A, 0xFF1B1550);
+        unsigned seed = 7;
+        for (int i = 0; i < 90; i++) {
+            seed = seed * 1103515245u + 12345u;
+            float x = float(seed % 10000) / 10000 * W;
+            seed = seed * 1103515245u + 12345u;
+            float y = float(seed % 10000) / 10000 * H * 0.6f, q = (seed % 3 + 1) * d;
+            G.fillRect(std::floor(x), std::floor(y), q, q, (seed % 5) ? 0xAAFFFFFF : 0xFFFFD34E);
+        }
+        float hz = H * 0.66f, q = 16 * d;
+        G.fillRect(0, hz, W, H - hz, 0xFF100D30);
+        for (float y = hz; y < H; y += q)
+            for (float x = 0; x < W; x += q)
+                if ((int(x / q) + int((y - hz) / q)) % 2) G.fillRect(x, y, q, q, 0xFF1A1648);
+        G.fillRect(0, hz, W, 2 * d, alpha(lighten(col, 0.3f), 200));
+        break;
+    }
+    case PORTATIL:   // tela de LCD verde com linhas de varredura
+        G.gradientV(0, 0, W, H, 0xFF3C5A22, 0xFF0F200C);
+        G.radial(W / 2, H * 0.45f, W * 0.6f, H * 0.6f, 0x40C8E880);
+        for (float y = 0; y < H; y += 3 * d) G.fillRect(0, y, W, d, 0x18000000);
+        break;
+    case OCEANO:   // azul profundo, raios de luz vindos de cima e bolhas
+        G.gradientV(0, 0, W, H, 0xFF06486A, 0xFF010A16);
+        for (int i = 0; i < 5; i++) {
+            float cx = W * (0.15f + 0.18f * i);
+            SDL_Color c0 = cor(0x30A8F0FF), c1 = cor(0x00A8F0FF);
+            SDL_Vertex v[3] = {{{cx - 18 * d, 0}, c0, {0, 0}}, {{cx + 18 * d, 0}, c0, {0, 0}},
+                               {{cx + (i - 2) * 60 * d, H * 0.9f}, c1, {0, 0}}};
+            SDL_RenderGeometry(G.r, nullptr, v, 3, nullptr, 0);
+        }
+        {
+            unsigned seed = 3;
+            for (int i = 0; i < 26; i++) {
+                seed = seed * 1103515245u + 12345u;
+                float x = float(seed % 10000) / 10000 * W, y = H * (0.3f + float((seed >> 8) % 700) / 1000);
+                G.radial(x, y, (2 + seed % 5) * d, (2 + seed % 5) * d, 0x50C8F4FF);
+            }
+        }
         break;
     default:
         G.gradientV(0, 0, W, H, darken(col, 0.45f), 0xFF06070A);
@@ -492,6 +551,12 @@ static void topBar(const Game *g) {
     static Uint32 ipAt = 0;
     if (!ipAt || SDL_GetTicks() - ipAt > 5000) { ip = ipAddr(); ipAt = SDL_GetTicks(); }
     float rx = G.W - 10 * u;
+    if (perfilAtual >= 0) {   // quem esta jogando, ao lado do relogio
+        float bloco = std::max(T.width(hora, 12.5f, true), T.width(std::string(data) + "  •  " + ip, 7, false));
+        float ax = rx - bloco - 12 * u - 19 * u;
+        drawAvatar(&perfis[perfilAtual], 0, ax, cy - 9.5f * u, 19 * u);
+        T.draw(perfis[perfilAtual].nome, ax - 6 * u, cy, 9.5f, true, 0xFFFFFFFF, 2, 120 * u);
+    }
     T.draw(hora, rx, cy - 3.6f * u, 12.5f, true, 0xFFFFFFFF, 2);
     T.draw(std::string(data) + "  •  " + ip, rx, cy + 7.2f * u, 7, false, 0xBBFFFFFF, 2);
 }
@@ -607,9 +672,11 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_THEME, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
+static std::string perfilNome();
+static void abrirPerfis();
 static int volume = -2;   // -2 ainda nao leu, -1 sem placa de som, 0..100
 static const std::string DESKTOP = "/usr/bin/tos-desktop";
 static int optSel = 0;
@@ -665,6 +732,7 @@ static void readUsage() {
 
 static std::string optLabel(int i) {
     switch (i) {
+    case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_THEME: return std::string("Tema:   ‹ ") + THEME_NAMES[theme] + " ›";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
@@ -824,7 +892,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.1" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.2" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -1273,6 +1341,7 @@ static void optAction(int dir) {
         restartMenu = true;   // o laco principal fecha a tela e reabre o ScrapCade com o motor novo
         return;
     }
+    case OPT_PERFIL: if (dir == 0) { sysOpen = false; abrirPerfis(); } return;
     case OPT_VOLUME:
         if (volume == -2) readVolume();
         if (dir == 0) testSound();
@@ -1316,7 +1385,10 @@ static void optAction(int dir) {
 }
 
 // Teclas e botoes enquanto um painel esta aberto. true = o painel tratou.
-enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER, B_X, B_START };
+enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER, B_X, B_START, B_Y };
+
+static bool tecladoInput(int b);
+static bool perfisInput(int b);
 
 static bool netInput(int b) {
     if (!netStage) return false;
@@ -1374,6 +1446,8 @@ static bool installInput(int b) {
 
 static bool panelInput(Btn b) {
     if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
+    if (tecladoInput(b)) return true;
+    if (perfisInput(b)) return true;
     if (netInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
@@ -1401,9 +1475,340 @@ static void openSystem() {
     barsAt = SDL_GetTicks();
 }
 
+// ------------------------------------------------------------------ perfis de jogador (tela "Quem vai jogar?")
+//
+// Cada perfil tem as suas preferencias (favoritos, mais jogados, tema, ultimo jogo) e os seus saves.
+// Os jogos sao os mesmos para todos. Dados em TOS-DADOS/system/perfis.txt e system/perfis/<id>/.
+// O perfil 1 usa os saves que ja existiam (saves/<console>); os outros, saves/<console>/perfil-<id>.
+
+std::vector<Perfil> perfis;
+int perfilAtual = -1;
+static const std::string PERFIS_FILE = "/userdata/system/perfis.txt";
+static const std::string PERFIS_DIR = "/userdata/system/perfis";
+static const std::string PERFIL_AGORA = "/tmp/tos-perfil";   // some ao desligar: ao ligar, pergunta de novo
+
+struct Avatar { uint32_t cor; const char *simbolo; };
+static const Avatar AVATARES[] = {
+    {0xFF32E6A8, "★"}, {0xFF2B68C8, "♫"}, {0xFFC93636, "♥"}, {0xFFD9822B, "⚡"}, {0xFF6C47C9, "♛"},
+    {0xFF1E9C4A, "♣"}, {0xFF2E9EC8, "✈"}, {0xFFE0B020, "☀"}, {0xFFE0356B, "♦"}, {0xFF4A4D52, "♠"},
+    {0xFF8A5A2B, "☂"}, {0xFF19B0B0, "☺"},
+};
+static const int NAVATARES = int(sizeof(AVATARES) / sizeof(AVATARES[0]));
+
+static std::string sha256(const std::string &t) {
+    unsigned char d[EVP_MAX_MD_SIZE];
+    unsigned int n = 0;
+    EVP_Digest(t.data(), t.size(), d, &n, EVP_sha256(), nullptr);
+    std::string h;
+    char b[3];
+    for (unsigned i = 0; i < n; i++) { snprintf(b, sizeof b, "%02x", d[i]); h += b; }
+    return h;
+}
+
+static void loadPerfis() {
+    perfis.clear();
+    std::ifstream f(PERFIS_FILE);
+    std::string l;
+    while (std::getline(f, l)) {
+        std::vector<std::string> c;
+        std::stringstream ss(l);
+        std::string x;
+        while (std::getline(ss, x, '|')) c.push_back(x);
+        if (c.size() >= 3) perfis.push_back({c[0], c[1], c.size() > 3 ? c[3] : "", atoi(c[2].c_str()) % NAVATARES});
+    }
+}
+
+static void savePerfis() {
+    mkdirs(PERFIS_DIR);
+    std::string tmp = PERFIS_FILE + ".tmp";
+    {
+        std::ofstream f(tmp);
+        for (auto &p : perfis) f << p.id << "|" << p.nome << "|" << p.avatar << "|" << p.hash << "\n";
+    }
+    rename(tmp.c_str(), PERFIS_FILE.c_str());
+    sync();
+}
+
+static std::string perfilNome() { return perfilAtual >= 0 ? perfis[perfilAtual].nome : "nenhum"; }
+
+// Foto propria: system/perfis/<id>/avatar.png (ou .jpg), colocada pela pagina de Arquivos
+static std::string fotoPerfil(const Perfil &p) {
+    for (const char *e : {"/avatar.png", "/avatar.jpg", "/avatar.jpeg"})
+        if (isFile(PERFIS_DIR + "/" + p.id + e)) return PERFIS_DIR + "/" + p.id + e;
+    return "";
+}
+
+static void drawAvatar(const Perfil *p, int av, float x, float y, float s) {
+    float u = G.u;
+    std::string foto = p ? fotoPerfil(*p) : "";
+    if (!foto.empty()) {
+        if (SDL_Texture *t = image(foto)) {
+            G.roundRect(x, y, s, s, 6 * u, 0xFF101428);
+            G.imageFit(t, x, y, s, s);
+            return;
+        }
+    }
+    const Avatar &a = AVATARES[(p ? p->avatar : av) % NAVATARES];
+    G.gradientV(x, y, s, s, lighten(a.cor, 0.25f), darken(a.cor, 0.25f));
+    G.roundRectStroke(x, y, s, s, 2 * u, std::max(1.0f, u), 0x40FFFFFF);
+    T.draw(a.simbolo, x + s / 2, y + s * 0.47f, s / u * 0.5f, true, 0xFFFFFFFF, 1);
+}
+
+static void login(int i) {
+    if (perfilAtual >= 0) savePrefs();
+    perfilAtual = i;
+    const Perfil &p = perfis[i];
+    std::string dir = PERFIS_DIR + "/" + p.id;
+    mkdirs(dir);
+    std::string novo = dir + "/scrapcade.conf";
+    // primeiro perfil: herda as preferencias de antes dos perfis (favoritos, tema...)
+    if (!isFile(novo) && p.id == "1" && isFile("/userdata/system/scrapcade.conf")) {
+        std::ifstream in("/userdata/system/scrapcade.conf", std::ios::binary);
+        std::ofstream(novo, std::ios::binary) << in.rdbuf();
+    }
+    std::string engine = prefs["engine"];
+    CONF_FILE = novo;
+    prefs.clear();
+    loadPrefs();
+    if (!engine.empty() && prefs["engine"].empty()) prefs["engine"] = engine;
+    theme = prefs.count("theme") ? std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str()))) : AURORA;
+    ANIM_MS = prefs["anim"] == "rapida" ? 130 : 200;
+    showCovers = prefs["covers"] != "0";
+    showBackdrop = prefs["backdrop"] != "0";
+    clearCards();
+    clearBacks();
+    buildFilters();
+    applyFilter();
+    for (size_t k = 0; k < view.size(); k++)
+        if (view[k].key() == prefs["ultimo"]) { target = int(k); pos = float(target); break; }
+    std::ofstream(PERFIL_AGORA) << p.id << "|" << p.nome << "\n";   // o tos-jogar usa (saves do perfil)
+    toast("Olá, " + p.nome + "!", 2500);
+}
+
+// ---- teclado na tela (nome e senha do perfil; o teclado do PC tambem funciona)
+static bool tkOn = false, tkOculto = false, tkUp = false, tkVer = false;
+static std::string tkTitulo, tkTexto;
+static int tkR = 1, tkC = 0;
+static std::function<void(bool)> tkFim;
+
+static void abrirTeclado(const std::string &titulo, bool oculto, std::function<void(bool)> fim) {
+    tkOn = true;
+    tkTitulo = titulo;
+    tkTexto.clear();
+    tkOculto = oculto;
+    tkVer = false;
+    tkR = 1;
+    tkC = 0;
+    tkFim = fim;
+}
+
+static void fecharTeclado(bool ok) {
+    tkOn = false;
+    auto f = tkFim;
+    if (f) f(ok);
+}
+
+static void drawTeclado() {
+    if (!tkOn) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), kh = 6 * 18 * u;
+    float h = 22 * u + 16 * u + 2 * 14 * u + kh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel(tkTitulo, x, y, w, h) + 10 * u;
+    std::string mostra = tkOculto && !tkVer ? std::string(tkTexto.size(), '*') : tkTexto;
+    G.roundRect(x + 14 * u, top, w - 28 * u, 16 * u, 3 * u, 0xFFF1F2F4);
+    T.draw(mostra + "_", x + 20 * u, top + 8 * u, 10, false, 0xFF1E9C4A, 0, w - 40 * u);
+    float ky = top + 26 * u, kw = (w - 28 * u) / 10;
+    static const char *ESP[] = {"Aa", "espaço", "apagar", "ver", "OK"};
+    for (int rr = 0; rr < 6; rr++) {
+        int cols = rr < 5 ? 10 : 5;
+        float cw = rr < 5 ? kw : (w - 28 * u) / 5;
+        for (int cc = 0; cc < cols; cc++) {
+            bool sel = rr == tkR && cc == tkC;
+            float bx = x + 14 * u + cc * cw, by = ky + rr * 18 * u;
+            G.roundRect(bx + u, by + u, cw - 2 * u, 16 * u, 3 * u, sel ? 0xFF2CCF9A : 0xFF4A4D52);
+            char ch = rr < 5 ? (tkUp ? char(toupper((unsigned char)OSK[rr][cc])) : OSK[rr][cc]) : 0;
+            T.draw(rr < 5 ? std::string(1, ch) : ESP[cc], bx + cw / 2, by + 9 * u, rr < 5 ? 10 : 8.5f, rr < 5, 0xFFFFFFFF, 1);
+        }
+    }
+    static const char *H[] = {"ud lr", "teclas", "a", "digitar", "b", "apagar", "start", "pronto"};
+    panelHints(H, 8, x, y + h, w);
+}
+
+// ---- tela de perfis
+static int profStage = 0;    // 0 fechada, 1 escolher, 2 avatar do perfil novo, 3 confirmar apagar
+static int profSel = 0, profAvatar = 0;
+static std::string profNomeNovo;
+
+static void abrirPerfis() {
+    loadPerfis();
+    profStage = 1;
+    profSel = perfilAtual >= 0 ? perfilAtual : 0;
+}
+
+static void criarPerfil() {
+    abrirTeclado("Novo perfil: escreva o nome", false, [](bool ok) {
+        while (!tkTexto.empty() && tkTexto.back() == ' ') tkTexto.pop_back();
+        if (!ok || tkTexto.empty()) return;
+        std::string n = tkTexto;
+        std::replace(n.begin(), n.end(), '|', ' ');
+        profNomeNovo = n.substr(0, 24);
+        profAvatar = int(perfis.size()) % NAVATARES;
+        profStage = 2;
+    });
+}
+
+static void salvarPerfilNovo(const std::string &senha) {
+    int maior = 0;
+    for (auto &p : perfis) maior = std::max(maior, atoi(p.id.c_str()));
+    perfis.push_back({std::to_string(maior + 1), profNomeNovo, senha.empty() ? "" : sha256(senha), profAvatar});
+    savePerfis();
+    profStage = 0;
+    login(int(perfis.size()) - 1);
+}
+
+static void entrar(int i) {
+    if (perfis[i].hash.empty()) { profStage = 0; login(i); return; }
+    abrirTeclado("Senha de " + perfis[i].nome, true, [i](bool ok) {
+        if (!ok) return;
+        if (sha256(tkTexto) == perfis[i].hash) { profStage = 0; login(i); }
+        else toast("Senha errada.", 2500);
+    });
+}
+
+static void drawPerfis() {
+    if (!profStage) return;
+    float u = G.u;
+    SDL_RenderCopy(G.r, background(0xFF2B68C8), nullptr, nullptr);
+    G.fillRect(0, 0, float(G.W), float(G.H), 0x50000000);
+    int n = int(perfis.size()) + 1;   // + "Novo perfil"
+    if (profStage == 1 || profStage == 3) {
+        T.draw(perfis.empty() ? "Bem-vindo ao T-OS!" : "Quem vai jogar?", G.W / 2.0f, G.H * 0.18f, 20, true, 0xFFFFFFFF, 1);
+        T.draw(perfis.empty() ? "Crie o seu perfil: cada pessoa tem os seus favoritos e os seus saves." :
+                                "Cada perfil tem os seus favoritos e os seus saves.",
+               G.W / 2.0f, G.H * 0.18f + 22 * u, 10, false, 0xDDFFFFFF, 1);
+        float s = 86 * u, gap = 18 * u, tw = n * s + (n - 1) * gap;
+        float x0 = std::min((G.W - tw) / 2, G.W / 2.0f - s / 2 - profSel * (s + gap)), y0 = G.H * 0.40f;
+        if (tw <= G.W - 40 * u) x0 = (G.W - tw) / 2;
+        for (int i = 0; i < n; i++) {
+            bool sel = i == profSel;
+            float k = sel ? 1.12f : 1.0f, ss = s * k, x = x0 + i * (s + gap) - (ss - s) / 2, y = y0 - (ss - s) / 2;
+            if (x + ss < 0 || x > G.W) continue;
+            if (i < int(perfis.size())) drawAvatar(&perfis[i], 0, x, y, ss);
+            else {
+                G.roundRect(x, y, ss, ss, 4 * u, 0xC0303338);
+                T.draw("+", x + ss / 2, y + ss * 0.45f, ss / u * 0.5f, false, 0xFFFFFFFF, 1);
+            }
+            if (sel) G.roundRectStroke(x - 3 * u, y - 3 * u, ss + 6 * u, ss + 6 * u, 5 * u, 2.5f * u, 0xFF32E6A8);
+            std::string nome = i < int(perfis.size()) ? perfis[i].nome : "Novo perfil";
+            T.draw(nome, x + ss / 2, y + ss + 14 * u, sel ? 11 : 9.5f, sel, 0xFFFFFFFF, 1, s + gap);
+            if (i < int(perfis.size()) && !perfis[i].hash.empty())
+                T.draw("com senha", x + ss / 2, y + ss + 28 * u, 7.5f, false, 0xAAFFFFFF, 1);
+        }
+        if (profStage == 3 && profSel < int(perfis.size())) {
+            float w = std::min(G.W - 24.0f * u, 400 * u), h = 92 * u, x = (G.W - w) / 2, y = (G.H - h) / 2;
+            float top = whitePanel("Apagar perfil", x, y, w, h) + 14 * u;
+            T.draw("Apagar o perfil " + perfis[profSel].nome + "?", x + 14 * u, top, 10, true, 0xFF2B2E33, 0, w - 28 * u);
+            T.draw("Os jogos e os saves continuam guardados.", x + 14 * u, top + 16 * u, 9, false, 0xFF5E6269);
+            static const char *HC[] = {"a", "apagar", "b", "voltar"};
+            panelHints(HC, 4, x, y + h, w);
+        }
+        // barra de botoes no estilo Aurora
+        float hh = HINT_H * u, hy = G.H - hh;
+        G.fillRect(0, hy, float(G.W), hh, 0xF7FFFFFF);
+        static const char *H[] = {"lr", "escolher", "a", "entrar", "y", "apagar perfil"};
+        float hx = 12 * u, cy = hy + hh / 2, is = 15.5f * u;
+        for (int i = 0; i < (perfis.empty() ? 4 : 6); i += 2) {
+            std::stringstream ss2(H[i]);
+            std::string kk;
+            while (ss2 >> kk) {
+                if (SDL_Texture *t = image(DATA + "/botoes/" + kk + ".png")) {
+                    SDL_FRect d{hx, cy - is / 2, is, is};
+                    SDL_RenderCopyF(G.r, t, nullptr, &d);
+                }
+                hx += is + u;
+            }
+            T.draw(H[i + 1], hx + 2 * u, cy, 9.5f, false, 0xFF5E6269);
+            hx += 2 * u + T.width(H[i + 1], 9.5f, false) + 13 * u;
+        }
+    } else if (profStage == 2) {   // escolher o avatar do perfil novo
+        T.draw("Escolha o avatar de " + profNomeNovo, G.W / 2.0f, G.H * 0.18f, 16, true, 0xFFFFFFFF, 1);
+        float s = 58 * u, gap = 10 * u, tw = 6 * s + 5 * gap, x0 = (G.W - tw) / 2, y0 = G.H * 0.32f;
+        for (int i = 0; i < NAVATARES; i++) {
+            float x = x0 + (i % 6) * (s + gap), y = y0 + (i / 6) * (s + gap);
+            drawAvatar(nullptr, i, x, y, s);
+            if (i == profAvatar) G.roundRectStroke(x - 3 * u, y - 3 * u, s + 6 * u, s + 6 * u, 4 * u, 2.5f * u, 0xFF32E6A8);
+        }
+        T.draw("Foto própria: depois coloque avatar.png na pasta Perfis, pela página de Arquivos.",
+               G.W / 2.0f, y0 + 2 * (s + gap) + 16 * u, 8.5f, false, 0xCCFFFFFF, 1);
+        T.draw("A: escolher este  •  depois você pode pôr uma senha (opcional)", G.W / 2.0f,
+               y0 + 2 * (s + gap) + 32 * u, 9, false, 0xFFFFFFFF, 1);
+    }
+}
+
+static bool tecladoInput(int b) {
+    if (!tkOn) return false;
+    int cols = tkR < 5 ? 10 : 5;
+    if (b == B_UP) tkR = (tkR + 5) % 6;
+    if (b == B_DOWN) tkR = (tkR + 1) % 6;
+    if (b == B_UP || b == B_DOWN) tkC = std::min(tkC, (tkR < 5 ? 10 : 5) - 1);
+    if (b == B_LEFT) tkC = (tkC + cols - 1) % cols;
+    if (b == B_RIGHT) tkC = (tkC + 1) % cols;
+    if (b == B_B) { if (!tkTexto.empty()) tkTexto.pop_back(); else fecharTeclado(false); }
+    if (b == B_START) fecharTeclado(true);
+    if (b == B_SELECT) fecharTeclado(false);
+    if (b == B_A) {
+        if (tkR < 5) tkTexto += tkUp ? char(toupper((unsigned char)OSK[tkR][tkC])) : OSK[tkR][tkC];
+        else if (tkC == 0) tkUp = !tkUp;
+        else if (tkC == 1) tkTexto += ' ';
+        else if (tkC == 2) { if (!tkTexto.empty()) tkTexto.pop_back(); }
+        else if (tkC == 3) tkVer = !tkVer;
+        else fecharTeclado(true);
+    }
+    return true;
+}
+
+static bool perfisInput(int b) {
+    if (!profStage) return false;
+    int n = int(perfis.size()) + 1;
+    if (profStage == 1) {
+        if (b == B_LEFT) profSel = (profSel + n - 1) % n;
+        if (b == B_RIGHT) profSel = (profSel + 1) % n;
+        if (b == B_A) { if (profSel < int(perfis.size())) entrar(profSel); else criarPerfil(); }
+        if (b == B_Y && profSel < int(perfis.size())) profStage = 3;
+        if ((b == B_B || b == B_SELECT) && perfilAtual >= 0) profStage = 0;   // voltar so se ja tem alguem jogando
+    } else if (profStage == 2) {
+        if (b == B_LEFT) profAvatar = (profAvatar + NAVATARES - 1) % NAVATARES;
+        if (b == B_RIGHT) profAvatar = (profAvatar + 1) % NAVATARES;
+        if (b == B_UP || b == B_DOWN) profAvatar = (profAvatar + 6) % NAVATARES;
+        if (b == B_A)
+            abrirTeclado("Senha de " + profNomeNovo + " (opcional: deixe vazio e aperte Start)", true,
+                         [](bool ok) { if (ok) salvarPerfilNovo(tkTexto); });
+        if (b == B_B) profStage = 1;
+    } else if (profStage == 3) {
+        if (b == B_A) {
+            bool eraAtual = profSel == perfilAtual;
+            perfis.erase(perfis.begin() + profSel);
+            savePerfis();
+            if (eraAtual) { perfilAtual = -1; remove(PERFIL_AGORA.c_str()); }
+            else if (perfilAtual > profSel) perfilAtual--;
+            profSel = 0;
+            profStage = 1;
+        }
+        if (b == B_B) profStage = 1;
+    }
+    return true;
+}
+
 // ------------------------------------------------------------------ desenho da tela
 
 static void render() {
+    if (profStage) {   // tela de perfis no lugar do carrossel
+        drawPerfis();
+        drawTeclado();
+        drawToast();
+        SDL_RenderPresent(G.r);
+        return;
+    }
     int n = int(view.size());
     Uint32 now = SDL_GetTicks();
     if (animating) {
@@ -1465,6 +1870,7 @@ static void render() {
     drawInstall();
     drawRede();
     drawControle();
+    drawTeclado();
     drawToast();
     SDL_RenderPresent(G.r);
 }
@@ -1634,6 +2040,14 @@ int main() {
     signal(SIGINT, onSignal);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+    {   // voltando de um jogo ou do desktop: as preferencias sao as do perfil que estava jogando
+        std::ifstream pa("/tmp/tos-perfil");
+        std::string l;
+        if (std::getline(pa, l) && !l.empty()) {
+            std::string pc = "/userdata/system/perfis/" + l.substr(0, l.find('|')) + "/scrapcade.conf";
+            if (isFile(pc)) CONF_FILE = pc;
+        }
+    }
     loadPrefs();
     if (!prefs["engine"].empty()) SDL_SetHint(SDL_HINT_RENDER_DRIVER, prefs["engine"].c_str());
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) {
@@ -1673,6 +2087,15 @@ int main() {
     setGames(scanGames());
     for (size_t i = 0; i < view.size(); i++)   // voltando de um jogo: fica nele
         if (view[i].key() == prefs["ultimo"]) { target = int(i); pos = float(target); break; }
+    loadPerfis();
+    {
+        std::ifstream pa("/tmp/tos-perfil");
+        std::string l, id;
+        if (std::getline(pa, l)) id = l.substr(0, l.find('|'));
+        for (size_t i = 0; i < perfis.size(); i++)
+            if (perfis[i].id == id) perfilAtual = int(i);   // mesmo perfil, sem pedir de novo
+        if (perfilAtual < 0) abrirPerfis();                 // ligou agora: quem vai jogar?
+    }
     std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();
     EV_TOAST = SDL_RegisterEvents(4);
@@ -1724,7 +2147,8 @@ int main() {
                 ctlInput(e);
                 break;
             case SDL_TEXTINPUT:
-                if (netStage == 2) senha += e.text.text;
+                if (tkOn) tkTexto += e.text.text;
+                else if (netStage == 2) senha += e.text.text;
                 break;
             case SDL_KEYDOWN: {
                 SDL_Keycode kc = e.key.keysym.sym;
@@ -1732,6 +2156,12 @@ int main() {
                     if (kc == SDLK_SPACE) ctlSkip();
                     if (kc == SDLK_ESCAPE) { ctlStep = -1; toast("Configuração cancelada.", 2500); }
                     break;
+                }
+                if (tkOn) {   // nome e senha do perfil pelo teclado do PC
+                    if (kc == SDLK_BACKSPACE) { if (!tkTexto.empty()) tkTexto.pop_back(); break; }
+                    if (kc == SDLK_RETURN || kc == SDLK_KP_ENTER) { fecharTeclado(true); break; }
+                    if (kc == SDLK_ESCAPE) { fecharTeclado(false); break; }
+                    if (kc != SDLK_UP && kc != SDLK_DOWN && kc != SDLK_LEFT && kc != SDLK_RIGHT) break;
                 }
                 if (netStage == 2) {   // senha pelo teclado do notebook
                     if (kc == SDLK_BACKSPACE) { if (!senha.empty()) senha.pop_back(); break; }
@@ -1742,7 +2172,7 @@ int main() {
                 Btn pb = kc == SDLK_UP ? B_UP : kc == SDLK_DOWN ? B_DOWN : kc == SDLK_LEFT ? B_LEFT :
                          kc == SDLK_RIGHT ? B_RIGHT : (kc == SDLK_RETURN || kc == SDLK_SPACE) ? B_A :
                          (kc == SDLK_ESCAPE || kc == SDLK_BACKSPACE) ? B_B : kc == SDLK_TAB ? B_SELECT :
-                         kc == SDLK_x ? B_X : B_OTHER;
+                         kc == SDLK_x ? B_X : kc == SDLK_DELETE ? B_Y : B_OTHER;
                 if (panelInput(pb)) break;
                 switch (kc) {
                 case SDLK_LEFT: move(-1); break;
@@ -1763,7 +2193,7 @@ int main() {
                          cb == SDL_CONTROLLER_BUTTON_DPAD_LEFT ? B_LEFT : cb == SDL_CONTROLLER_BUTTON_DPAD_RIGHT ? B_RIGHT :
                          cb == SDL_CONTROLLER_BUTTON_A ? B_A : cb == SDL_CONTROLLER_BUTTON_B ? B_B :
                          cb == SDL_CONTROLLER_BUTTON_BACK ? B_SELECT : cb == SDL_CONTROLLER_BUTTON_X ? B_X :
-                         cb == SDL_CONTROLLER_BUTTON_START ? B_START : B_OTHER;
+                         cb == SDL_CONTROLLER_BUTTON_START ? B_START : cb == SDL_CONTROLLER_BUTTON_Y ? B_Y : B_OTHER;
                 if (panelInput(pb)) break;
                 switch (cb) {
                 case SDL_CONTROLLER_BUTTON_DPAD_LEFT: move(-1); holdDir = Uint32(-1); holdNext = SDL_GetTicks() + 380; break;
@@ -1783,7 +2213,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -1804,7 +2234,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || ctlStep >= 0)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {
@@ -1824,7 +2254,7 @@ int main() {
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
         bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3) && now - lastBars > 1000;
-        if (ctlStep >= 0 || netStage == 2) any = true;
+        if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
             minute = mnow;

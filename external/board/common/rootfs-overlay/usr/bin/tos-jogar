@@ -23,9 +23,14 @@ SO=/usr/lib/libretro/${CORE}_libretro.so
 if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
   # configuracao central: sempre o modelo do sistema; o que o usuario quiser mudar vai em retroarch-usuario.cfg
   cp /usr/share/tos/retroarch.cfg "$CFG/retroarch.cfg"
+  # saves do perfil que esta jogando: o perfil 1 usa os que ja existiam; os outros tem pasta propria
+  PID=$(cut -d'|' -f1 /tmp/tos-perfil 2>/dev/null)
+  SAVES="/userdata/saves/$SIS"
+  [ -n "$PID" ] && [ "$PID" != 1 ] && SAVES="/userdata/saves/$SIS/perfil-$PID"
+  mkdir -p "$SAVES"
   {
-    echo "savefile_directory = \"/userdata/saves/$SIS\""
-    echo "savestate_directory = \"/userdata/saves/$SIS\""
+    echo "savefile_directory = \"$SAVES\""
+    echo "savestate_directory = \"$SAVES\""
   } > /tmp/tos-console.cfg
   EXTRA=/tmp/tos-console.cfg
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
