@@ -8,6 +8,7 @@ REPO=thiagotechmaker/t-os
 API=https://api.github.com/repos/$REPO/releases/latest
 P=/tmp/tos-atualizar.txt
 D=/boot/boot
+[ -f $D/tos-servidor-teste ] && API=$(cat $D/tos-servidor-teste)   # so para testes (servidor falso)
 p() { echo "$1 $2" > $P; }
 atual() { sed -n 's/^BUILD_ID=//p' /etc/os-release; }
 
@@ -36,8 +37,14 @@ case "$1" in
     p 2 "Procurando a versão nova"
     info || { p 0 "ERRO: sem internet"; exit 1; }
     n=$(nova)
+    tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
     [ -n "$n" ] && [ "$n" -gt "$(atual)" ] || { p 0 "ERRO: já está na versão mais nova"; exit 1; }
     mount -o remount,rw /boot || { p 0 "ERRO: não consegui gravar no pen drive"; exit 1; }
+    # a versao de agora vai virar a "anterior": a anterior velha e as com problema saem antes, para caber
+    rm -f $D/tos-anterior.squashfs $D/bzImage-anterior $D/initrd-anterior.gz           $D/tos-com-problema.squashfs $D/bzImage-com-problema $D/initrd-com-problema.gz
+    precisa=$(( ${tam:-0} / 1048576 + 40 ))
+    livre=$(df -m $D | awk 'NR==2 {print $4}')
+    [ "${livre:-0}" -ge "$precisa" ] || { mount -o remount,ro /boot; p 0 "ERRO: falta espaço no pen drive (precisa de $precisa MB, tem $livre MB)"; exit 1; }
     T=$D/novo
     rm -rf $T; mkdir -p $T
     i=0
@@ -64,6 +71,7 @@ case "$1" in
     ;;
   confirmar)
     [ -f $D/tos-testando ] || exit 0
+    grep -q "tos.sistema=" /proc/cmdline && exit 0   # ligado pela versao anterior: a nova continua em teste
     mount -o remount,rw /boot && rm -f $D/tos-testando && sync && mount -o remount,ro /boot
     ;;
 esac

@@ -1,7 +1,7 @@
 #!/bin/sh
 # T-OS: PipeWire + WirePlumber (som, fones e caixas Bluetooth). Os emuladores continuam usando o ALSA,
 # que passa a tocar pelo PipeWire. Se o PipeWire nao subir, apaga o /etc/asound.conf e o som vai direto.
-export XDG_RUNTIME_DIR=/run/pipewire
+export XDG_RUNTIME_DIR=/run/pipewire PIPEWIRE_RUNTIME_DIR=/run/pipewire
 case "$1" in
   start)
     mkdir -p $XDG_RUNTIME_DIR; chmod 700 $XDG_RUNTIME_DIR
@@ -12,7 +12,8 @@ case "$1" in
     if [ -S $XDG_RUNTIME_DIR/pipewire-0 ] && [ -f /usr/share/alsa/alsa.conf.d/50-pipewire.conf ]; then
       printf 'pcm.!default { type pipewire }\nctl.!default { type pipewire }\n' > /etc/asound.conf
     else
-      rm -f /etc/asound.conf
+      # sem PipeWire: o som vai direto para a placa (tira tambem o padrao que o pacote do PipeWire instala)
+      rm -f /etc/asound.conf /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
     fi
     ;;
   stop)

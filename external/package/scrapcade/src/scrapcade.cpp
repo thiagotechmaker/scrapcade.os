@@ -1492,6 +1492,7 @@ static void drawAtualizar() {
     }
     const char *H2[] = {"a", "atualizar", "b", "voltar"};
     const char *H1[] = {"b", "voltar"};
+    const char *H3[] = {"a", "reiniciar agora", "b", "depois"};
     const char *const *H = H1;
     int nh = 2;
     if (updStage == 1) {
@@ -1523,6 +1524,7 @@ static void drawAtualizar() {
             erro ? 0xFFD0362B : 0xFF2B2E33);
         add(updMsg + (updStage == 3 ? "  (" + std::to_string(updPct) + "%)" : ""), erro ? 0xFFD0362B : 0xFF1E9C4A);
         nh = updStage == 4 ? 2 : 0;
+        if (updStage == 4 && !erro) { H = H3; nh = 4; }
     }
     float h = 22 * u + 16 * u + L.size() * lh + 22 * u + (updStage == 3 ? 14 * u : 0);
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
@@ -1786,6 +1788,7 @@ static bool updInput(int b) {
         nova = updNova;
     }
     if (updStage == 2 && b == B_A && !nova.empty() && nova != "erro") instalarAtualizacao();
+    else if (updStage == 4 && b == B_A && updMsg.rfind("ERRO", 0) != 0) powerOff(true);
     else if ((updStage == 2 || updStage == 4) && (b == B_B || b == B_A)) { updStage = 0; sysOpen = true; }
     return true;
 }
@@ -2653,7 +2656,7 @@ int main() {
         }
         Uint32 now = SDL_GetTicks();
         static bool confirmado = false;
-        if (!confirmado && now > 60000) {
+        if (!confirmado && now > 15000) {   // a tela abriu: a versao nova serve (abrir um jogo troca o processo)
             confirmado = true;
             std::thread([] { if (system("/usr/bin/tos-atualizar confirmar") != 0) {} }).detach();
         }
