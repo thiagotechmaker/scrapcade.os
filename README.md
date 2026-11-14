@@ -1,25 +1,25 @@
-# ScrapCade
+# ScrapCade OS
 
-<p align="center"><img src="docs/logo.jpg" width="560" alt="ScrapCade"></p>
+<p align="center"><img src="docs/logo.jpg" width="560" alt="ScrapCade OS"></p>
 
 <p align="center"><b>Jogos em qualquer computador.</b><br>
 Sistema próprio, baseado em Linux, para <b>emulação de jogos</b> e para dar uma <b>segunda vida a computadores que iriam para o lixo</b>.</p>
 
-<p align="center"><a href="https://github.com/thiagotechmaker/scrapcade/releases/latest"><b>⬇️ Baixar a versão mais nova (.iso, PC 64 bits)</b></a></p>
+<p align="center"><a href="https://github.com/thiagotechmaker/scrapcade.os/releases/latest"><b>⬇️ Baixar a versão mais nova (.iso, PC 64 bits)</b></a></p>
 
 ## Baixar e instalar
 
-1. **Baixe** o `scrapcade-<versão>-pc-64bits.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade/releases/latest). É um arquivo só, que liga por BIOS antigo e por UEFI.
+1. **Baixe** o `scrapcade-<versão>-pc-64bits.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases/latest). É um arquivo só, que liga por BIOS antigo e por UEFI.
 2. **Grave** num pen drive de 4 GB ou mais com o [Rufus](https://rufus.ie) (modo ISO ou DD, tanto faz) ou o [balenaEtcher](https://etcher.balena.io).
-3. **Ligue o PC pelo pen drive** (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot o ScrapCade arruma o pen drive sozinho (sistema + partição TOS-DADOS para os jogos), pede a senha do administrador e abre a criação do seu perfil.
+3. **Ligue o PC pelo pen drive** (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot o ScrapCade OS arruma o pen drive sozinho (sistema + partição TOS-DADOS para os jogos), pede a senha do administrador e abre a criação do seu perfil.
 4. **Coloque jogos** (veja [Colocar jogos](#colocar-jogos)).
-5. **Quer ligar sem o pen drive?** O ScrapCade pergunta uma vez se quer instalar no HD/SSD (também em *Sistema > Instalar no disco do computador*).
+5. **Quer ligar sem o pen drive?** O ScrapCade OS pergunta uma vez se quer instalar no HD/SSD (também em *Sistema > Instalar no disco do computador*).
 
-As versões novas chegam sozinhas: o ScrapCade avisa na tela e atualiza em *Sistema > Atualizar o ScrapCade*, sem mexer nos jogos e saves. Jogos, BIOS e ROMs não acompanham o sistema.
+As versões novas chegam sozinhas: o ScrapCade OS avisa na tela e atualiza em *Sistema > Atualizar o ScrapCade OS*, sem mexer nos jogos e saves. Jogos, BIOS e ROMs não acompanham o sistema.
 
 ## Como é
 
-Liga direto no **modo jogo**: um carrossel de capas, com filtros por console, favoritos e os dados de cada jogo.
+Liga direto no **modo jogo**, o menu **ScrapCade**: um carrossel de capas, com filtros por console, favoritos e os dados de cada jogo.
 
 ![Carrossel](docs/capturas/5_menu_carrossel.png)
 
@@ -52,10 +52,10 @@ NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Co
 ## Mais informações
 
 - [Detalhes técnicos](docs/DETALHES.md): emuladores, partições, gravação, versões, modo desktop.
-- [Do que o ScrapCade é feito](docs/COMPOSICAO.md): cada programa, com versões.
+- [Do que o ScrapCade OS é feito](docs/COMPOSICAO.md): cada programa, com versões.
 - [Roteiro](docs/ROTEIRO.md): o que vem por aí.
 
-**Compilar** (Ubuntu ou WSL2; o ScrapCade é montado com o [Buildroot](https://buildroot.org), como o Batocera):
+**Compilar** (Ubuntu ou WSL2; o ScrapCade OS é montado com o [Buildroot](https://buildroot.org), como o Batocera):
 
 ```bash
 git clone https://github.com/thiagotechmaker/scrapcade.git ~/t-os
@@ -65,4 +65,4 @@ bash ~/t-os/build-x86_64.sh
 
 ## Licença
 
-Código do ScrapCade: **GPLv3** (ver [LICENSE](LICENSE)). Os arquivos em `external/board/x86_64/` vêm da configuração de PC do Buildroot (GPL-2.0 ou posterior). Os programas incluídos na imagem mantêm as licenças dos seus autores.
+Código do ScrapCade OS: **GPLv3** (ver [LICENSE](LICENSE)). Os arquivos em `external/board/x86_64/` vêm da configuração de PC do Buildroot (GPL-2.0 ou posterior). Os programas incluídos na imagem mantêm as licenças dos seus autores.

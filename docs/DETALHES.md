@@ -1,4 +1,4 @@
-# ScrapCade: detalhes técnicos
+# ScrapCade OS: detalhes técnicos
 
 O resumo para quem só quer jogar está no [README](../README.md).
 
@@ -38,12 +38,12 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 
 - **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
 - **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
-- **Atualizar o ScrapCade** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
+- **Atualizar o ScrapCade OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
 - **exFAT** para o Windows ler e gravar os jogos direto.
 
 ## Arquivos de cada versão
 
-Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade/releases), já com a atualização automática dentro:
+Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases), já com a atualização automática dentro:
 
 | Arquivo | Para quê |
 |---|---|
@@ -51,7 +51,7 @@ Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade/rel
 | `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
 | `SHA256SUMS` | confere todos os arquivos |
 
-Quem já tem o ScrapCade não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o ScrapCade*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
+Quem já tem o ScrapCade não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o ScrapCade OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
 ## Gravar e ligar
 
@@ -83,7 +83,7 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 
 ## Instalar no computador
 
-**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do ScrapCade não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o ScrapCade no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
+**Sistema > Instalar no disco do computador**: escolha o disco (HD, SSD ou NVMe; o pen drive do ScrapCade OS não aparece na lista), confirme (o disco é **apagado**) e escolha se leva os jogos, saves, BIOS e configurações. O instalador cria TOS-BOOT e TOS-DADOS no disco e registra o ScrapCade no menu de boot da placa-mãe. Depois é só desligar, tirar o pen drive e ligar.
 
 ## O que cada parte faz
 
