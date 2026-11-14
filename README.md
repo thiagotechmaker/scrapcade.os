@@ -40,6 +40,21 @@ O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2*
 
 ![Tema](docs/capturas/7_menu_tema.png)
 
+**Temas seus:** cada pasta em `TOS-DADOS/themes/` vira um tema a mais em *Sistema > Tema* (dá para mandar pela página de Arquivos, pasta **Temas**):
+
+```
+themes/
+  Meu tema/
+    fundo.png        imagem de fundo (ou fundo.jpg), preenche a tela
+    tema.txt         nome=Meu tema
+                     base=Neon        (cartões e cores de um tema pronto)
+                     destaque=#FF7A00 (cor da borda e dos detalhes)
+    avatares/        imagens para escolher ao criar um perfil
+  avatares/          avatares que valem para qualquer tema
+```
+
+As imagens ficam só no aparelho de quem colocou: o T-OS não traz nenhuma imagem de marca.
+
 **Perfis de jogador**, no estilo dos painéis de console: cada perfil tem avatar, favoritos, preferências e saves próprios, com senha opcional. Ao ligar, o T-OS pergunta "Quem vai jogar?":
 
 ![Perfil](docs/capturas/10_perfil_avatar.png)
@@ -99,6 +114,19 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 - **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
 - **Atualizar o T-OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
 - **exFAT** para o Windows ler e gravar os jogos direto.
+
+## Baixar o T-OS
+
+Cada versão fica em [Releases](https://github.com/thiagotechmaker/t-os/releases), já com a atualização automática dentro:
+
+| Arquivo | Para quê |
+|---|---|
+| `t-os-<versão>-pc-64bits.iso` | instalar do zero num PC de 64 bits (BIOS antigo e UEFI): Rufus (modo ISO guarda os jogos no próprio pen drive), Ventoy ou DVD |
+| `t-os-<versão>-pc-64bits-pendrive.img.gz` | imagem do pen drive: Rufus ou balenaEtcher (cria a partição TOS-DADOS) |
+| `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
+| `SHA256SUMS` | confere todos os arquivos |
+
+Quem já tem o T-OS não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o T-OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
 ## Testar num notebook ou PC
 

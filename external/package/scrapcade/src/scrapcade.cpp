@@ -1,4 +1,4 @@
-// ScrapCade para o T-OS - versao 1.4 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade para o T-OS - versao 1.5 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do T-OS: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <functional>
 #include <thread>
+#include <atomic>
 
 
 // ------------------------------------------------------------------ preferencias (favoritos, jogados, tema)
@@ -162,7 +163,99 @@ enum { CARBONO, NEON, ARCADE, CLARO, AURORA, PIXEL, PORTATIL, OCEANO, NTEMAS };
 static const char *THEME_NAMES[NTEMAS] = {"Carbono", "Neon", "Arcade", "Claro", "Aurora", "8 bits", "Portátil", "Oceano"};
 static int theme = AURORA;
 
+// Temas do usuario: cada pasta em TOS-DADOS/themes/<pasta> vira um tema a mais na lista.
+//   fundo.png / fundo.jpg  imagem de fundo (preenche a tela)
+//   tema.txt               nome=Meu tema | base=Aurora (cartoes e cores de um tema pronto) | destaque=#32E6A8
+//   avatares/*.png         avatares a mais para escolher ao criar um perfil (tambem em themes/avatares)
+// As imagens ficam so no aparelho de quem colocou: o T-OS nao traz nenhuma.
+static const std::string THEMES_DIR = "/userdata/themes";
+struct TemaUser { std::string pasta, nome, fundo; int base; uint32_t destaque; bool temDestaque; };
+static std::vector<TemaUser> temasUser;
+static int temaUser = -1;                       // -1: tema pronto; senao, indice em temasUser
+static std::vector<std::string> avatarExtras;   // caminhos das imagens de avatar do usuario
+
+static uint32_t corHex(std::string h, bool &ok) {
+    if (!h.empty() && h[0] == '#') h = h.substr(1);
+    ok = h.size() == 6 && strspn(h.c_str(), "0123456789abcdefABCDEF") == 6;
+    return ok ? 0xFF000000u | uint32_t(strtoul(h.c_str(), nullptr, 16)) : 0;
+}
+
+static void lerAvatares(const std::string &dir) {
+    std::vector<std::string> v;
+    if (DIR *d = opendir(dir.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (!n.empty() && n[0] != '.' && (endsWith(n, ".png") || endsWith(n, ".jpg") || endsWith(n, ".jpeg")))
+                v.push_back(dir + "/" + n);
+        }
+        closedir(d);
+    }
+    std::sort(v.begin(), v.end());
+    for (auto &x : v) if (avatarExtras.size() < 24) avatarExtras.push_back(x);
+}
+
+// Le a pasta themes de novo (temas colocados com o T-OS ligado aparecem sem reiniciar)
+static void scanTemas() {
+    std::string atual = temaUser >= 0 && temaUser < int(temasUser.size()) ? temasUser[temaUser].pasta : "";
+    temasUser.clear();
+    avatarExtras.clear();
+    mkdirs(THEMES_DIR + "/avatares");
+    std::vector<std::string> dirs;
+    if (DIR *d = opendir(THEMES_DIR.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            struct stat st;
+            if (!n.empty() && n[0] != '.' && stat((THEMES_DIR + "/" + n).c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+                dirs.push_back(n);
+        }
+        closedir(d);
+    }
+    std::sort(dirs.begin(), dirs.end());
+    for (auto &n : dirs) {
+        std::string p = THEMES_DIR + "/" + n;
+        if (n == "avatares") { lerAvatares(p); continue; }
+        lerAvatares(p + "/avatares");
+        TemaUser t{n, n, "", CARBONO, 0, false};
+        for (const char *f : {"/fundo.png", "/fundo.jpg", "/fundo.jpeg"})
+            if (isFile(p + f)) { t.fundo = p + f; break; }
+        std::ifstream in(p + "/tema.txt");
+        std::string l;
+        while (std::getline(in, l)) {
+            if (!l.empty() && l.back() == '\r') l.pop_back();
+            size_t q = l.find('=');
+            if (q == std::string::npos) continue;
+            std::string k = lower(l.substr(0, q)), v = l.substr(q + 1);
+            while (!v.empty() && v[0] == ' ') v.erase(0, 1);
+            if (k == "nome" && !v.empty()) {
+                t.nome = v.substr(0, 24);
+            } else if (k == "base") {
+                for (int i = 0; i < NTEMAS; i++)
+                    if (lower(v) == lower(THEME_NAMES[i])) t.base = i;
+            } else if (k == "destaque") {
+                t.destaque = corHex(v, t.temDestaque);
+            }
+        }
+        if (!t.fundo.empty() || isFile(p + "/tema.txt")) temasUser.push_back(t);
+    }
+    temaUser = -1;
+    for (size_t i = 0; i < temasUser.size(); i++)
+        if (temasUser[i].pasta == atual) temaUser = int(i);
+}
+
+static std::string temaNome() { return temaUser >= 0 ? temasUser[temaUser].nome : THEME_NAMES[theme]; }
+
+// Tema salvo no perfil: "theme" = tema pronto (ou a base do tema do usuario), "tema_usuario" = pasta
+static void aplicarTemaPrefs() {
+    theme = prefs.count("theme") ? std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str()))) : AURORA;
+    temaUser = -1;
+    auto it = prefs.find("tema_usuario");
+    if (it == prefs.end() || it->second.empty()) return;
+    for (size_t i = 0; i < temasUser.size(); i++)
+        if (temasUser[i].pasta == it->second) { temaUser = int(i); theme = temasUser[i].base; }
+}
+
 static uint32_t accent(uint32_t col) {
+    if (temaUser >= 0 && temasUser[temaUser].temDestaque) return temasUser[temaUser].destaque;
     if (theme == AURORA) return 0xFF32E6A8;
     if (theme == PIXEL) return 0xFFFFD34E;
     if (theme == PORTATIL) return 0xFFB8DC48;
@@ -241,12 +334,23 @@ static float margin() { return float(int(3 * G.u)); }
 // ------------------------------------------------------------------ fundo (Theme.background)
 
 static SDL_Texture *background(uint32_t col) {
-    std::string key = std::to_string(theme) + "|" + std::to_string(theme == AURORA ? 0 : col);
+    bool fu = temaUser >= 0 && !temasUser[temaUser].fundo.empty();
+    std::string key = std::to_string(theme) + "|" + std::to_string(temaUser) + "|" + std::to_string(theme == AURORA || fu ? 0 : col);
     auto it = backs.find(key);
     if (it != backs.end()) return it->second;
     SDL_Texture *t = SDL_CreateTexture(G.r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, G.W, G.H);
     SDL_SetRenderTarget(G.r, t);
     float W = float(G.W), H = float(G.H), d = G.u;
+    SDL_Texture *fimg = fu ? image(temasUser[temaUser].fundo) : nullptr;
+    if (fimg) {   // fundo do usuario: preenche a tela cortando as sobras, sem esticar
+        int iw = 1, ih = 1;
+        SDL_QueryTexture(fimg, nullptr, nullptr, &iw, &ih);
+        float esc = std::max(W / iw, H / ih), sw = W / esc, sh = H / esc;
+        SDL_Rect src{int((iw - sw) / 2), int((ih - sh) / 2), int(sw), int(sh)};
+        SDL_FRect dst{0, 0, W, H};
+        G.fillRect(0, 0, W, H, 0xFF000000);
+        SDL_RenderCopyF(G.r, fimg, &src, &dst);
+    } else
     switch (theme) {
     case AURORA: {
         G.fillRect(0, 0, W, H, 0xFF0B1660);
@@ -829,7 +933,7 @@ static std::string optLabel(int i) {
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
                                                  : "Energia:   (fixa neste computador)";
-    case OPT_THEME: return std::string("Tema:   ‹ ") + THEME_NAMES[theme] + " ›";
+    case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";
     case OPT_BG: return std::string("Fundo do jogo:   ‹ ") + (showBackdrop ? "Mostrar" : "Ocultar") + " ›";
@@ -997,7 +1101,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.4" + buf);
+    textLines.push_back("Sistema: T-OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.5" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores previstos: " + emus);
     textLines.push_back("");
@@ -1645,8 +1749,15 @@ static void optAction(int dir) {
     int d = dir == 0 ? 1 : dir;
     switch (optSel) {
     case OPT_THEME:
-        theme = (theme + d + NTEMAS) % NTEMAS;
+    {
+        scanTemas();
+        int total = NTEMAS + int(temasUser.size());
+        int cur = temaUser >= 0 ? NTEMAS + temaUser : theme;
+        cur = (cur + d + total) % total;
+        if (cur < NTEMAS) { theme = cur; temaUser = -1; prefs["tema_usuario"] = ""; }
+        else { temaUser = cur - NTEMAS; theme = temasUser[temaUser].base; prefs["tema_usuario"] = temasUser[temaUser].pasta; }
         prefs["theme"] = std::to_string(theme);
+    }
         clearCards();
         clearBacks();
         break;
@@ -1881,6 +1992,7 @@ static const Avatar AVATARES[] = {
     {0xFF8A5A2B, "☂"}, {0xFF19B0B0, "☺"},
 };
 static const int NAVATARES = int(sizeof(AVATARES) / sizeof(AVATARES[0]));
+static int totalAvatares() { return NAVATARES + int(avatarExtras.size()); }
 
 static std::string sha256(const std::string &t) {
     unsigned char d[EVP_MAX_MD_SIZE];
@@ -1901,7 +2013,7 @@ static void loadPerfis() {
         std::stringstream ss(l);
         std::string x;
         while (std::getline(ss, x, '|')) c.push_back(x);
-        if (c.size() >= 3) perfis.push_back({c[0], c[1], c.size() > 3 ? c[3] : "", atoi(c[2].c_str()) % NAVATARES});
+        if (c.size() >= 3) perfis.push_back({c[0], c[1], c.size() > 3 ? c[3] : "", std::max(0, atoi(c[2].c_str()))});
     }
 }
 
@@ -1935,7 +2047,16 @@ static void drawAvatar(const Perfil *p, int av, float x, float y, float s) {
             return;
         }
     }
-    const Avatar &a = AVATARES[(p ? p->avatar : av) % NAVATARES];
+    int idx = (p ? p->avatar : av) % totalAvatares();
+    if (idx >= NAVATARES) {   // avatar do usuario (pasta themes)
+        if (SDL_Texture *t = image(avatarExtras[idx - NAVATARES])) {
+            G.roundRect(x, y, s, s, 6 * u, 0xFF101428);
+            G.imageFit(t, x, y, s, s);
+            return;
+        }
+        idx %= NAVATARES;
+    }
+    const Avatar &a = AVATARES[idx];
     G.gradientV(x, y, s, s, lighten(a.cor, 0.25f), darken(a.cor, 0.25f));
     G.roundRectStroke(x, y, s, s, 2 * u, std::max(1.0f, u), 0x40FFFFFF);
     T.draw(a.simbolo, x + s / 2, y + s * 0.47f, s / u * 0.5f, true, 0xFFFFFFFF, 1);
@@ -1958,7 +2079,7 @@ static void login(int i) {
     prefs.clear();
     loadPrefs();
     if (!engine.empty() && prefs["engine"].empty()) prefs["engine"] = engine;
-    theme = prefs.count("theme") ? std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str()))) : AURORA;
+    aplicarTemaPrefs();
     ANIM_MS = prefs["anim"] == "rapida" ? 130 : 200;
     showCovers = prefs["covers"] != "0";
     showBackdrop = prefs["backdrop"] != "0";
@@ -2039,6 +2160,7 @@ static void criarPerfil() {
         std::string n = tkTexto;
         std::replace(n.begin(), n.end(), '|', ' ');
         profNomeNovo = n.substr(0, 24);
+        scanTemas();   // avatares colocados agora na pasta themes
         profAvatar = int(perfis.size()) % NAVATARES;
         profStage = 2;
     });
@@ -2119,16 +2241,18 @@ static void drawPerfis() {
         }
     } else if (profStage == 2) {   // escolher o avatar do perfil novo
         T.draw("Escolha o avatar de " + profNomeNovo, G.W / 2.0f, G.H * 0.18f, 16, true, 0xFFFFFFFF, 1);
-        float s = 58 * u, gap = 10 * u, tw = 6 * s + 5 * gap, x0 = (G.W - tw) / 2, y0 = G.H * 0.32f;
-        for (int i = 0; i < NAVATARES; i++) {
+        int nav = totalAvatares(), rows = (nav + 5) / 6;
+        float gap = 10 * u, s = std::min(58 * u, (G.H * 0.44f - (rows - 1) * gap) / rows);
+        float tw = 6 * s + 5 * gap, x0 = (G.W - tw) / 2, y0 = G.H * 0.30f;
+        for (int i = 0; i < nav; i++) {
             float x = x0 + (i % 6) * (s + gap), y = y0 + (i / 6) * (s + gap);
             drawAvatar(nullptr, i, x, y, s);
             if (i == profAvatar) G.roundRectStroke(x - 3 * u, y - 3 * u, s + 6 * u, s + 6 * u, 4 * u, 2.5f * u, 0xFF32E6A8);
         }
-        T.draw("Foto própria: depois coloque avatar.png na pasta Perfis, pela página de Arquivos.",
-               G.W / 2.0f, y0 + 2 * (s + gap) + 16 * u, 8.5f, false, 0xCCFFFFFF, 1);
+        T.draw("Avatares seus: imagens na pasta themes/avatares. Foto do perfil: avatar.png na pasta Perfis.",
+               G.W / 2.0f, y0 + rows * (s + gap) + 6 * u, 8.5f, false, 0xCCFFFFFF, 1);
         T.draw("A: escolher este  •  depois você pode pôr uma senha (opcional)", G.W / 2.0f,
-               y0 + 2 * (s + gap) + 32 * u, 9, false, 0xFFFFFFFF, 1);
+               y0 + rows * (s + gap) + 22 * u, 9, false, 0xFFFFFFFF, 1);
     }
 }
 
@@ -2164,9 +2288,11 @@ static bool perfisInput(int b) {
         if (b == B_Y && profSel < int(perfis.size())) profStage = 3;
         if ((b == B_B || b == B_SELECT) && perfilAtual >= 0) profStage = 0;   // voltar so se ja tem alguem jogando
     } else if (profStage == 2) {
-        if (b == B_LEFT) profAvatar = (profAvatar + NAVATARES - 1) % NAVATARES;
-        if (b == B_RIGHT) profAvatar = (profAvatar + 1) % NAVATARES;
-        if (b == B_UP || b == B_DOWN) profAvatar = (profAvatar + 6) % NAVATARES;
+        int nav = totalAvatares();
+        if (b == B_LEFT) profAvatar = (profAvatar + nav - 1) % nav;
+        if (b == B_RIGHT) profAvatar = (profAvatar + 1) % nav;
+        if (b == B_DOWN) profAvatar = (profAvatar + 6) % nav;
+        if (b == B_UP) profAvatar = (profAvatar + nav * 6 - 6) % nav;
         if (b == B_A)
             abrirTeclado("Senha de " + profNomeNovo + " (opcional: deixe vazio e aperte Start)", true,
                          [](bool ok) { if (ok) salvarPerfilNovo(tkTexto); });
@@ -2491,7 +2617,8 @@ int main() {
     T.bold = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf";
 
     loadPrefs();
-    if (prefs.count("theme")) theme = std::max(0, std::min(NTEMAS - 1, atoi(prefs["theme"].c_str())));
+    scanTemas();
+    aplicarTemaPrefs();
     if (prefs["anim"] == "rapida") ANIM_MS = 130;
     if (prefs["covers"] == "0") showCovers = false;
     if (prefs["backdrop"] == "0") showBackdrop = false;
@@ -2659,6 +2786,22 @@ int main() {
         if (!confirmado && now > 15000) {   // a tela abriu: a versao nova serve (abrir um jogo troca o processo)
             confirmado = true;
             std::thread([] { if (system("/usr/bin/tos-atualizar confirmar") != 0) {} }).detach();
+        }
+        // procura versao nova sozinho (uma vez por boot, com a rede ja de pe) e avisa na tela
+        static std::atomic<int> novaVersao{0};   // 0 nao procurou, 1 procurando, 2 tem versao nova, 3 nada
+        if (novaVersao == 0 && now > 40000) {
+            novaVersao = 1;
+            std::thread([] {
+                std::string r = Rede::run("/usr/bin/tos-atualizar verificar");
+                size_t a = r.find('|'), b = a == std::string::npos ? a : r.find('|', a + 1);
+                std::string n = b == std::string::npos ? "" : r.substr(a + 1, b - a - 1);
+                novaVersao = (!n.empty() && n != "erro") ? 2 : 3;
+            }).detach();
+        }
+        if (novaVersao == 2 && !updStage) {
+            novaVersao = 3;
+            toast("Versão nova do T-OS disponível: Sistema > Atualizar o T-OS", 9000);
+            redraw();
         }
         // segurando o direcional: anda sozinho
         if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;

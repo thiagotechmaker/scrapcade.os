@@ -90,7 +90,7 @@ BR2_PACKAGE_OPENSSL=y
 BR2_PACKAGE_LIBOPENSSL=y
 BR2_PACKAGE_LIBCURL_OPENSSL=y
 BR2_PACKAGE_HOST_XORRISO=y
-BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_msdos part_gpt normal efi_gop iso9660 search search_fs_file all_video"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_msdos part_gpt normal efi_gop iso9660 search search_fs_file all_video test"
 # --- modo desktop (Fluxbox): so X, Fluxbox, terminal e fundo de tela
 BR2_PACKAGE_XORG7=y
 BR2_PACKAGE_XSERVER_XORG_SERVER=y
@@ -141,7 +141,7 @@ BR2_PACKAGE_DOSFSTOOLS_MKFS_FAT=y
 BR2_PACKAGE_EFIBOOTMGR=y
 BR2_TARGET_GRUB2_I386_PC=y
 BR2_TARGET_GRUB2_BOOT_PARTITION="hd0,msdos1"
-BR2_TARGET_GRUB2_BUILTIN_MODULES_PC="boot linux ext2 fat part_msdos part_gpt normal biosdisk iso9660 search search_fs_file configfile"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_PC="boot linux ext2 fat part_msdos part_gpt normal biosdisk iso9660 search search_fs_file configfile test"
 BR2_TARGET_SYSLINUX=y
 BR2_TARGET_SYSLINUX_ISOLINUX=y
 BR2_TARGET_SYSLINUX_MBR=y
