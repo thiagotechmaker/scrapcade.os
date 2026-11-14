@@ -828,7 +828,7 @@ static std::string optLabel(int i) {
     switch (i) {
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
-                                                 : "Energia:   (este computador não permite ajustar)";
+                                                 : "Energia:   (fixa neste computador)";
     case OPT_THEME: return std::string("Tema:   ‹ ") + THEME_NAMES[theme] + " ›";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
     case OPT_COVERS: return std::string("Capas dos jogos:   ‹ ") + (showCovers ? "Mostrar" : "Ocultar") + " ›";

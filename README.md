@@ -24,7 +24,7 @@ Depois de ligar, o T-OS usa **26 MB de RAM** e **62 MB de disco**.
 
 ## Modo jogo: ScrapCade
 
-Como numa Steam Machine, o T-OS liga direto no **modo jogo**: o ScrapCade abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O modo desktop (XFCE) entra numa próxima etapa.
+Como numa Steam Machine, o T-OS liga direto no **modo jogo**: o ScrapCade abre em tela cheia. O login de manutenção fica no segundo terminal (**Ctrl+Alt+F2**). O **modo desktop** (Fluxbox, gerenciador de arquivos, navegador) é uma opção à parte, no painel Sistema.
 
 O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2**, com as mesmas medidas, cores e funções.
 
@@ -36,9 +36,21 @@ O ScrapCade do T-OS é a conversão do ScrapCade do iChroma para **C++ com SDL2*
 
 ![Filtro](docs/capturas/6_menu_filtro.png)
 
-**Temas** (Aurora, Carbono, Neon, Arcade, Claro), aqui no Carbono:
+**Temas** (Aurora, Carbono, Neon, Arcade, Claro, 8 bits, Portátil e Oceano, todos desenhados pelo próprio ScrapCade), aqui no Oceano:
 
 ![Tema](docs/capturas/7_menu_tema.png)
+
+**Perfis de jogador**, no estilo dos painéis de console: cada perfil tem avatar, favoritos, preferências e saves próprios, com senha opcional. Ao ligar, o T-OS pergunta "Quem vai jogar?":
+
+![Perfil](docs/capturas/10_perfil_avatar.png)
+
+**Painel Sistema** (botão Select ou Tab): perfil, energia, tema, volume, Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, configurar controle, modo desktop, BIOS, atualizar o T-OS, instalar no HD:
+
+![Painel Sistema](docs/capturas/11_painel_sistema.png)
+
+**Atualizar o T-OS** pelo próprio painel: baixa a versão nova das [Releases](https://github.com/thiagotechmaker/t-os/releases), confere o SHA-256 e guarda a versão de agora. Se a nova não ligar 3 vezes, volta sozinho para a anterior (também dá para escolher "Sistema anterior do T-OS" no menu de boot). Jogos e saves não são mexidos.
+
+![Atualizar](docs/capturas/9_atualizar.png)
 
 As capas das capturas são de teste, feitas para o T-OS. O ScrapCade desenha pela GPU (OpenGL ES pela Mesa) e lê teclado e controle pelo SDL2. Código em `external/package/scrapcade/src`.
 
@@ -56,13 +68,17 @@ O T-OS empacota o **RetroArch 1.22.2** (direto na placa de vídeo pelo KMS, sem 
 | Console | Núcleo |
 |---|---|
 | NES | Mesen |
-| Super Nintendo | Snes9x |
+| Super Nintendo | Snes9x (ou bsnes, trocando no painel de detalhes com X) |
 | Mega Drive, Master System, Game Gear | Genesis Plus GX |
 | Game Boy, Game Boy Color | Gambatte |
 | Game Boy Advance | mGBA |
 | PlayStation | PCSX ReARMed (tem BIOS livre embutida) |
 | Nintendo 64 | Mupen64Plus-Next |
 | Fliperama e Neo Geo | FBNeo (Neo Geo precisa do `neogeo.zip` do usuário) |
+| PSP | PPSSPP |
+| Nintendo DS | melonDS (precisa das BIOS do DS do usuário) |
+| Sega Saturn | Beetle Saturn (precisa da BIOS do usuário) |
+| Dreamcast | Flycast (BIOS do usuário recomendada) |
 
 - **Configuração central:** o `tos-jogar` passa a mesma configuração para todo emulador (vídeo, som, controles, atalhos e pastas). Para mudar algo só seu: `TOS-DADOS/system/configs/retroarch/retroarch-usuario.cfg`.
 - **Atalhos iguais em todo jogo:** **Select + Start** sai, **Select + X** abre o menu, **Select + RB/LB** salva/carrega. No teclado: **Esc** sai, **F1** abre o menu. O ScrapCade mostra esses atalhos ao abrir cada jogo.
@@ -81,7 +97,7 @@ Parecido com o Batocera, mas pensado para não perder jogos:
 
 - **Sistema somente leitura:** o initrd monta o `tos.squashfs` com uma camada na memória por cima. Desligar da tomada não estraga o sistema.
 - **A TOS-DADOS é criada no primeiro boot**, no espaço livre do pen drive ou do HD. Nada é redimensionado: a partição nova ocupa o espaço vazio.
-- **Atualizar o T-OS** é trocar o `tos.squashfs` (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
+- **Atualizar o T-OS** pelo painel Sistema (atualização A/B com volta automática) ou trocando o `tos.squashfs` à mão (dá até pelo Windows, a TOS-BOOT é FAT32). A TOS-DADOS nunca é mexida.
 - **exFAT** para o Windows ler e gravar os jogos direto.
 
 ## Testar num notebook ou PC
