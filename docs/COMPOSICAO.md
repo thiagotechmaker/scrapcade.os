@@ -12,7 +12,7 @@ O sistema é montado em camadas: construção → boot → kernel → sistema ba
 | Peça | Versão | Para que serve |
 |---|---|---|
 | **Buildroot** | 2026.02.3 (LTS) | Baixa o código-fonte e compila tudo |
-| **Compilador Bootlin** | GCC 14.3.0, glibc | Compila os programas para x86_64 |
+| **Compilador Bootlin** | GCC 14.3.0, glibc | Compila os programas para x86_64 e i686 |
 | **WSL2 + Ubuntu** | 24.04 | Linux dentro do Windows onde a compilação roda |
 | **genimage** | — | Monta o `disk.img` com as partições |
 | **xorriso** | 1.5.4 | Monta o `.iso` |
@@ -20,7 +20,7 @@ O sistema é montado em camadas: construção → boot → kernel → sistema ba
 
 Arquivos principais do repositório:
 
-- `external/configs/tos_x86_64_defconfig`: o que entra no sistema.
+- `external/configs/tos_x86_64_defconfig` e `tos_i686_defconfig`: o que entra no sistema de 64 e de 32 bits.
 - `external/board/x86_64/`: boot, kernel e montagem das imagens.
 - `external/board/common/rootfs-overlay/`: scripts próprios do ScrapCade.
 - `external/package/`: ScrapCade, RetroArch e os núcleos.
@@ -38,8 +38,8 @@ Arquivos principais do repositório:
 | Peça | Versão | Função |
 |---|---|---|
 | **syslinux / isolinux** | 6.03 | Menu com fundo no **BIOS antigo** (`vesamenu`, `mbr.bin`, `isohdpfx`) |
-| **GRUB** | 2.12 | Menu no **UEFI** (`bootx64.efi`); também liga o disco instalado no HD |
-| **memtest86+** | — | Teste de memória (só BIOS) |
+| **GRUB** | 2.12 | Menu no **UEFI** (`bootx64.efi`) e no `.iso` gravado direto; também liga o disco instalado no HD |
+| **memtest86+** | — | Teste de memória (BIOS e UEFI) |
 | **Fundo do menu** | próprio, 640×480 | `boot-fundo.png` |
 
 Opções do menu:
@@ -68,7 +68,7 @@ Opções do menu:
 | **Drivers embutidos** | USB 1.1/2.0/3.0, SATA (AHCI), NVMe, cartão SD, exFAT, FAT, squashfs (zstd), OverlayFS, ISO9660 | Achar o pen drive e o HD em qualquer máquina |
 | **Drivers em módulo** | Vídeo: i915 (Intel), amdgpu e radeon (AMD), nouveau (NVIDIA). Som: codecs HDA. Rede: cabo, Wi-Fi e USB | Só o da máquina é carregado |
 | **initrd próprio** | BusyBox + glibc, 1,4 MB | Acha o `tos.squashfs` e monta o sistema |
-| **tos.squashfs** | zstd, ~250 MB | O sistema todo, somente leitura, com uma camada na memória |
+| **tos.squashfs** | zstd, ~430 MB | O sistema todo, somente leitura, com uma camada na memória |
 
 Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_64/linux-tos.fragment` (drivers do kernel).
 
@@ -78,7 +78,6 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 - **zram:** memória comprimida, que ajuda máquinas com 2 GB.
 - **Governador de CPU:** `schedutil` ou `performance` no modo jogo.
 - **Tempo de boot:** medir com `bootchart` e tirar módulos que nunca carregam.
-- **Kernel 32 bits (i686)** para PCs bem antigos.
 
 ---
 
@@ -90,7 +89,7 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 | **SCRAP-DADOS** | exFAT, o resto do disco | `roms`, `bios`, `saves`, `themes`, `Jogos novos` e `system` (senha, Wi-Fi, configurações, registros) |
 
 - A SCRAP-DADOS é criada no primeiro boot, no espaço livre, sem redimensionar nada.
-- Gravado pelo **modo ISO do Rufus** (sem espaço para partição), os dados ficam na pasta `tos-dados` do próprio pen drive.
+- Se não der para criar a partição, os dados ficam na pasta `tos-dados` da própria SCRAPCADE.
 - Atualizar o ScrapCade OS é trocar só o `tos.squashfs`; a SCRAP-DADOS nunca é mexida.
 
 ---
@@ -108,6 +107,10 @@ Arquivos: `external/board/x86_64/initramfs/init` (initrd) e `external/board/x86_
 | **exfatprogs, dosfstools** | Formatar SCRAP-DADOS (exFAT) e SCRAPCADE (FAT32) |
 | **iptables** | Firewall |
 | **efibootmgr** | Registra o ScrapCade no menu de boot da placa-mãe (instalador) |
+| **BlueZ** | Bluetooth (controles sem fio) |
+| **Samba** | Pasta na rede do Windows |
+| **Dropbear** | SSH (acesso remoto), desligado por padrão |
+| **chrony** | Acerta o relógio pela internet |
 
 Scripts próprios em `/etc/init.d`:
 
@@ -129,11 +132,8 @@ Scripts em `/usr/bin`:
 
 **Para pesquisar:**
 
-- **Bluetooth (BlueZ):** ainda não tem. É o maior buraco para controles sem fio de PS4/PS5/Switch.
-- **Samba:** pasta compartilhada na rede, para ver os jogos no Windows sem a página (planejado).
-- **SSH:** dropbear, leve, desligado por padrão.
-- **Fuso horário e relógio pela internet (NTP):** o relógio ainda mostra UTC.
-- **Atualização automática:** baixar o `tos.squashfs` novo das GitHub Releases.
+- **Fuso horário:** escolher no painel (hoje o relógio segue o padrão do sistema).
+- **Saves sincronizados** entre aparelhos (Syncthing).
 
 ---
 
@@ -141,19 +141,18 @@ Scripts em `/usr/bin`:
 
 | Peça | Versão | Função |
 |---|---|---|
-| **Mesa** | 26.0.1 | OpenGL / OpenGL ES. Drivers: iris, crocus e i915 (Intel); radeonsi e r600 (AMD); nouveau (NVIDIA); llvmpipe (software) |
+| **Mesa** | 26.0.1 | OpenGL / OpenGL ES. Drivers: iris, crocus e i915 (Intel); radeonsi, r600 e r300 (AMD); nouveau (NVIDIA); llvmpipe (software); Vulkan ANV (Intel) e lavapipe. Na versão de 32 bits: i915, r300, r600, nouveau e llvmpipe |
 | **LLVM** | 21.1.8 | Usado pelo llvmpipe e pelos drivers AMD |
 | **libdrm + GBM + EGL** | — | Desenho direto na tela (KMS), sem X |
 | **SDL2** | 2.32.10 | Janela, controle, teclado e som do ScrapCade |
 | **SDL2_image / SDL2_ttf** | 2.8.12 / 2.24.0 | Capas (PNG/JPG) e textos |
 | **SDL_GameControllerDB** | 2.295 controles | Banco da comunidade para reconhecer controles |
-| **ALSA** | 1.2.15.3 | Som |
+| **ALSA + PipeWire** | 1.2.15.3 / 1.2.8 | Som |
 
 **Para pesquisar:**
 
-- **Vulkan:** drivers ANV (Intel) e RADV (AMD) da Mesa. Deixa Dolphin, PCSX2 e N64 bem mais rápidos.
+- **Vulkan na AMD (RADV):** a Intel já tem o ANV. Deixa Dolphin, PCSX2 e N64 bem mais rápidos.
 - **Zink:** OpenGL por cima do Vulkan.
-- **PipeWire** no lugar de só ALSA: menos atraso e áudio Bluetooth.
 - **SDL3:** sucessor, com API de GPU moderna.
 - **Shaders no ScrapCade:** desfoque real e brilho na capa (OpenGL ES direto).
 
@@ -254,8 +253,8 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 | Item | Tamanho |
 |---|---|
-| Sistema (`tos.squashfs`) | ~440 MB (64 bits, com os emuladores pesados e os firmwares de Wi-Fi) |
-| `.iso` | ~460 MB |
+| Sistema (`tos.squashfs`) | ~430 MB em 64 bits (com os emuladores pesados e os firmwares de Wi-Fi), ~360 MB em 32 bits |
+| `.iso` | ~440 MB em 64 bits, ~375 MB em 32 bits |
 | `disk.img` | 1 GB (a SCRAPCADE; o resto do pen drive vira SCRAP-DADOS) |
 | Memória usada no menu | cerca de 100 a 150 MB |
 
