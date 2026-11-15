@@ -28,7 +28,7 @@ while [ -n "$falta" ]; do
 done
 ls "$I/lib"
 cp "$B/initramfs/init" "$I/init"
-cp "$B/initramfs/logo32.raw" "$B/initramfs/logo16.raw" "$I/"   # logo desenhada pelo initrd
+cp "$B/initramfs/logo32.raw" "$B/initramfs/logo16.raw" "$B/initramfs/barra32.raw" "$B/initramfs/barra16.raw" "$I/"   # logo e barra animadas pelo initrd
 chmod 755 "$I/init"
 ( cd "$I" && find . | cpio -o -H newc --quiet | gzip -9 ) > "$BINARIES_DIR/tos-initrd.gz"
 

@@ -307,6 +307,21 @@ static SDL_Texture *image(const std::string &path) {
     return t;
 }
 
+// "CARREGANDO..." animado (anel de blocos e pontinhos, nas letras de pixel da logo; o mesmo do iChroma).
+// data/carregando.png tem os 8 quadros lado a lado (art_src/gera_animacoes.py do repositorio scrapcade-fliperama);
+// o quadro vem do relogio.
+static void drawCarregando(float cx, float cy, float escala) {
+    SDL_Texture *t = image(DATA + "/carregando.png");
+    if (!t) return;
+    int tw = 0, th = 0;
+    SDL_QueryTexture(t, nullptr, nullptr, &tw, &th);
+    SDL_SetTextureScaleMode(t, SDL_ScaleModeNearest);     // pixel art: sem borrar ao aumentar
+    int qw = tw / 8, q = int(SDL_GetTicks() / 100 % 8);
+    SDL_Rect src{q * qw, 0, qw, th};
+    SDL_Rect dst{int(cx - qw * escala / 2), int(cy - th * escala / 2), int(qw * escala), int(th * escala)};
+    SDL_RenderCopy(G.r, t, &src, &dst);
+}
+
 static SDL_Texture *whiteLogo(const Sys *s) {
     if (!s || s->logo.empty()) return nullptr;
     return image(DATA + "/logos_brancos/" + s->logo + ".png");
@@ -1497,6 +1512,8 @@ static std::string firstLine(const char *path, const char *key) {
     return "";
 }
 
+static std::string coreEscolhido(const std::string &id);
+static std::string emuNome(const Sys *s);
 static void openInfo() {
     struct utsname un;
     uname(&un);
@@ -1518,9 +1535,13 @@ static void openInfo() {
     }
     double up = 0;
     std::ifstream("/proc/uptime") >> up;
-    std::string emus;
-    for (auto &s : SYSTEMS)
-        if (emus.find(s.emu) == std::string::npos) emus += (emus.empty() ? "" : ", ") + s.emu;
+    std::string emus;   // so os emuladores instalados nesta versao (a de 32 bits tem os leves)
+    for (auto &s : SYSTEMS) {
+        std::string c = coreEscolhido(s.id);
+        bool tem = s.id == "ports" || s.id == "halflife" || (!c.empty() && isFile("/usr/lib/libretro/" + c + "_libretro.so"));
+        std::string e = tem ? emuNome(&s) : "";
+        if (!e.empty() && emus.find(e) == std::string::npos) emus += (emus.empty() ? "" : ", ") + e;
+    }
     std::string ver = firstLine("/etc/os-release", "VERSION=");
     ver.erase(std::remove(ver.begin(), ver.end(), '"'), ver.end());
     if (!ver.empty() && ver[0] == '=') ver.erase(0, 1);
@@ -3605,15 +3626,20 @@ static void play() {
     prefs["ultimo"] = g->key();
     savePrefs();
     float u = G.u;
-    G.fillRect(0, 0, float(G.W), float(G.H), 0xE6101418);
-    T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.40f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
-    T.draw(g->sys->name + "  •  " + g->sys->emu, G.W / 2.0f, G.H * 0.40f + 22 * u, 10, false, 0xFFB8BEC8, 1);
-    T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
-           accent(g->sys->color), 1);
-    T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
-           false, 0xFFDDE1E8, 1);
-    SDL_RenderPresent(G.r);
-    SDL_Delay(1800);
+    std::string emu = port ? g->sys->emu : emuNome(g->sys);
+    for (Uint32 ini = SDL_GetTicks(); SDL_GetTicks() - ini < 1800;) {   // 1,8 s com o CARREGANDO andando
+        G.fillRect(0, 0, float(G.W), float(G.H), 0xFF101418);
+        drawCarregando(G.W / 2.0f, G.H * 0.27f, 0.7f * u);
+        T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.42f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
+        T.draw(g->sys->name + "  •  " + emu, G.W / 2.0f, G.H * 0.42f + 22 * u, 10, false, 0xFFB8BEC8, 1);
+        T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
+               accent(g->sys->color), 1);
+        T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
+               false, 0xFFDDE1E8, 1);
+        SDL_RenderPresent(G.r);
+        SDL_PumpEvents();
+        SDL_Delay(33);
+    }
     pararMusica();
     launchSys = g->sys->id;
     launchRom = g->dir + "/" + g->file;

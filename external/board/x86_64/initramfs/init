@@ -10,24 +10,59 @@ echo 0 > /proc/sys/kernel/printk
 mkdir -p /boot /lower /rw /newroot
 
 # logo do ScrapCade OS na tela grafica (UEFI ou VESA da BIOS) enquanto o sistema liga. O Linux nao mostra a
-# logo dele quando o boot e silencioso (quiet); entao o initrd desenha a nossa, linha por linha, em /dev/fb0.
-logo() {
+# logo dele quando o boot e silencioso (quiet); entao o initrd desenha a nossa direto em /dev/fb0, animada como a
+# do iChroma: as letras aparecem uma a uma e uma barra de blocos corre embaixo ate o sistema assumir a tela.
+# A animacao roda em segundo plano (nao atrasa a procura do disco); ao sair do initrd, a logo fica inteira.
+ANIM=""; lw=480; lh=64
+tela() {   # geometria da tela e onde a logo fica
   f=/sys/class/graphics/fb0
-  [ -c /dev/fb0 ] && [ -r $f/bits_per_pixel ] || return 0
-  bpp=$(cat $f/bits_per_pixel); [ -f /logo$bpp.raw ] || return 0
+  [ -c /dev/fb0 ] && [ -r $f/bits_per_pixel ] || return 1
+  bpp=$(cat $f/bits_per_pixel); [ -f /logo$bpp.raw ] || return 1
   m=$(head -1 $f/modes 2>/dev/null | sed -n 's/.*:\([0-9]*\)x\([0-9]*\).*/\1 \2/p')
   [ -n "$m" ] || m=$(tr ',' ' ' < $f/virtual_size)
-  set -- $m; w=$1; h=$2; st=$(cat $f/stride); bypp=$((bpp / 8)); lw=480; lh=64
-  [ "$w" -ge $lw ] && [ "$h" -ge $lh ] || return 0
-  printf '\033[2J\033[H' > /dev/tty1 2>/dev/null
-  x0=$(( (w - lw) / 2 )); y0=$(( (h - lh) * 2 / 5 )); r=0
-  while [ $r -lt $lh ]; do
-    dd if=/logo$bpp.raw of=/dev/fb0 bs=$((lw * bypp)) count=1 skip=$r \
-       seek=$(( (y0 + r) * st + x0 * bypp )) oflag=seek_bytes conv=notrunc 2>/dev/null
-    r=$((r + 1))
+  set -- $m; w=$1; h=$2; st=$(cat $f/stride); bypp=$((bpp / 8))
+  [ "$w" -ge $lw ] && [ "$h" -ge $lh ] || return 1
+  x0=$(( (w - lw) / 2 )); y0=$(( (h - lh) * 2 / 5 ))
+}
+pinta() {   # arquivo, byte inicial, bytes por linha, linhas, bytes entre linhas no arquivo, x e y na tela
+  i=0
+  while [ $i -lt $4 ]; do
+    dd if=$1 of=/dev/fb0 bs=$3 count=1 skip=$(($2 + i * $5)) seek=$(( ($7 + i) * st + $6 * bypp )) \
+       iflag=skip_bytes oflag=seek_bytes conv=notrunc 2>/dev/null
+    i=$((i + 1))
   done
 }
-grep -q "loglevel=7" /proc/cmdline || logo
+logo_inteira() { pinta /logo$bpp.raw 0 $((lw * bypp)) $lh $((lw * bypp)) $x0 $y0; }
+anima() {
+  # as letras (colunas de cada uma na logo de 480 px, o selo OS por ultimo)
+  for l in 4:42 50:88 97:134 143:181 190:227 236:274 282:320 329:366 375:413 422:475; do
+    a=${l%:*}; b=${l#*:}
+    pinta /logo$bpp.raw $((a * bypp)) $(( (b - a + 1) * bypp )) $lh $((lw * bypp)) $((x0 + a)) $y0
+    sleep 0.05
+  done
+  # a barra: 12 blocos de 34 x 10 (barra*.raw: 0 apagado, 1 a cabeca, 2 a 4 o rastro); so os que mudam sao redesenhados
+  bw=34; bh=10; bx=$((x0 + 3)); by=$((y0 + lh + 26)); B=/barra$bpp.raw
+  [ -f $B ] && [ $((by + bh)) -le "$h" ] || return 0
+  k=0; while [ $k -lt 12 ]; do pinta $B 0 $((bw * bypp)) $bh $((bw * bypp)) $((bx + k * 40)) $by; k=$((k + 1)); done
+  c=0
+  while :; do
+    k=0
+    while [ $k -lt 12 ]; do
+      d=$(( (c - k + 12) % 12 ))      # distancia ate a cabeca: 0 a 3 acesos, 4 apaga (o rastro anda)
+      if [ $d -lt 5 ]; then
+        cor=0; [ $d -lt 4 ] && cor=$((d + 1))
+        pinta $B $((cor * bh * bw * bypp)) $((bw * bypp)) $bh $((bw * bypp)) $((bx + k * 40)) $by
+      fi
+      k=$((k + 1))
+    done
+    c=$(( (c + 1) % 12 )); sleep 0.1
+  done
+}
+para_logo() { [ -n "$ANIM" ] && { kill $ANIM 2>/dev/null; wait $ANIM 2>/dev/null; ANIM=""; logo_inteira; }; }
+if ! grep -q "loglevel=7" /proc/cmdline && tela; then
+  printf '\033[2J\033[H' > /dev/tty1 2>/dev/null
+  anima & ANIM=$!
+fi
 
 achou=""
 # O GRUB diz de qual particao ele mesmo veio (tos.uuid=): usa essa, para o pen drive escolhido na BIOS/UEFI
@@ -64,6 +99,7 @@ if [ -z "$achou" ]; then
   echo "  - Tire o pen drive e coloque em outra porta USB (de preferencia uma USB 2.0, preta) e ligue de novo."
   echo "  - Se ligou pela UEFI, tente pela BIOS antiga (Legacy/CSM) no menu de boot, ou o contrario."
   echo "  - Se nenhum disco apareceu, avise com o modelo do notebook: falta o controlador dele."
+  [ -n "$ANIM" ] && kill $ANIM 2>/dev/null
   exec sh
 fi
 echo "$achou" > /dev/null   # (a tela fica so com a logo; o disco escolhido vai para /run-tos-boot)
@@ -126,6 +162,7 @@ mkdir -p /newroot/boot
 mount --move /boot /newroot/boot
 echo "$achou" > /newroot/run-tos-boot 2>/dev/null || true
 [ -n "$conv" ] && echo "$conv" > /newroot/run-tos-converter
+para_logo        # a animacao usa /dev/fb0: para antes de passar o /dev para o sistema (a logo fica inteira)
 mount --move /dev /newroot/dev
 umount /proc /sys
 exec switch_root /newroot /sbin/init

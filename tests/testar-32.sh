@@ -1,6 +1,6 @@
 #!/bin/bash
 # Teste da versao de 32 bits no QEMU (qemu-system-i386 com CPU de netbook Atom N270, 1 GB, BIOS antigo):
-#  1) .iso gravado direto: no 1o boot arruma o pen drive (sistema + SCRAP-DADOS)
+#  1) .iso gravado direto (2 GB: o sistema so arruma o pen drive com 1,5 GB ou mais): no 1o boot cria a SCRAP-DADOS
 #  2) disco: primeiro boot, perfil, envio de um jogo pela pagina, carrossel, jogo rodando, volta ao menu, Informacoes
 # Uso: bash tests/testar-32.sh   (depois de bash build-i686.sh). Grava teste/aprovado-32 se tudo passar;
 # o scripts/publicar-versao.ps1 so sobe os arquivos de 32 bits com essa trava.
@@ -27,7 +27,7 @@ falhas=0
 # ---------------------------------------------------------------- .iso gravado direto
 for tentativa in 1 2; do
   D=teste/t32-iso.img; cp $ISO $D; truncate -s 4G $D
-  ( sleep 80; senha; sleep 120; shot iso_primeiro_boot; echo quit ) | timeout 400 $Q -drive file=$D,format=raw > teste/q32a.log 2>&1
+  ( sleep 80; senha; sleep 120; shot iso_primeiro_boot; echo quit ) | timeout 400 ${Q/-m 1024/-m 2048} -drive file=$D,format=raw > teste/q32a.log 2>&1
   [ -f teste/y32_iso_primeiro_boot.ppm ] && break
   log "iso: QEMU caiu (tentativa $tentativa), repetindo"
 done
@@ -42,7 +42,7 @@ for tentativa in 1 2; do
     k ret; sleep 4; k t h i a g o; k ret; sleep 4; k ret; sleep 4; k ret; sleep 30
     log "pagina web: $(curl -s -m 15 -o /dev/null -w '%{http_code}' $W/)"
     log "envio nes: $(curl -g -s -m 60 -T "$TOS/tests/roms/nes/Aventura de Teste.nes" "$W/envio/Aventura%20de%20Teste.nes" -o /dev/null -w '%{http_code}')"
-    sleep 60; k right; sleep 2; k left; sleep 6; shot carrossel
+    sleep 60; k right; sleep 6; shot carrossel
     k ret; sleep 50; shot jogando; echo "sendkey esc 1000"; sleep 90; shot voltou
     opt 41; k ret; sleep 6; shot info; fecha
     echo quit

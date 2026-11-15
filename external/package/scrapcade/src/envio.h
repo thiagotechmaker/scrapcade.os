@@ -156,7 +156,7 @@ static const char *FILES_SCRIPT =
     "var cur='',clip=null;function $(i){return document.getElementById(i)}"
     "function tam(s){return s>1048576?(s/1048576).toFixed(1)+' MB':Math.ceil(s/1024)+' KB'}"
     "function req(m,u,body,ok){var x=new XMLHttpRequest;x.open(m,u);x.onload=function(){if(x.status==200)ok(x);else $('msg').textContent='Erro: '+x.statusText};x.send(body||null)}"
-    "function op(o,a,b,n){$('msg').textContent='Aguarde...';var u='/fs/'+o+'?a='+encodeURIComponent(a)+(b!=null?'&b='+encodeURIComponent(b):'')"
+    "function op(o,a,b,n){$('msg').innerHTML='<img src=/carregando.gif alt=Aguarde style=height:32px>';var u='/fs/'+o+'?a='+encodeURIComponent(a)+(b!=null?'&b='+encodeURIComponent(b):'')"
     "+(n!=null?'&n='+encodeURIComponent(n):'');req('POST',u,null,function(){$('msg').textContent='Feito.';abre(cur)})}"
     "function abre(p){cur=p;req('GET','/fs/lista?p='+encodeURIComponent(p),null,function(x){var l=JSON.parse(x.responseText),h='';"
     "var c='<a onclick=\"abre(\\'\\')\">Início</a>',acc='';if(p)p.split('/').forEach(function(s){acc+=(acc?'/':'')+s;"
@@ -194,7 +194,8 @@ static std::string filesPage() {
 
 static const char *SCRIPT =
     "var d=document.getElementById('d'),s=document.getElementById('s'),q=[],on=0;"
-    "function go(){if(on||!q.length){if(!on&&s.dataset.fez){s.dataset.fez='';setTimeout(function(){location.reload()},15000)}return}on=1;"
+    "var cg=document.getElementById('cg');"
+    "function go(){if(on||!q.length){if(!on){cg.style.display='none';if(s.dataset.fez){s.dataset.fez='';setTimeout(function(){location.reload()},15000)}}return}on=1;cg.style.display='block';"
     "var f=q.shift(),l=document.createElement('div');s.appendChild(l);var x=new XMLHttpRequest;"
     "x.open('PUT','/envio/'+encodeURIComponent(f.name));"
     "x.upload.onprogress=function(e){l.textContent=f.name+': '+Math.round(e.loaded*100/f.size)+'%'};"
@@ -228,6 +229,7 @@ static std::string page() {
     }
     return head("ScrapCade", false) +
            "<label id=d>Arraste os jogos para cá, ou toque para escolher<input id=f type=file multiple></label><div id=s></div>"
+           "<img id=cg src=/carregando.gif alt=Carregando style='display:none;height:36px;margin:8px 0'>"
                  "<div class=c>Cada jogo vai sozinho para o console certo, e a capa é baixada sozinha.</div>"
                  "<h2>Jogos (" + std::to_string(gs.size()) + ")</h2><table>" + rows + "</table></main><script>" + SCRIPT +
            "</script></html>";
@@ -261,11 +263,11 @@ static void handle(int fd) {
 
     if (method == "GET" && path == "/") {
         sendBody(fd, "text/html; charset=utf-8", page());
-    } else if (method == "GET" && path == "/logo.jpg") {
-        std::ifstream in(DATA + "/web/logo.jpg", std::ios::binary);
+    } else if (method == "GET" && (path == "/logo.jpg" || path == "/carregando.gif")) {
+        std::ifstream in(DATA + "/web" + path, std::ios::binary);
         std::string body((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         if (body.empty()) reply(fd, "404 Nao encontrado");
-        else sendBody(fd, "image/jpeg", body, "max-age=86400");
+        else sendBody(fd, path == "/logo.jpg" ? "image/jpeg" : "image/gif", body, "max-age=86400");
     } else if (method == "PUT" && path.compare(0, 7, "/envio/") == 0) {
         // so o nome do arquivo: nenhuma pasta vinda de fora
         std::string name = urldecode(path.substr(7));
