@@ -31,14 +31,18 @@ for tentativa in 1 2; do   # o QEMU as vezes sai sozinho no inicio: uma segunda 
 done
 
 # ---------------------------------------------------------------- rodando de um pen drive USB com HD vazio: pergunta
-D=teste/x-pen-usb.img; cp $I/disk.img $D; truncate -s 3G $D
-H=teste/x-hd.img; rm -f $H; truncate -s 8G $H
-( sleep 40; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
-  shot x_pergunta_hd; k ret; sleep 4; shot x_discos; fecha
-  echo quit ) | timeout 400 $Q $EFI -device qemu-xhci \
-    -drive if=none,id=pen,file=$D,format=raw -device usb-storage,drive=pen,bootindex=0 \
-    -drive file=$H,format=raw,if=virtio > teste/q9.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-pen-usb.img; cp $I/disk.img $D; truncate -s 3G $D
+  H=teste/x-hd.img; rm -f $H; truncate -s 8G $H
+  ( sleep 40; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
+    shot x_pergunta_hd; k ret; sleep 4; shot x_discos; fecha
+    echo quit ) | timeout 400 $Q $EFI -device qemu-xhci \
+      -drive if=none,id=pen,file=$D,format=raw -device usb-storage,drive=pen,bootindex=0 \
+      -drive file=$H,format=raw,if=virtio > teste/q9.log 2>&1
+  [ -f teste/z_x_discos.ppm ] && break
+  log "QEMU caiu antes de x_discos (tentativa $tentativa), repetindo"
+done
 
 # ---------------------------------------------------------------- atualizacao de ponta a ponta (servidor falso)
 F=/tmp/scrapcade-ota; rm -rf $F; mkdir -p $F; cp $I/atualizacao/{tos.squashfs,bzImage,initrd.gz,SHA256SUMS} $F/
@@ -86,59 +90,79 @@ for modo in uefi bios; do
 done
 
 # ---------------------------------------------------------------- jogos gratis (baixa de verdade), copia dos saves, gerenciador
-D=teste/x-gratis.img; cp $I/disk.img $D; truncate -s 3G $D
-U=teste/x-usb2.img; usbpen $U
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  opt 1; k ret; sleep 3; shot x_gratis
-  k ret; sleep 40; k down; k ret; sleep 40; k down; k ret; sleep 40; shot x_gratis_baixou
-  k esc; sleep 2; k esc; sleep 45; shot x_carrossel_gratis
-  opt 10; k ret; sleep 25; shot x_copia_saves; fecha
-  opt 3; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
-  k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; shot x_arq_colar
-  k x; sleep 10; shot x_arq_colou; k esc; sleep 1; fecha   # 3 Esc: pasta, raizes, painel
-  opt 4; k ret; sleep 3; shot x_ejetou
-  echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
-    -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
-    -nic user,model=e1000 > teste/q12.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-gratis.img; cp $I/disk.img $D; truncate -s 3G $D
+  U=teste/x-usb2.img; usbpen $U
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    opt 1; k ret; sleep 3; shot x_gratis
+    k ret; sleep 40; k down; k ret; sleep 40; k down; k ret; sleep 40; shot x_gratis_baixou
+    k esc; sleep 2; k esc; sleep 45; shot x_carrossel_gratis
+    opt 10; k ret; sleep 25; shot x_copia_saves; fecha
+    opt 3; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
+    k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; shot x_arq_colar
+    k x; sleep 10; shot x_arq_colou; k esc; sleep 1; fecha   # 3 Esc: pasta, raizes, painel
+    opt 4; k ret; sleep 3; shot x_ejetou
+    echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
+      -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
+      -nic user,model=e1000 > teste/q12.log 2>&1
+  [ -f teste/z_x_ejetou.ppm ] && break
+  log "QEMU caiu antes de x_ejetou (tentativa $tentativa), repetindo"
+done
 log "copia dos saves no pen drive: $(mdir -/ -b -i $U ::ScrapCade-saves 2>/dev/null | grep -c saves)"
 
 # ---------------------------------------------------------------- PortMaster: baixa a versao oficial e abre
-D=teste/x-portmaster.img; cp $I/disk.img $D; truncate -s 3G $D
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  shot x_ports_carrossel; k ret; sleep 30; shot x_portmaster_baixando; sleep 120; shot x_portmaster
-  echo quit ) | timeout 600 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q13.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-portmaster.img; cp $I/disk.img $D; truncate -s 3G $D
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    shot x_ports_carrossel; k ret; sleep 30; shot x_portmaster_baixando; sleep 120; shot x_portmaster
+    echo quit ) | timeout 600 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q13.log 2>&1
+  [ -f teste/z_x_portmaster.ppm ] && break
+  log "QEMU caiu antes de x_portmaster (tentativa $tentativa), repetindo"
+done
 
 # ---------------------------------------------------------------- jogo que nao abre (aviso) e Freedoom no PrBoom
-D=teste/x-doom.img; cp $I/disk.img $D; truncate -s 3G $D
-head -c 1048576 /dev/zero > "/tmp/Jogo Quebrado.z64"   # N64 de mentira: o emulador fecha na hora
-W=http://127.0.0.1:18080
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  log "envio Jogo Quebrado.z64: $(curl -g -s -m 30 -T "/tmp/Jogo Quebrado.z64" "$W/envio/Jogo%20Quebrado.z64" -o /dev/null -w '%{http_code}')"
-  sleep 40; k right; sleep 3; shot x_quebrado_sel
-  k ret; sleep 12; shot x_nao_abriu; sleep 10
-  opt 1; k ret; sleep 3; k down down down; sleep 1; k ret; sleep 120; shot x_freedoom_baixou
-  k esc; sleep 2; k esc; sleep 45; k right; sleep 3; shot x_freedoom_carrossel
-  k ret; sleep 30; shot x_freedoom_jogando; echo "sendkey esc 1000"; sleep 60
-  echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
-    -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080 > teste/q14.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-doom.img; cp $I/disk.img $D; truncate -s 3G $D
+  head -c 1048576 /dev/zero > "/tmp/Jogo Quebrado.z64"   # N64 de mentira: o emulador fecha na hora
+  W=http://127.0.0.1:18080
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    log "envio Jogo Quebrado.z64: $(curl -g -s -m 30 -T "/tmp/Jogo Quebrado.z64" "$W/envio/Jogo%20Quebrado.z64" -o /dev/null -w '%{http_code}')"
+    sleep 40; k right; sleep 3; shot x_quebrado_sel
+    k ret; sleep 12; shot x_nao_abriu; sleep 10
+    opt 1; k ret; sleep 3; k down down down; sleep 1; k ret; sleep 120; shot x_freedoom_baixou
+    k esc; sleep 2; k esc; sleep 45; k right; sleep 3; shot x_freedoom_carrossel
+    k ret; sleep 30; shot x_freedoom_jogando; echo "sendkey esc 1000"; sleep 60
+    echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
+      -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080 > teste/q14.log 2>&1
+  [ -f teste/z_x_freedoom_jogando.ppm ] && break
+  log "QEMU caiu antes de x_freedoom_jogando (tentativa $tentativa), repetindo"
+done
 
 # ---------------------------------------------------------------- painel em secoes: JOGANDO, ordenar, relogio, padrao
-D=teste/x-painel.img; cp $I/disk.img $D; truncate -s 3G $D
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  opt 12; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
-  opt 5; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
-  opt 28; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
-  opt 40; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
-  echo quit ) | timeout 400 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q15.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-painel.img; cp $I/disk.img $D; truncate -s 3G $D
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    opt 12; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
+    opt 5; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
+    opt 28; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
+    opt 40; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
+    echo quit ) | timeout 400 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q15.log 2>&1
+  [ -f teste/z_x_padrao_confirma.ppm ] && break
+  log "QEMU caiu antes de x_padrao_confirma (tentativa $tentativa), repetindo"
+done
 
 # ---------------------------------------------------------------- protecao de tela (5 min parado) e o botao que acorda
-D=teste/x-protecao.img; cp $I/disk.img $D; truncate -s 3G $D
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  opt 22; k left; sleep 1; fecha; sleep 320; shot x_protecao_tela
-  k down; sleep 3; shot x_protecao_acordou
-  echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q16.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
+  D=teste/x-protecao.img; cp $I/disk.img $D; truncate -s 3G $D
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    opt 22; k left; sleep 1; fecha; sleep 320; shot x_protecao_tela
+    k down; sleep 3; shot x_protecao_acordou
+    echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q16.log 2>&1
+  [ -f teste/z_x_protecao_acordou.ppm ] && break
+  log "QEMU caiu antes de x_protecao_acordou (tentativa $tentativa), repetindo"
+done
