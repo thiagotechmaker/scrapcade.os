@@ -176,6 +176,7 @@ Código em `external/package/scrapcade/src/`:
 | `bios.h` | Confere as BIOS pelo **MD5** |
 | `usb.h` | Importa jogos de pen drive |
 | `rede.h` | Wi-Fi pelo ConnMan |
+| `pixel_fonte.h` | Letras de pixel (5x7) do tema 8 bits |
 
 **Para pesquisar:**
 
@@ -185,7 +186,6 @@ Código em `external/package/scrapcade/src/`:
 - **Senha na página web.**
 - **Idiomas** (inglês).
 - **Temas baixáveis.**
-- **Modo para TV:** fontes maiores para ver de longe.
 
 ---
 
@@ -202,24 +202,28 @@ Código em `external/package/scrapcade/src/`:
 | PCSX ReARMed | commit fixo | PlayStation (BIOS livre embutida) |
 | Mupen64Plus-Next | commit fixo | Nintendo 64 |
 | FBNeo | commit fixo | Fliperama e Neo Geo |
+| bsnes | commit fixo | Super Nintendo (opção mais precisa) |
+| PPSSPP | commit fixo | PSP |
+| melonDS | commit fixo | Nintendo DS |
+| Beetle Saturn | commit fixo | Sega Saturn |
+| Flycast | commit fixo | Dreamcast |
+| PrBoom | commit fixo | Doom e jogos `.wad` (o Freedoom vem pelos Jogos grátis) |
+| **Xash3D FWGS** + **hlsdk-portable** | commit fixo | Half-Life (os dados vêm da cópia da Steam do usuário) |
+| **PortMaster** | baixado na primeira vez | Ports de jogos de PC (feitos para portáteis ARM: poucos rodam em PC) |
+
+Na versão de 32 bits entram os núcleos leves no lugar dos pesados: FCEUmm (NES), Snes9x 2010, PicoDrive (Mega Drive) e gpSP (GBA). O ScrapCade e o `tos-jogar` usam o primeiro núcleo instalado de cada console.
 
 Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 - Select + Start sai do jogo.
-- O jogo salva sozinho e continua de onde parou.
+- O jogo salva sozinho e continua de onde parou (dá para desligar no painel).
 - Controles no padrão SDL.
+- O que o painel Sistema > Jogando escolhe (filtro de imagem, proporção, run-ahead, FPS) vai em `scrapcade-jogo.cfg`.
 
 **Para pesquisar:**
 
-- **Emuladores que faltam:**
-  - PSP: PPSSPP.
-  - Nintendo DS: melonDS.
-  - GameCube e Wii: Dolphin.
-  - PS2: PCSX2.
-  - 3DS: Azahar.
-  - PC antigo: DOSBox Pure e ScummVM.
-- **Perfis por máquina:** mostrar só os consoles que o PC aguenta.
-- **Shaders CRT** (slang) e **run-ahead** por console.
+- **Emuladores que faltam:** GameCube e Wii (Dolphin), PS2 (PCSX2), 3DS (Azahar), PC antigo (DOSBox Pure e ScummVM), Xbox (xemu), PS Vita (Vita3K) e consoles leves (PC Engine, Atari, Neo Geo Pocket, WonderSwan, Virtual Boy, MSX).
+- **Perfis por máquina:** escolher os ajustes de cada emulador pelo desempenho do PC.
 - **RetroAchievements** e **netplay**.
 - **DuckStation** para PS1, mais preciso.
 
@@ -250,8 +254,8 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 | Item | Tamanho |
 |---|---|
-| Sistema (`tos.squashfs`) | ~250 MB (cresce com os firmwares de Wi-Fi) |
-| `.iso` | ~250 MB |
+| Sistema (`tos.squashfs`) | ~440 MB (64 bits, com os emuladores pesados e os firmwares de Wi-Fi) |
+| `.iso` | ~460 MB |
 | `disk.img` | 1 GB (a SCRAPCADE; o resto do pen drive vira SCRAP-DADOS) |
 | Memória usada no menu | cerca de 100 a 150 MB |
 

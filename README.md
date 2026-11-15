@@ -101,13 +101,13 @@ Num Ubuntu 24.04 (ou WSL2), com uns 40 GB livres:
 ```bash
 sudo apt install build-essential gcc-multilib git wget unzip rsync bc cpio file libncurses-dev python3 \
                  qemu-system-x86 ovmf mtools dosfstools python3-pil
-git clone https://github.com/thiagotechmaker/scrapcade.os.git ~/t-os
-git clone --depth 1 --branch 2026.02.3 https://gitlab.com/buildroot.org/buildroot.git ~/t-os/buildroot
-bash ~/t-os/build-x86_64.sh          # make tos_x86_64_defconfig + make; resultado em output/x86_64/images
-bash ~/t-os/tests/testar.sh          # opcional: bateria automática no QEMU (precisa do qemu, ovmf, mtools e python3-pil)
+git clone https://github.com/thiagotechmaker/scrapcade.os.git ~/scrapcade.os
+git clone --depth 1 --branch 2026.02.3 https://gitlab.com/buildroot.org/buildroot.git ~/scrapcade.os/buildroot
+bash ~/scrapcade.os/build-x86_64.sh          # make tos_x86_64_defconfig + make; resultado em output/x86_64/images
+bash ~/scrapcade.os/tests/testar.sh          # opcional: bateria automática no QEMU (precisa do qemu, ovmf, mtools e python3-pil)
 ```
 
-A primeira compilação baixa e compila tudo (algumas horas); as seguintes só o que mudou. Para 32 bits: `bash ~/t-os/build-i686.sh`. Detalhes em [docs/DETALHES.md](docs/DETALHES.md), [docs/COMPOSICAO.md](docs/COMPOSICAO.md) e [docs/ROTEIRO.md](docs/ROTEIRO.md); o histórico de versões está no [CHANGELOG.md](CHANGELOG.md).
+A primeira compilação baixa e compila tudo (algumas horas); as seguintes só o que mudou. Para 32 bits: `bash ~/scrapcade.os/build-i686.sh`. Detalhes em [docs/DETALHES.md](docs/DETALHES.md), [docs/COMPOSICAO.md](docs/COMPOSICAO.md) e [docs/ROTEIRO.md](docs/ROTEIRO.md); o histórico de versões está no [CHANGELOG.md](CHANGELOG.md).
 
 ## Licença
 
