@@ -15,6 +15,32 @@ if [ "$SIS" = ports ]; then
 fi
 
 primeiro() { for c in "$@"; do [ -f "/usr/lib/libretro/${c}_libretro.so" ] && { echo $c; return; }; done; echo $1; }
+# Half-Life (Xash3D, como no iChroma): o "jogo" e um .xash com o nome da pasta (valve) dentro de roms/halflife.
+# As bibliotecas do jogo da Steam nao servem aqui: copia as do hlsdk-portable para a pasta do usuario.
+if [ "$SIS" = halflife ]; then
+  HL=/userdata/roms/halflife
+  JOGO=$(head -1 "$ROM" | tr -d '\r\n ')
+  [ -n "$JOGO" ] || JOGO=valve
+  if [ -x /usr/bin/xash3d ] && [ -d "$HL/$JOGO" ]; then
+    mkdir -p "$HL/$JOGO/cl_dlls" "$HL/$JOGO/dlls"
+    for f in /usr/lib/xash3d/hlsdk/cl_dlls/*.so /usr/lib/xash3d/hlsdk/dlls/*.so; do
+      d="$HL/$JOGO/${f#/usr/lib/xash3d/hlsdk/}"
+      cmp -s "$f" "$d" || cp "$f" "$d"
+    done
+    cp /usr/share/tos/xash3d/scrapcade_controle.cfg "$HL/$JOGO/"
+    EXTRAS=$(ls /usr/share/xash3d/valve/extras.pk3 /usr/lib/xash3d/valve/extras.pk3 2>/dev/null | head -1)
+    echo "== $(date "+%d/%m %H:%M") halflife $JOGO" > /userdata/system/logs/xash3d.log
+    INICIO=$(cut -d. -f1 /proc/uptime)
+    ( cd "$HL" && LD_LIBRARY_PATH=/usr/lib/xash3d XASH3D_BASEDIR="$HL" XASH3D_EXTRAS_PAK1="$EXTRAS" HOME=/userdata/system \
+        /usr/bin/xash3d -game "$JOGO" -fullscreen +exec scrapcade_controle.cfg ) >> /userdata/system/logs/xash3d.log 2>&1
+    [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ] && \
+      echo "Esse jogo não abriu. Veja logs/xash3d.log (falta a pasta $JOGO da sua cópia da Steam?)" > /tmp/tos-nao-abriu
+  else
+    echo "Para jogar, copie a pasta $JOGO do Half-Life (da sua cópia da Steam) para roms/halflife." > /tmp/tos-nao-abriu
+  fi
+  exec /usr/bin/scrapcade
+fi
+
 case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais leves)
   nes) CORE=$(primeiro mesen fceumm) ;;
   snes) CORE=$(primeiro snes9x snes9x2010) ;;

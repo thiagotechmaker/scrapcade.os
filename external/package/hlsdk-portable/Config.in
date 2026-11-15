@@ -1,0 +1,7 @@
+config BR2_PACKAGE_HLSDK_PORTABLE
+	bool "hlsdk-portable"
+	depends on BR2_INSTALL_LIBSTDCPP
+	depends on BR2_PACKAGE_XASH3D_FWGS
+	help
+	  Bibliotecas do jogo Half-Life (hlsdk-portable) para o Xash3D FWGS.
+	  Licenca do Half-Life 1 SDK: distribuicao so gratuita, com o LICENSE junto.

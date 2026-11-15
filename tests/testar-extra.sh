@@ -58,7 +58,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
     sleep 150; shot x_ota_aviso                      # baixou sozinha em segundo plano (Atualizar sozinho)
-    opt 31; k ret; sleep 20; shot x_ota_achou        # "ja foi baixada: reinicie"
+    opt 33; k ret; sleep 20; shot x_ota_achou        # "ja foi baixada: reinicie"
     rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
     k ret; sleep 200; shot x_ota_reiniciou
     echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q10.log 2>&1
@@ -131,6 +131,14 @@ D=teste/x-painel.img; cp $I/disk.img $D; truncate -s 3G $D
   k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
   opt 12; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
   opt 5; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
-  opt 26; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
-  opt 38; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
+  opt 28; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
+  opt 40; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
   echo quit ) | timeout 400 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q15.log 2>&1
+
+# ---------------------------------------------------------------- protecao de tela (5 min parado) e o botao que acorda
+D=teste/x-protecao.img; cp $I/disk.img $D; truncate -s 3G $D
+( sleep 30; senha; sleep 60
+  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+  opt 22; k left; sleep 1; fecha; sleep 320; shot x_protecao_tela
+  k down; sleep 3; shot x_protecao_acordou
+  echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q16.log 2>&1

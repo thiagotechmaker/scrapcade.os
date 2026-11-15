@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.18 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.19 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -677,6 +677,12 @@ static void loadBackdrop(const Game *g) {
 // ------------------------------------------------------------------ opcoes do painel que valem no carrossel e no jogo
 static const char *ORDENS[] = {"Nome", "Ano", "Mais jogados", "Últimos jogados"};
 static int ordemAtual() { int v = atoi(prefs["ordem"].c_str()); return v < 0 || v > 3 ? 0 : v; }
+static const int PROTECAO_MIN[] = {0, 5, 10, 30};
+static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 2 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 2 : v; }
+static const int DESLIGAR_MIN[] = {0, 30, 60, 120};
+static int desligarIdx() { int v = atoi(prefs["desligar"].c_str()); return v < 0 || v > 3 ? 0 : v; }
+static Uint32 ultimaTecla = 0;      // ultimo botao ou tecla (para a protecao de tela e o desligar sozinho)
+static bool protecaoOn = false;
 static const char *FILTROS_IMG[] = {"Nenhum", "Liso", "TV de tubo"};
 static int filtroImg() { int v = atoi(prefs["filtro"].c_str()); return v < 0 || v > 2 ? 0 : v; }
 static const char *PROPORCOES[] = {"Original", "4:3", "Tela cheia", "Escala inteira"};
@@ -979,7 +985,7 @@ static void drawDetails() {
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
 enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
-       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_COUNT };
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_COUNT };
 static bool sysOpen = false;
 
 // Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
@@ -988,9 +994,9 @@ struct Secao { const char *nome; std::vector<int> opts; };
 static const std::vector<Secao> SECOES = {
     {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
     {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO}},
-    {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG}},
+    {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_PROTECAO}},
     {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH}},
-    {"TELA E ENERGIA", {OPT_ENERGIA, OPT_RELOGIO}},
+    {"TELA E ENERGIA", {OPT_ENERGIA, OPT_DESLIGAR, OPT_RELOGIO}},
     {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR}},
     {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_REBOOT, OPT_OFF}},
 };
@@ -1099,6 +1105,11 @@ static std::string optLabel(int i) {
     case OPT_RELOGIO: return std::string("Relógio:   ‹ ") + (prefs["relogio"] == "12" ? "12 h (AM/PM)" : "24 h") + " ›";
     case OPT_ENVIAR: return "Enviar jogos do PC:   http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
     case OPT_PADRAO: return "Voltar tudo ao padrão";
+    case OPT_PROTECAO: { int m = PROTECAO_MIN[protecaoIdx()]; return std::string("Proteção de tela:   ‹ ") + (m ? std::to_string(m) + " min" : "Desligada") + " ›"; }
+    case OPT_DESLIGAR: {
+        int m = DESLIGAR_MIN[desligarIdx()];
+        return std::string("Desligar sozinho:   ‹ ") + (m == 0 ? "Nunca" : m < 60 ? std::to_string(m) + " min" : std::to_string(m / 60) + " h") + " parado ›";
+    }
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
                                                  : "Energia:   (fixa neste computador)";
@@ -1187,6 +1198,8 @@ static const char *optAjuda(int o) {
     case OPT_NUCLEO: return "Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.";
     case OPT_RELOGIO: return "Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).";
     case OPT_ENVIAR: return "No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.";
+    case OPT_PROTECAO: return "Parado no menu por esse tempo, a tela escurece e a logo com a hora muda de lugar devagar (a imagem não marca a TV). Qualquer botão volta, sem fazer nada.";
+    case OPT_DESLIGAR: return "Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.";
     case OPT_PADRAO: return "Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.";
     }
     if (o == OPT_GRATIS) return "Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.";
@@ -1299,6 +1312,27 @@ static void drawConfirmacao() {
     panelHints(H, 4, x, y + h, w);
 }
 
+static void drawProtecao() {
+    if (!protecaoOn) return;
+    G.fillRect(0, 0, float(G.W), float(G.H), 0xF5000000);
+    float u = G.u, lw = 300 * u, lh = lw * 200 / 1489;   // logo de pixel (1489x200)
+    unsigned semente = unsigned(time(nullptr) / 10);   // muda de lugar a cada 10 s
+    semente = semente * 1103515245u + 12345u;
+    float x = float(semente % 1000) / 1000 * std::max(1.0f, G.W - lw - 40 * u) + 20 * u;
+    semente = semente * 1103515245u + 12345u;
+    float y = float(semente % 1000) / 1000 * std::max(1.0f, G.H - lh - 60 * u) + 20 * u;
+    if (SDL_Texture *t = image(DATA + "/web/logo.png")) {
+        SDL_FRect d{x, y, lw, lh};
+        SDL_RenderCopyF(G.r, t, nullptr, &d);
+    }
+    time_t now = time(nullptr);
+    tm lt;
+    localtime_r(&now, &lt);
+    char hora[16];
+    strftime(hora, sizeof hora, prefs["relogio"] == "12" ? "%I:%M %p" : "%H:%M", &lt);
+    T.draw(hora, x + lw / 2, y + lh + 18 * u, 16, true, 0xCCFFFFFF, 1);
+}
+
 static void drawTextPanel() {
     if (textTitle.empty()) return;
     float u = G.u, w = std::min(G.W - 24.0f * u, 460 * u), lh = 12.5f * u;
@@ -1368,7 +1402,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.18" + buf);
+    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.19" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -2443,6 +2477,8 @@ static void optAction(int dir) {
     case OPT_FPS: prefs["fps"] = prefLigada("fps", false) ? "0" : "1"; gravarJogoCfg(); break;
     case OPT_NUCLEO: if (current()) trocarNucleo(current()); return;
     case OPT_RELOGIO: prefs["relogio"] = prefs["relogio"] == "12" ? "24" : "12"; break;
+    case OPT_PROTECAO: prefs["protecao"] = std::to_string((protecaoIdx() + d + 4) % 4); break;
+    case OPT_DESLIGAR: prefs["desligar"] = std::to_string((desligarIdx() + d + 4) % 4); break;
     case OPT_ENVIAR:
         if (dir == 0) toast("No PC ou no celular, na mesma rede, abra http://" + ipAddr() + ":" + std::to_string(Envio::PORT) + " e arraste os jogos.", 6000);
         return;
@@ -3311,6 +3347,7 @@ static void render() {
     drawControle();
     drawTeclado();
     drawToast();
+    drawProtecao();
     SDL_RenderPresent(G.r);
 }
 
@@ -3393,7 +3430,8 @@ static void play() {
     const Game *g = current();
     if (!g) return;
     std::string core = coreEscolhido(g->sys->id);
-    bool port = g->sys->id == "ports";   // Ports (PortMaster): o jogo e um script, sem nucleo do RetroArch
+    // Ports (PortMaster: o jogo e um script) e Half-Life (Xash3D): sem nucleo do RetroArch
+    bool port = g->sys->id == "ports" || g->sys->id == "halflife";
     if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
         toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
@@ -3601,6 +3639,12 @@ int main() {
         bool any = false;
         while (SDL_PollEvent(&e)) {
             any = true;
+            bool botao = e.type == SDL_KEYDOWN || e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_JOYBUTTONDOWN ||
+                         (e.type == SDL_CONTROLLERAXISMOTION && abs(e.caxis.value) > 20000);
+            if (botao) {
+                ultimaTecla = SDL_GetTicks();
+                if (protecaoOn) { protecaoOn = false; continue; }   // acorda: o botao nao faz mais nada
+            }
             switch (e.type) {
             case SDL_QUIT: quit = 1; break;
             default:
@@ -3764,6 +3808,27 @@ int main() {
             novaVersao = 3;
             toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade OS", 9000);
             redraw();
+        }
+        // protecao de tela e desligar sozinho: so com o menu parado (jogando, o ScrapCade nem esta aberto)
+        {
+            if (!ultimaTecla) ultimaTecla = now;
+            Uint32 parado = now - ultimaTecla;
+            int pm = PROTECAO_MIN[protecaoIdx()], dm = DESLIGAR_MIN[desligarIdx()];
+            if (!protecaoOn && pm && parado > Uint32(pm) * 60000u && ctlStep < 0 && !tkOn && instStage != 3) { protecaoOn = true; any = true; }
+            static Uint32 ultimoDesenho = 0;
+            if (protecaoOn && now - ultimoDesenho > 10000) { ultimoDesenho = now; any = true; }
+            if (dm && instStage != 3 && updStage == 0) {
+                Uint32 limite = Uint32(dm) * 60000u;
+                static bool avisou = false;
+                if (parado + 60000u > limite && !avisou) {
+                    avisou = true;
+                    protecaoOn = false;
+                    toast("Parado faz tempo: o computador desliga em 1 minuto. Aperte qualquer botão para continuar.", 60000);
+                    any = true;
+                }
+                if (parado + 60000u <= limite) avisou = false;
+                if (parado > limite) powerOff(false);
+            }
         }
         // segurando o direcional: anda sozinho
         if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;

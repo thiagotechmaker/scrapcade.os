@@ -1,6 +1,8 @@
 // ScrapCade - consoles, jogos e pastas. Licenca: GPLv3.
 #pragma once
 #include <algorithm>
+#include <cstdio>
+#include <set>
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
@@ -45,6 +47,7 @@ static std::vector<Sys> SYSTEMS = {
     {"neogeo", "neogeo", "Neo Geo", "FBNeo", 0xFF2F7DD1, {".zip"}},
     {"dos", "", "PC (DOS)", "DOSBox Pure", 0xFF8C2F2F, {".zip", ".dosz", ".exe"}},
     {"doom", "", "Doom", "PrBoom", 0xFF9B2D20, {".wad"}},
+    {"halflife", "", "Half-Life", "Xash3D", 0xFFE07B1A, {".xash"}},
     {"ports", "", "Ports", "PortMaster", 0xFF8E44AD, {".sh"}},
 };
 
@@ -96,8 +99,54 @@ static void mkdirs(const std::string &p) {
     }
 }
 
+static void halfLifeAtalhos() {
+    std::string hl = ROMS + "/halflife";
+    std::set<std::string> pastas;
+    if (DIR *d = opendir(hl.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (n.empty() || n[0] == '.') continue;
+            std::string lib = hl + "/" + n + "/liblist.gam";
+            FILE *f = fopen(lib.c_str(), "r");
+            if (!f) continue;
+            pastas.insert(n);
+            std::string titulo = n == "valve" ? "Half-Life" : n;
+            char linha[256];
+            while (fgets(linha, sizeof linha, f)) {   // game "Half-Life"
+                std::string l = linha;
+                size_t g = l.find("game"), a1 = l.find('"'), a2 = l.find('"', a1 + 1);
+                if (g != std::string::npos && g < a1 && a2 != std::string::npos && l.compare(0, 4, "game") == 0) {
+                    titulo = l.substr(a1 + 1, a2 - a1 - 1);
+                    break;
+                }
+            }
+            fclose(f);
+            for (char &c : titulo) if (strchr(":/\\?*\"<>|", c)) c = ' ';
+            std::string atalho = hl + "/" + titulo + ".xash";
+            struct stat st;
+            if (stat(atalho.c_str(), &st) != 0)
+                if (FILE *o = fopen(atalho.c_str(), "w")) { fprintf(o, "%s\n", n.c_str()); fclose(o); }
+        }
+        closedir(d);
+    }
+    if (DIR *d = opendir(hl.c_str())) {   // atalho de pasta que saiu
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (n.size() < 6 || n.compare(n.size() - 5, 5, ".xash") != 0) continue;
+            std::string c = hl + "/" + n;
+            char buf[256] = {0};
+            if (FILE *f = fopen(c.c_str(), "r")) { if (!fgets(buf, sizeof buf, f)) buf[0] = 0; fclose(f); }
+            std::string pasta = buf;
+            while (!pasta.empty() && (pasta.back() == '\n' || pasta.back() == '\r' || pasta.back() == ' ')) pasta.pop_back();
+            if (!pastas.count(pasta)) remove(c.c_str());
+        }
+        closedir(d);
+    }
+}
+
 static std::vector<Game> scanGames() {
     std::vector<Game> out;
+    halfLifeAtalhos();
     for (auto &s : SYSTEMS) {
         std::string dir = ROMS + "/" + s.id;
         mkdirs(dir);

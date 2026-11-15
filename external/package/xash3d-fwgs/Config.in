@@ -1,0 +1,8 @@
+config BR2_PACKAGE_XASH3D_FWGS
+	bool "xash3d-fwgs"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_FREETYPE
+	help
+	  Motor Xash3D FWGS (GPLv3), compativel com o Half-Life. Os dados do jogo
+	  sao do usuario (copia da Steam).
