@@ -14,6 +14,7 @@ namespace Usb {
 
 static std::string MOUNT = "/media/usb";
 static std::string mounted;   // particao montada agora ("" = nenhuma)
+static std::string ejetado;   // disco ejetado pelo painel: nao monta de novo ate sair e voltar
 
 static std::string readFile(const std::string &p) {
     std::ifstream in(p);
@@ -81,7 +82,9 @@ static bool attach() {
         mounted.clear();
     }
     mkdirs(MOUNT);
+    if (!ejetado.empty() && !exists(ejetado)) ejetado.clear();   // saiu: na volta pode montar
     for (auto &dev : candidates()) {
+        if (!ejetado.empty() && dev.compare(0, ejetado.size(), ejetado) == 0) continue;
         for (const char *fs : {"vfat", "exfat", "ntfs3", "ext4", "iso9660"}) {
             if (mount(dev.c_str(), MOUNT.c_str(), fs, MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC, nullptr) == 0) {
                 // outro pen drive do ScrapCade OS (SCRAPCADE): nao e de jogos
@@ -93,6 +96,18 @@ static bool attach() {
         }
     }
     return false;
+}
+
+// Ejetar: grava o que falta e solta o pen drive para poder tirar
+static bool eject() {
+    if (mounted.empty() && !attach()) return false;
+    sync();
+    if (umount2(MOUNT.c_str(), 0) != 0) umount2(MOUNT.c_str(), MNT_DETACH);
+    std::string d = mounted;
+    while (!d.empty() && isdigit((unsigned char)d.back())) d.pop_back();   // /dev/sdb1 -> /dev/sdb
+    ejetado = d;
+    mounted.clear();
+    return true;
 }
 
 // Pastas que nunca tem jogo (instalador do Windows, lixeira, fotos...)

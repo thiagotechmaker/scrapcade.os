@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_PRBOOM
+	bool "libretro-prboom"
+	help
+	  Nucleo libretro PrBoom (Doom e jogos .wad, como o Freedoom) para o RetroArch.

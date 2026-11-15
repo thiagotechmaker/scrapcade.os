@@ -27,7 +27,7 @@ Cada pessoa tem o seu **perfil** (avatar, favoritos e saves próprios). Ao ligar
 
 ![Perfil](docs/capturas/10_perfil_avatar.png)
 
-No **painel Sistema** (botão Select ou tecla Tab) fica tudo: Wi-Fi, Bluetooth, som, tema, tamanho do texto, trazer jogos do pen drive, gerenciador de arquivos, BIOS, cópia dos saves no pen drive, atualizar, instalar no HD. Do lado direito ele explica o que cada opção faz.
+No **painel Sistema** (botão Select ou tecla Tab) fica tudo: Wi-Fi, Bluetooth, som, tema, tamanho do texto, trazer jogos do pen drive, gerenciador de arquivos, BIOS, cópia dos saves no pen drive, ejetar o pen drive, atualizar, instalar no HD. Do lado direito ele explica o que cada opção faz.
 
 ![Painel Sistema](docs/capturas/11_painel_sistema.png)
 
@@ -35,9 +35,13 @@ No **painel Sistema** (botão Select ou tecla Tab) fica tudo: Wi-Fi, Bluetooth, 
 
 ![Tema](docs/capturas/7_menu_tema.png)
 
-**Jogos grátis:** em *Sistema > Jogos grátis* o ScrapCade baixa jogos de fãs com licença livre, direto do site do autor, e confere o arquivo antes de colocar no console. Os **ports** (jogos de PC adaptados) vêm pelo **PortMaster**, no console *Ports*.
+**Jogos grátis:** em *Sistema > Jogos grátis* o ScrapCade baixa jogos de fãs com licença livre (µCity, Nova the Squirrel, Libbet e o Freedoom, um Doom completo e livre), direto do site do autor, confere o arquivo e já coloca no console certo, com capa. Os **ports** (jogos de PC adaptados) vêm pelo **PortMaster**, no console *Ports*.
 
 ![Jogos grátis](docs/capturas/12_jogos_gratis.png)
+
+**Gerenciador de arquivos** (*Sistema > Gerenciador de arquivos*): abre direto nas pastas de jogos; Y mostra as ações (copiar, mover, clonar, renomear, apagar para a Lixeira) e X cola na pasta aberta.
+
+Se um jogo não abrir (arquivo com defeito, versão errada, falta de BIOS), o ScrapCade avisa na tela em vez de só voltar ao menu.
 
 ## Colocar jogos
 
@@ -49,7 +53,7 @@ Os jogos vão sozinhos para o console certo, com capa e dados. Jogos, BIOS e ROM
 
 ## Consoles
 
-NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama (FBNeo) e Neo Geo, pelo RetroArch.
+NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama (FBNeo) e Neo Geo, pelo RetroArch. Também Doom e jogos `.wad` (PrBoom) e os ports do PortMaster.
 
 **Atalhos em todo jogo:** Select + Start sai, Select + X abre o menu do emulador. No teclado: Esc sai.
 

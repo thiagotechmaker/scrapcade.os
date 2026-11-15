@@ -17,9 +17,9 @@ for tentativa in 1 2; do   # o QEMU as vezes sai sozinho no inicio: uma segunda 
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
     opt 1; k ret; sleep 4; shot x_nav_raiz
-    k ret; sleep 3; k down; k ret; sleep 2; k down; sleep 1; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
+    k ret; sleep 3; k ret; sleep 3; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
     k esc; sleep 1; k esc; sleep 1; k esc; sleep 1; k esc; sleep 20; shot x_carrossel_pen
-    opt 4; k ret; sleep 3; k ret; sleep 3; k down down; sleep 1; k ret; sleep 8; shot x_tema_proprio
+    opt 4; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k ret; sleep 8; shot x_tema_proprio
     opt 0; k ret; sleep 3; k right; k ret; sleep 3; k m a r i a; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
     opt 0; k ret; sleep 3; shot x_perfis_dois
     k delete; sleep 2; shot x_perfil_confirma; k ret; sleep 4; shot x_perfil_apagado
@@ -94,9 +94,10 @@ U=teste/x-usb2.img; usbpen $U
   k ret; sleep 40; k down; k ret; sleep 40; k down; k ret; sleep 40; shot x_gratis_baixou
   k esc; sleep 2; k esc; sleep 45; shot x_carrossel_gratis
   opt 23; k ret; sleep 25; shot x_copia_saves; fecha
-  opt 2; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k x; sleep 2; shot x_arq_acoes
-  k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; k x; sleep 2; shot x_arq_colar
-  k ret; sleep 10; shot x_arq_colou
+  opt 2; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
+  k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; shot x_arq_colar
+  k x; sleep 10; shot x_arq_colou; fecha
+  opt 24; k ret; sleep 3; shot x_ejetou
   echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
     -nic user,model=e1000 > teste/q12.log 2>&1
@@ -108,3 +109,18 @@ D=teste/x-portmaster.img; cp $I/disk.img $D; truncate -s 3G $D
   k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
   shot x_ports_carrossel; k ret; sleep 30; shot x_portmaster_baixando; sleep 120; shot x_portmaster
   echo quit ) | timeout 600 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q13.log 2>&1
+
+# ---------------------------------------------------------------- jogo que nao abre (aviso) e Freedoom no PrBoom
+D=teste/x-doom.img; cp $I/disk.img $D; truncate -s 3G $D
+head -c 1048576 /dev/zero > "/tmp/Jogo Quebrado.z64"   # N64 de mentira: o emulador fecha na hora
+W=http://127.0.0.1:18080
+( sleep 30; senha; sleep 60
+  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+  log "envio Jogo Quebrado.z64: $(curl -g -s -m 30 -T "/tmp/Jogo Quebrado.z64" "$W/envio/Jogo%20Quebrado.z64" -o /dev/null -w '%{http_code}')"
+  sleep 40; k right; sleep 3; shot x_quebrado_sel
+  k ret; sleep 12; shot x_nao_abriu; sleep 10
+  opt 22; k ret; sleep 3; k down down down; sleep 1; k ret; sleep 120; shot x_freedoom_baixou
+  k esc; sleep 2; k esc; sleep 45; k right; sleep 3; shot x_freedoom_carrossel
+  k ret; sleep 30; shot x_freedoom_jogando; echo "sendkey esc 1000"; sleep 60
+  echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
+    -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080 > teste/q14.log 2>&1

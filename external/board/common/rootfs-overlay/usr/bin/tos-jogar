@@ -14,12 +14,13 @@ if [ "$SIS" = ports ]; then
   exec /usr/bin/scrapcade
 fi
 
-case "$SIS" in
-  nes) CORE=mesen ;;
-  snes) CORE=snes9x ;;
-  megadrive) CORE=genesis_plus_gx ;;
+primeiro() { for c in "$@"; do [ -f "/usr/lib/libretro/${c}_libretro.so" ] && { echo $c; return; }; done; echo $1; }
+case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais leves)
+  nes) CORE=$(primeiro mesen fceumm) ;;
+  snes) CORE=$(primeiro snes9x snes9x2010) ;;
+  megadrive) CORE=$(primeiro genesis_plus_gx picodrive) ;;
   gb|gbc) CORE=gambatte ;;
-  gba) CORE=mgba ;;
+  gba) CORE=$(primeiro mgba gpsp) ;;
   psx) CORE=pcsx_rearmed ;;
   n64) CORE=mupen64plus_next ;;
   arcade|neogeo) CORE=fbneo ;;
@@ -27,11 +28,14 @@ case "$SIS" in
   nds) CORE=melonds ;;
   saturn) CORE=mednafen_saturn ;;
   dreamcast) CORE=flycast ;;
+  doom) CORE=prboom ;;
   *) CORE="" ;;
 esac
 # o ScrapCade pode mandar o nucleo escolhido pelo usuario (ex.: bsnes no lugar do snes9x)
 [ -n "$3" ] && [ -f "/usr/lib/libretro/$3_libretro.so" ] && CORE=$3
 SO=/usr/lib/libretro/${CORE}_libretro.so
+# o PrBoom precisa do prboom.wad dele na pasta de BIOS
+[ "$CORE" = prboom ] && [ ! -f /userdata/bios/prboom.wad ] && cp /usr/share/tos/prboom.wad /userdata/bios/
 # o PPSSPP precisa das fontes e imagens dele na pasta de BIOS (copia uma vez: o exFAT nao tem atalhos)
 [ "$CORE" = ppsspp ] && [ ! -d /userdata/bios/PPSSPP ] && cp -r /usr/share/tos/ppsspp /userdata/bios/PPSSPP
 
@@ -50,7 +54,15 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
   EXTRA=/tmp/tos-console.cfg
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
   echo "== $(date "+%d/%m %H:%M") $SIS $CORE $ROM" > /userdata/system/logs/retroarch.log
+  INICIO=$(cut -d. -f1 /proc/uptime)
   retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" -L "$SO" "$ROM" \
     >> /userdata/system/logs/retroarch.log 2>&1
+  # fechou em menos de 4 s: o jogo nao abriu (arquivo com defeito, versao errada, falta BIOS). Avisa o ScrapCade
+  if [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ]; then
+    MOTIVO=$(grep -i "\[error\]" /userdata/system/logs/retroarch.log | tail -1 | sed 's/.*\[[Ee][Rr][Rr][Oo][Rr]\] *//; s/^\[[^]]*\] *//; s/\.*$//' | cut -c1-90)
+    echo "Esse jogo não abriu${MOTIVO:+: $MOTIVO}. Veja logs/retroarch.log" > /tmp/tos-nao-abriu
+  fi
+elif [ -f "$ROM" ]; then
+  echo "Ainda não há emulador para esse console nesta versão do ScrapCade OS." > /tmp/tos-nao-abriu
 fi
 exec /usr/bin/scrapcade

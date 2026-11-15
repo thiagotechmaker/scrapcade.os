@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.16 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.17 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -78,7 +78,12 @@ static void redraw();
 // Consoles com mais de um emulador: o primeiro e o padrao
 struct Nucleo { const char *so, *nome; };
 static std::vector<Nucleo> nucleos(const std::string &id) {
-    if (id == "snes") return {{"snes9x", "Snes9x"}, {"bsnes", "bsnes (mais preciso, mais pesado)"}};
+    // o primeiro instalado e o padrao; a imagem de 32 bits (PCs antigos) so leva os mais leves
+    if (id == "snes")
+        return {{"snes9x", "Snes9x"}, {"bsnes", "bsnes (mais preciso, mais pesado)"}, {"snes9x2010", "Snes9x 2010 (mais leve)"}};
+    if (id == "nes") return {{"mesen", "Mesen"}, {"fceumm", "FCEUmm (mais leve)"}};
+    if (id == "megadrive") return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
+    if (id == "gba") return {{"mgba", "mGBA"}, {"gpsp", "gpSP (mais leve)"}};
     return {};
 }
 
@@ -929,7 +934,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static std::string perfilNome();
@@ -1000,6 +1005,7 @@ static std::string optLabel(int i) {
     case OPT_ARQUIVOS: return "Gerenciador de arquivos";
     case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
     case OPT_BACKUP: return "Cópia dos saves no pen drive";
+    case OPT_EJETAR: return "Ejetar pen drive";
     case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "0" ? "Desligado" : "Ligado") + " ›";
     case OPT_FONTE: return std::string("Tamanho do texto:   ‹ ") + FONTES[nivelFonte()] + " ›";
     case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›   (A: imagem)";
@@ -1068,6 +1074,7 @@ static std::string ipAddr();
 
 static const char *optAjuda(int o) {
     if (o == OPT_GRATIS) return "Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.";
+    if (o == OPT_EJETAR) return "Solta o pen drive com segurança antes de tirar (grava o que ainda faltava). Para usar de novo, tire e coloque.";
     if (o == OPT_BACKUP) return "Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.";
     if (o == OPT_AUTOUPD) return "Ligado: quando sai versão nova, o ScrapCade OS baixa sozinho enquanto você joga e só avisa para reiniciar. Desligado: só avisa, e você atualiza em Atualizar o ScrapCade OS.";
     if (o == OPT_ARQUIVOS) return "Copiar, mover, renomear e apagar jogos, saves, BIOS e o que mais estiver na SCRAP-DADOS, e copiar do pen drive. Apagar manda para a pasta Lixeira, de onde da para trazer de volta.";
@@ -1222,7 +1229,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.16" + buf);
+    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.17" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -1680,6 +1687,7 @@ static void arqRenomear();
 static void arqNovaPasta();
 static void arqColar();
 static void arqApagar();
+static void arqClonar();
 static std::string navDir;   // "" = escolher entre pen drive e SCRAP-DADOS
 static std::vector<std::string> navRaizes;
 static std::vector<ItemNav> navItens;
@@ -1695,9 +1703,17 @@ static void navListar() {
     navSel = 0;
     if (navDir.empty()) {
         navRaizes.clear();
-        if (Usb::attach()) { navItens.push_back({"Pen drive", Usb::MOUNT, true, 0}); navRaizes.push_back(Usb::MOUNT); }
-        navItens.push_back({"SCRAP-DADOS (jogos, temas, saves)", "/userdata", true, 0});
-        navRaizes.push_back("/userdata");
+        auto raiz = [](const std::string &nome, const std::string &c) { navItens.push_back({nome, c, true, 0}); navRaizes.push_back(c); };
+        if (Usb::attach()) raiz("Pen drive", Usb::MOUNT);
+        if (navModo == 3) {   // gerenciador: direto nas pastas de jogos, como no iChroma
+            raiz("roms", ROMS);
+            raiz("Jogos novos", INBOX);
+            raiz("saves", "/userdata/saves");
+            raiz("bios", "/userdata/bios");
+            raiz("themes", THEMES_DIR);
+            if (Org::isDir(LIXEIRA)) raiz("Lixeira", LIXEIRA);
+            raiz("SCRAP-DADOS (tudo)", "/userdata");
+        } else raiz("SCRAP-DADOS (jogos, temas, saves)", "/userdata");
         return;
     }
     std::vector<ItemNav> ps, fs;
@@ -1716,7 +1732,6 @@ static void navListar() {
     auto cmp = [](const ItemNav &a, const ItemNav &b) { return strcasecmp(a.nome.c_str(), b.nome.c_str()) < 0; };
     std::sort(ps.begin(), ps.end(), cmp);
     std::sort(fs.begin(), fs.end(), cmp);
-    navItens.push_back({"..  (voltar)", "", true, 0});
     navItens.insert(navItens.end(), ps.begin(), ps.end());
     navItens.insert(navItens.end(), fs.begin(), fs.end());
 }
@@ -1787,54 +1802,70 @@ static void navCopiarJogo(const ItemNav &it) {
 static void drawNavegador() {
     if (!navModo) return;
     if (navRecarregar.exchange(false)) { int sel = navSel; navListar(); navSel = std::min(sel, std::max(0, int(navItens.size()) - 1)); }
-    float u = G.u, w = std::min(G.W - 24.0f * u, 520 * u), lh = 14 * u;
-    int vis = std::max(5, std::min(12, int((G.H - 150 * u) / lh)));
+    // visual do gerenciador do iChroma: linhas largas, a escolhida em verde, o tipo a direita, contagem embaixo
+    float u = G.u, e = T.escala, w = std::min(G.W - 24.0f * u, 560 * u * e), rh = 17 * u * e;
+    int vis = std::max(5, std::min(12, int((G.H - 160 * u) / rh)));
     std::string msg;
     { std::lock_guard<std::mutex> l(navMu); msg = navMsg; }
-    std::vector<std::string> L;
-    std::vector<uint32_t> C;
-    auto add = [&](const std::string &t, uint32_t cc = 0xFF2B2E33) { L.push_back(t); C.push_back(cc); };
-    add(navDir.empty() ? "Onde procurar?" : (navDir.rfind(Usb::MOUNT, 0) == 0 ? "Pen drive" + navDir.substr(Usb::MOUNT.size())
-                                                                               : "SCRAP-DADOS" + navDir.substr(9)),
-        0xFF5E6269);
     int n = int(navItens.size()), first = std::max(0, std::min(n - vis, navSel - vis / 2));
-    if (n == 0) add(navModo == 1 ? "Nenhuma imagem (.png ou .jpg) aqui." : "Pasta vazia.", 0xFF5E6269);
+    std::string onde = navDir.empty() ? (navModo == 3 ? "pastas de jogos" : "onde procurar?")
+                       : navDir.rfind(Usb::MOUNT, 0) == 0 ? "Pen drive" + navDir.substr(Usb::MOUNT.size())
+                                                          : "SCRAP-DADOS" + navDir.substr(9);
+    if (onde.size() > 46) onde = "..." + onde.substr(onde.size() - 43);
+    std::string titulo = navModo == 3 ? "Arquivos" : navModo == 1 ? "Imagem para o tema" : "Trazer jogos";
+    float barra = 18 * u, h = 22 * u + 6 * u + vis * rh + 6 * u + barra + 22 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel(titulo + "  •  " + onde, x, y, w, h) + 6 * u;
+    if (n == 0)
+        T.draw(navModo == 1 ? "Nenhuma imagem (.png ou .jpg) aqui." : "Pasta vazia.", x + 14 * u, top + rh / 2, 9.5f, false, 0xFF5E6269);
     for (int i = first; i < n && i < first + vis; i++) {
         const ItemNav &it = navItens[i];
-        std::string t = std::string(i == navSel ? "▶  " : "    ") + it.nome + (it.pasta && !it.caminho.empty() ? "  /" : "");   // pasta: barra no fim (a fonte nao tem o desenho de pasta)
-        if (!it.pasta) t += "   (" + tamBonito(it.tam) + ")";
-        add(t, i == navSel ? 0xFF1E9C4A : 0xFF2B2E33);
+        float ry = top + (i - first) * rh;
+        bool sel = i == navSel;
+        if (sel) G.fillRect(x, ry, w, rh, 0xFF2FD09A);
+        std::string tipo = it.pasta ? "pasta" : tamBonito(it.tam);
+        float tw = T.width(tipo, 8.5f, false);
+        // pasta: barra no fim (a fonte nao tem o desenho de pasta)
+        T.draw(it.nome + (it.pasta ? "  /" : ""), x + 14 * u, ry + rh / 2, 9.5f, true, 0xFF2B2E33, 0, w - tw - 44 * u);
+        T.draw(tipo, x + w - 14 * u, ry + rh / 2, 8.5f, false, sel ? 0xFF2B2E33 : 0xFF8A9099, 2);
     }
-    if (navDir.empty() && navRaizes.size() == 1) add("Nenhum pen drive encontrado: coloque um e abra de novo.", 0xFF5E6269);
-    add("");
-    add(msg.empty() ? (navModo == 3 ? (navClip.empty() ? "X: copiar, mover, renomear, apagar, nova pasta. O pen drive e so leitura."
-                                                        : "Na memoria: " + navClip.substr(navClip.rfind('/') + 1) + "  (X > Colar aqui)")
-                    : navModo == 1 ? "Escolha uma imagem: ela vira o fundo de um tema seu."
-                                    : "A copia o jogo (ou a pasta) para \"Jogos novos\"; ele vai sozinho ao console certo.")
-                    : msg,
-        msg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
+    // barra de baixo: aviso, o que esta na memoria ou quantos itens
+    float by = y + h - 22 * u - barra;
+    G.fillRect(x, by, w, barra, 0xFFE6E8EB);
+    std::string info = msg;
+    uint32_t ic = msg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A;
+    if (info.empty()) {
+        ic = 0xFF5E6269;
+        if (navDir.empty() && navModo != 3 && navRaizes.size() == 1) info = "Nenhum pen drive encontrado: coloque um e abra de novo.";
+        else if (navModo == 3 && !navClip.empty()) info = "Na memória: " + navClip.substr(navClip.rfind('/') + 1) + "  •  X cola aqui";
+        else if (navModo == 1) info = "Escolha uma imagem: ela vira o fundo de um tema seu.";
+        else if (navModo == 2 && !navDir.empty()) info = "A copia o jogo (ou a pasta) para \"Jogos novos\"; ele vai sozinho ao console certo.";
+        else info = n == 1 ? "1 item" : std::to_string(n) + " itens";
+    }
+    T.draw(info, x + 12 * u, by + barra / 2, 8.5f, false, ic, 0, w - 24 * u);
     bool naPasta = navSel < n && navItens[navSel].pasta;
+    bool pastaJogo = navModo == 2 && naPasta && !navDir.empty();
     const char *H1[] = {"ud", "escolher", "a", naPasta ? "abrir" : (navModo == 1 ? "usar esta imagem" : "copiar"), "b", "voltar"};
     const char *H2[] = {"ud", "escolher", "a", "abrir", "x", "copiar a pasta toda", "b", "voltar"};
-    bool pastaJogo = navModo == 2 && naPasta && !navDir.empty() && !navItens[navSel].caminho.empty();
-    float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
-    float x = (G.W - w) / 2, y = (G.H - h) / 2;
-    float top = whitePanel(navModo == 3 ? "Arquivos" : navModo == 1 ? "Imagem para o tema" : "Trazer jogos", x, y, w, h) + 10 * u;
-    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
-    const char *H3[] = {"ud", "escolher", "a", "abrir", "x", "acoes", "b", "voltar"};
-    if (navModo == 3) panelHints(H3, 8, x, y + h, w);
-    else panelHints(pastaJogo ? H2 : H1, pastaJogo ? 8 : 6, x, y + h, w);
-    // lista de acoes do gerenciador (botao X) e a confirmacao de apagar
+    const char *H3[] = {"ud", "escolher", "a", "abrir", "y", "ações", "b", "voltar"};
+    const char *H4[] = {"ud", "escolher", "a", "abrir", "y", "ações", "x", "colar aqui", "b", "voltar"};
+    if (navModo == 3) {
+        if (navClip.empty() || navDir.empty()) panelHints(H3, 8, x, y + h, w);
+        else panelHints(H4, 10, x, y + h, w);
+    } else panelHints(pastaJogo ? H2 : H1, pastaJogo ? 8 : 6, x, y + h, w);
+    // lista de acoes do gerenciador (botao Y) e a confirmacao de apagar
     if (navAcao) {
         std::vector<std::string> A = navAcoes;
         std::string alvo = navSel < int(navItens.size()) ? navItens[navSel].nome : "";
         if (navAcao == 2) A = {navDir == LIXEIRA ? "Apagar de vez: " + alvo : "Mandar para a Lixeira: " + alvo};
-        float aw = std::min(w * 0.7f, 320 * u), ah = 22 * u + 12 * u + A.size() * lh + 22 * u;
+        float aw = std::min(w * 0.7f, 320 * u * e), ah = 22 * u + 8 * u + A.size() * rh + 8 * u + 22 * u;
         float ax = (G.W - aw) / 2, ay = (G.H - ah) / 2;
         float at = whitePanel(navAcao == 2 ? "Confirmar" : "O que fazer?", ax, ay, aw, ah) + 8 * u;
-        for (size_t i = 0; i < A.size(); i++)
-            T.draw(std::string(navAcao == 1 && int(i) == navAcaoSel ? "▶  " : "    ") + A[i], ax + 12 * u, at + i * lh + lh / 2, 9.5f,
-                   false, navAcao == 1 && int(i) == navAcaoSel ? 0xFF1E9C4A : (navAcao == 2 ? 0xFFD0362B : 0xFF2B2E33), 0, aw - 24 * u);
+        for (size_t i = 0; i < A.size(); i++) {
+            bool sel = navAcao == 1 && int(i) == navAcaoSel;
+            if (sel) G.fillRect(ax, at + i * rh, aw, rh, 0xFF2FD09A);
+            T.draw(A[i], ax + 12 * u, at + i * rh + rh / 2, 9.5f, sel, navAcao == 2 ? 0xFFD0362B : 0xFF2B2E33, 0, aw - 24 * u);
+        }
         const char *HA[] = {"a", "fazer", "b", "cancelar"};
         const char *HC[] = {"a", "sim", "b", "nao"};
         panelHints(navAcao == 2 ? HC : HA, 4, ax, ay + ah, aw);
@@ -1844,15 +1875,23 @@ static void drawNavegador() {
 
 // ------------------------------------------------------------------ jogos gratis (homebrew com licenca livre)
 // Baixados do release oficial de cada autor no GitHub e conferidos pelo SHA-256 antes de entrar.
-struct Gratis { const char *nome, *console, *licenca, *autor, *url, *arquivo, *sha; };
+// sis: pasta do console (a capa, feita da tela do proprio jogo, vem do sistema e vai para <sis>/images)
+// dentro: quando o autor publica um .zip, o arquivo do jogo que sai de dentro dele (o SHA-256 e o do .zip)
+struct Gratis { const char *nome, *console, *licenca, *autor, *url, *arquivo, *sha, *sis, *dentro; };
 static const Gratis GRATIS[] = {
     {"µCity", "Game Boy Color", "GPLv3", "AntonioND", "https://github.com/AntonioND/ucity/releases/download/v1.3/ucity.gbc",
-     "µCity.gbc", "9422ee2ca7b7ea1d46b58b2a429fff3f354dfd3e732dee1e7ae6220f148ce6e0"},
+     "µCity.gbc", "9422ee2ca7b7ea1d46b58b2a429fff3f354dfd3e732dee1e7ae6220f148ce6e0", "gbc", ""},
     {"Nova the Squirrel", "NES", "GPLv3", "NovaSquirrel",
      "https://github.com/NovaSquirrel/NovaTheSquirrel/releases/download/v1.0.6a/nova.nes", "Nova the Squirrel.nes",
-     "e4780e90b9d1587489bfb797d2ca395be21371ea9262fa9f87f99324ec6960ab"},
+     "e4780e90b9d1587489bfb797d2ca395be21371ea9262fa9f87f99324ec6960ab", "nes", ""},
     {"Libbet and the Magic Floor", "Game Boy", "zlib", "pinobatch", "https://github.com/pinobatch/libbet/releases/download/v0.08/libbet.gb",
-     "Libbet and the Magic Floor.gb", "3607412031c8287cf878299ce96e581e85b852dde703806343b95576fa3ff1a9"},
+     "Libbet and the Magic Floor.gb", "3607412031c8287cf878299ce96e581e85b852dde703806343b95576fa3ff1a9", "gb", ""},
+    {"Freedoom: Phase 1", "Doom", "BSD", "Freedoom", "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
+     "Freedoom - Phase 1.wad", "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59", "doom",
+     "freedoom-0.13.0/freedoom1.wad"},
+    {"Freedoom: Phase 2", "Doom", "BSD", "Freedoom", "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
+     "Freedoom - Phase 2.wad", "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59", "doom",
+     "freedoom-0.13.0/freedoom2.wad"},
 };
 static const int NGRATIS = int(sizeof(GRATIS) / sizeof(GRATIS[0]));
 static bool gratisOn = false;
@@ -1862,6 +1901,11 @@ static std::mutex gratisMu;
 static std::string gratisMsg;
 
 static void abrirGratis() { gratisOn = true; gratisSel = 0; std::lock_guard<std::mutex> l(gratisMu); gratisMsg = ""; }
+
+static long long sizeOfFile(const std::string &p) {
+    struct stat st;
+    return stat(p.c_str(), &st) == 0 ? (long long)st.st_size : -1;
+}
 
 static bool gratisTem(const Gratis &g) {   // ja esta na biblioteca (em qualquer console) ou chegando
     for (auto &sys : SYSTEMS) if (isFile(ROMS + "/" + sys.id + "/" + g.arquivo)) return true;
@@ -1878,10 +1922,27 @@ static void gratisBaixar(int i) {
         std::string tmp = "/userdata/.copiando";
         mkdirs(tmp);
         std::string f = tmp + "/" + g.arquivo;
-        std::string r = Rede::run("curl -fsSL -m 300 -o '" + f + "' '" + g.url + "' && sha256sum '" + f + "'");
+        bool zip = g.dentro[0] != 0;
+        std::string baixa = zip ? tmp + "/gratis.zip" : f;   // o SHA-256 confere o que veio do autor
+        std::string r = Rede::run("curl -fsSL -m 600 -o '" + baixa + "' '" + g.url + "' && sha256sum '" + baixa + "'");
         bool ok = r.rfind(g.sha, 0) == 0;
-        if (ok) ok = rename(f.c_str(), Arquivos::freeName(INBOX, g.arquivo).c_str()) == 0;
-        else remove(f.c_str());
+        if (ok && zip) {
+            Rede::run("unzip -p '" + baixa + "' '" + g.dentro + "' > '" + f + "'");
+            ok = sizeOfFile(f) > 0;
+        }
+        if (zip) remove(baixa.c_str());
+        if (ok) {
+            // a capa vai antes do jogo: quando ele aparecer no carrossel, ja aparece com capa
+            std::string nome = g.arquivo, stem = nome.substr(0, nome.rfind('.'));
+            std::string de = DATA + "/capas-gratis/" + stem + ".png", para = ROMS + "/" + g.sis + "/images/" + stem + ".png";
+            if (isFile(de) && !isFile(para)) {
+                mkdirs(ROMS + "/" + g.sis + "/images");
+                std::ifstream a(de, std::ios::binary);
+                std::ofstream b(para, std::ios::binary);
+                b << a.rdbuf();
+            }
+            ok = rename(f.c_str(), Arquivos::freeName(INBOX, g.arquivo).c_str()) == 0;
+        } else remove(f.c_str());
         sync();
         std::lock_guard<std::mutex> l(gratisMu);
         gratisMsg = ok ? std::string(g.nome) + " baixado: aparece no " + g.console + " em alguns segundos."
@@ -2213,6 +2274,9 @@ static void optAction(int dir) {
     case OPT_ARQUIVOS: if (dir == 0) { sysOpen = false; abrirNavegador(3); } return;
     case OPT_GRATIS: if (dir == 0) { sysOpen = false; abrirGratis(); } return;
     case OPT_BACKUP: if (dir == 0) copiarSaves(); return;
+    case OPT_EJETAR:
+        if (dir == 0) toast(Usb::eject() ? "Pode tirar o pen drive." : "Nenhum pen drive em uso.", 4000);
+        return;
     case OPT_AUTOUPD:
         prefs["autoupd"] = prefs["autoupd"] == "0" ? "1" : "0";
         break;
@@ -2385,20 +2449,27 @@ static bool navInput(int b) {
             if (a == "Copiar" || a == "Mover") {
                 navClip = it.caminho;
                 navClipMover = a == "Mover";
-                navAviso(std::string(navClipMover ? "Recortado: " : "Copiado: ") + it.nome + ". Abra a pasta de destino e use X > Colar aqui.");
+                navAviso(std::string(navClipMover ? "Recortado: " : "Copiado: ") + it.nome + ". Abra a pasta de destino e aperte X para colar.");
             } else if (a == "Colar aqui") arqColar();
+            else if (a == "Clonar") arqClonar();
             else if (a == "Renomear") arqRenomear();
             else if (a == "Nova pasta") arqNovaPasta();
             else if (a.rfind("Apagar", 0) == 0) navAcao = 2;
         }
         return true;
     }
-    if (navModo == 3 && b == B_X && !navDir.empty()) {   // acoes do gerenciador
+    bool mexe = navDir.rfind("/userdata", 0) == 0;   // pen drive: so leitura
+    if (navModo == 3 && b == B_X && !navDir.empty()) {   // colar aqui (como no iChroma)
+        if (navClip.empty()) navAviso("Não há nada na memória: use Y > Copiar ou Mover.");
+        else if (!mexe) navAviso("Não dá para colar no pen drive: ele é só leitura.");
+        else arqColar();
+        return true;
+    }
+    if (navModo == 3 && b == B_Y && !navDir.empty()) {   // acoes do gerenciador
         bool valido = navSel < n && !navItens[navSel].caminho.empty();
-        bool mexe = navDir.rfind("/userdata", 0) == 0;   // pen drive: so leitura
         navAcoes.clear();
         if (valido) navAcoes.push_back("Copiar");
-        if (valido && mexe) { navAcoes.push_back("Mover"); navAcoes.push_back("Renomear"); }
+        if (valido && mexe) { navAcoes.push_back("Mover"); navAcoes.push_back("Clonar"); navAcoes.push_back("Renomear"); }
         if (!navClip.empty() && mexe) navAcoes.push_back("Colar aqui");
         if (mexe) navAcoes.push_back("Nova pasta");
         if (valido && mexe) navAcoes.push_back(navDir == LIXEIRA ? "Apagar de vez" : "Apagar (vai para a Lixeira)");
@@ -2423,7 +2494,7 @@ static bool navInput(int b) {
         if (it.pasta && it.caminho.empty()) subir();
         else if (it.pasta) { navDir = it.caminho; navListar(); }
         else if (navModo == 1) navUsarImagem(it);
-        else if (navModo == 3) navAviso("Use X para copiar, mover, renomear ou apagar.");
+        else if (navModo == 3) navAviso("Use Y para copiar, mover, clonar, renomear ou apagar.");
         else navCopiarJogo(it);
     }
     if (b == B_X && navModo == 2 && navSel < n && !navDir.empty() && navItens[navSel].pasta && !navItens[navSel].caminho.empty())
@@ -2846,6 +2917,22 @@ static void arqColar() {
     }).detach();
 }
 
+// Clonar (como no iChroma): uma copia na mesma pasta, com outro nome
+static void arqClonar() {
+    if (navSel >= int(navItens.size()) || navItens[navSel].caminho.empty()) return;
+    std::string origem = navItens[navSel].caminho, nome = navItens[navSel].nome, pasta = navDir;
+    navAviso("Clonando " + nome + "...");
+    std::thread([origem, nome, pasta] {
+        std::string dst = Arquivos::freeName(pasta, nome);
+        bool ok = Arquivos::copy(origem, dst);
+        if (!ok) Arquivos::del(dst);
+        sync();
+        navAviso(ok ? nome + " clonado: " + dst.substr(dst.rfind('/') + 1) : "Não deu para clonar " + nome + " (falta espaço?).");
+        navRecarregar = true;
+        redraw();
+    }).detach();
+}
+
 static void arqRenomear() {
     if (navSel >= int(navItens.size())) return;
     std::string velho = navItens[navSel].caminho, nome = navItens[navSel].nome;
@@ -3060,15 +3147,18 @@ static void toggleFav() {
     toast(on ? "Adicionado aos favoritos" : "Tirado dos favoritos");
 }
 
-// Nucleo libretro de cada console (o tos-jogar usa a mesma tabela)
+// Nucleo libretro de cada console (o tos-jogar usa a mesma tabela): o primeiro da lista que estiver instalado
 static std::string coreOf(const std::string &id) {
-    static const std::map<std::string, std::string> m = {
-        {"nes", "mesen"}, {"snes", "snes9x"}, {"megadrive", "genesis_plus_gx"}, {"gb", "gambatte"},
-        {"gbc", "gambatte"}, {"gba", "mgba"}, {"psx", "pcsx_rearmed"}, {"n64", "mupen64plus_next"},
-        {"arcade", "fbneo"}, {"neogeo", "fbneo"}, {"psp", "ppsspp"}, {"nds", "melonds"},
-        {"saturn", "mednafen_saturn"}, {"dreamcast", "flycast"}};
+    static const std::map<std::string, std::vector<std::string>> m = {
+        {"nes", {"mesen", "fceumm"}}, {"snes", {"snes9x", "snes9x2010"}}, {"megadrive", {"genesis_plus_gx", "picodrive"}},
+        {"gb", {"gambatte"}}, {"gbc", {"gambatte"}}, {"gba", {"mgba", "gpsp"}}, {"psx", {"pcsx_rearmed"}},
+        {"n64", {"mupen64plus_next"}}, {"arcade", {"fbneo"}}, {"neogeo", {"fbneo"}}, {"psp", {"ppsspp"}},
+        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}};
     auto it = m.find(id);
-    return it == m.end() ? "" : it->second;
+    if (it == m.end()) return "";
+    for (auto &c : it->second)
+        if (isFile("/usr/lib/libretro/" + c + "_libretro.so")) return c;
+    return it->second[0];
 }
 
 static std::string launchSys, launchRom, launchCore;   // jogo que abre quando a tela fecha
@@ -3280,6 +3370,12 @@ int main() {
         for (size_t i = 0; i < perfis.size(); i++)
             if (perfis[i].id == id) perfilAtual = int(i);   // mesmo perfil, sem pedir de novo
         if (perfilAtual < 0) abrirPerfis();                 // ligou agora: quem vai jogar?
+    }
+    {   // o jogo nao abriu (o emulador fechou logo, ou nao ha emulador para o console): avisa em vez de voltar calado
+        std::ifstream na("/tmp/tos-nao-abriu");
+        std::string l;
+        if (std::getline(na, l) && !l.empty()) toast(l, 15000);
+        remove("/tmp/tos-nao-abriu");
     }
     std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();

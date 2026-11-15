@@ -141,6 +141,7 @@ static std::string folder(const std::string &file) {
         {"psp", {".cso"}},
         {"dreamcast", {".cdi", ".gdi"}},
         {"dos", {".dosz"}},
+        {"doom", {".wad"}},
         {"?", {".iso", ".rvz"}},
     };
     for (auto &t : T)

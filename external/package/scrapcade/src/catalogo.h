@@ -44,6 +44,7 @@ static std::vector<Sys> SYSTEMS = {
     {"arcade", "arcade", "Fliperama", "FBNeo", 0xFFD9822B, {".zip"}},
     {"neogeo", "neogeo", "Neo Geo", "FBNeo", 0xFF2F7DD1, {".zip"}},
     {"dos", "", "PC (DOS)", "DOSBox Pure", 0xFF8C2F2F, {".zip", ".dosz", ".exe"}},
+    {"doom", "", "Doom", "PrBoom", 0xFF9B2D20, {".wad"}},
     {"ports", "", "Ports", "PortMaster", 0xFF8E44AD, {".sh"}},
 };
 
