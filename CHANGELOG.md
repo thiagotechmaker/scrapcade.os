@@ -7,7 +7,7 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 ## [Unreleased]
 
 ### Adicionado
-- Versão para PCs de 32 bits (i686): Pentium 4, Pentium M e Atom, com os emuladores leves (FCEUmm, Snes9x 2010, PicoDrive, gpSP).
+- Versão para PCs de 32 bits (i686): Pentium 4, Pentium M e Atom, com os emuladores leves (FCEUmm, Snes9x 2010, PicoDrive, gpSP) e vídeo Intel GMA 900/950/3150 (i915), AMD antigas (r300, r600) e NVIDIA (nouveau); teste automático próprio no QEMU (`tests/testar-32.sh`).
 - Troca rápida de jogo: o botão Start no carrossel abre "Continuar jogando", com a foto de onde você parou em cada jogo.
 - Menu do botão de energia (Suspender, Reiniciar, Desligar). Jogando, o botão suspende; fechar a tampa do notebook também.
 - Suspender no painel Sistema, voltando exatamente onde estava.
