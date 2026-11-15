@@ -6,3 +6,10 @@ qemu*.log
 qemu*.sh
 wait.sh
 teste/
+# imagens e pacotes prontos vao so nas Releases do GitHub
+*.img
+*.iso
+*.tar.gz
+*.tar.xz
+*.squashfs
+build/
