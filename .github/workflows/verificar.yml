@@ -1,0 +1,35 @@
+# Conferencia rapida a cada push: sintaxe dos scripts, versao e CHANGELOG, e o menu compila.
+# A imagem completa (Buildroot, horas) e a bateria no QEMU rodam no computador de quem compila (tests/testar.sh).
+name: verificar
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sintaxe dos scripts
+        run: |
+          falhou=0
+          for f in build-*.sh tests/*.sh external/board/x86_64/*.sh external/board/x86_64/initramfs/init \
+                   external/package/scrapcade/S99scrapcade $(grep -rlE '^#!/bin/(ba)?sh' external/board/common/rootfs-overlay); do
+            if head -1 "$f" | grep -q bash; then bash -n "$f"; else sh -n "$f"; fi || { echo "::error file=$f::erro de sintaxe"; falhou=1; }
+          done
+          exit $falhou
+
+      - name: Versao (SemVer) e CHANGELOG
+        run: |
+          v=$(cat VERSION)
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "::error file=VERSION::'$v' nao e SemVer"; exit 1; }
+          grep -q '^## \[Unreleased\]' CHANGELOG.md || { echo "::error file=CHANGELOG.md::falta a secao [Unreleased]"; exit 1; }
+
+      - name: O menu (ScrapCade) compila
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev \
+            libcurl4-openssl-dev libssl-dev libzip-dev
+          g++ -std=c++17 -Wall -D_REENTRANT $(sdl2-config --cflags) -fsyntax-only external/package/scrapcade/src/scrapcade.cpp

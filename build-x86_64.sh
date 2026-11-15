@@ -6,6 +6,9 @@ TOS=$(cd "$(dirname "$0")" && pwd)
 OUT=$TOS/output/x86_64
 LOG=$OUT/build.log
 mkdir -p "$OUT"
+# arquivos editados pelo Windows (\\wsl$) perdem o +x: devolve a permissao que o git registra
+git -C "$TOS" ls-files -s | awk '$1=="100755"{print $4}' | (cd "$TOS" && xargs -r -d '\n' chmod +x)
+# cada pacote compila com todos os nucleos (BR2_JLEVEL=0) e com cache (ccache)
 {
   date
   make -C "$TOS/buildroot" BR2_EXTERNAL="$TOS/external" O="$OUT" tos_x86_64_defconfig
