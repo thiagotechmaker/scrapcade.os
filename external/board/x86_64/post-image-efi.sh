@@ -15,6 +15,7 @@ for l in ld-linux-x86-64.so.2 libc.so.6 libresolv.so.2; do
   cp -L "$TARGET_DIR/lib/$l" "$I/lib/"
 done
 cp "$B/initramfs/init" "$I/init"
+cp "$B/initramfs/logo32.raw" "$B/initramfs/logo16.raw" "$I/"   # logo desenhada pelo initrd
 chmod 755 "$I/init"
 ( cd "$I" && find . | cpio -o -H newc --quiet | gzip -9 ) > "$BINARIES_DIR/tos-initrd.gz"
 

@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.10 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.16 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -152,6 +152,10 @@ static void aplicarEnergia(int m) {
 }
 
 static bool isFav(const Game &g) { return prefs.count("fav|" + g.key()) > 0; }
+static long quando(const Game &g) {   // ultima vez que o jogo foi aberto (para o "Continuar jogando")
+    auto it = prefs.find("quando|" + g.key());
+    return it == prefs.end() ? 0 : atol(it->second.c_str());
+}
 static int plays(const Game &g) {
     auto it = prefs.find("plays|" + g.key());
     return it == prefs.end() ? 0 : atoi(it->second.c_str());
@@ -665,14 +669,15 @@ static void loadBackdrop(const Game *g) {
 
 // ------------------------------------------------------------------ filtros (Home.buildFilters)
 
-static const std::string F_ALL = "", F_FAV = "*fav", F_TOP = "*top";
+static const std::string F_ALL = "", F_FAV = "*fav", F_TOP = "*top", F_REC = "*rec";
 static std::vector<std::string> filters;
 static std::string filter = F_ALL;
 
 static void buildFilters() {
     filters = {F_ALL};
-    bool fav = false, top = false;
-    for (auto &g : all) { if (isFav(g)) fav = true; if (plays(g) > 0) top = true; }
+    bool fav = false, top = false, rec = false;
+    for (auto &g : all) { if (isFav(g)) fav = true; if (plays(g) > 0) top = true; if (quando(g) > 0) rec = true; }
+    if (rec) filters.push_back(F_REC);   // logo depois de Todos: os ultimos jogos abertos
     if (fav) filters.push_back(F_FAV);
     if (top) filters.push_back(F_TOP);
     for (auto &s : SYSTEMS)
@@ -683,6 +688,7 @@ static void buildFilters() {
 static void pixelText(const std::string &txt, float cx, float cy, float units, uint32_t cor, float maxw);
 
 static std::string filterName(const std::string &id) {
+    if (id == F_REC) return "Continuar jogando";
     if (id == F_FAV) return "Favoritos";
     if (id == F_TOP) return "Mais jogados";
     for (auto &s : SYSTEMS) if (s.id == id) return s.name;
@@ -694,11 +700,16 @@ static void applyFilter(int keepIndex = -1) {
     for (auto &g : all) {
         if (filter == F_FAV && !isFav(g)) continue;
         if (filter == F_TOP && plays(g) <= 0) continue;
+        if (filter == F_REC && quando(g) <= 0) continue;
         if (!filter.empty() && filter[0] != '*' && g.sys->id != filter) continue;
         view.push_back(g);
     }
     if (filter == F_TOP)
         std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) { return plays(a) > plays(b); });
+    if (filter == F_REC) {   // do mais recente para o mais antigo, no maximo 12
+        std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) { return quando(a) > quando(b); });
+        if (view.size() > 12) view.resize(12);
+    }
     target = keepIndex >= 0 && !view.empty() ? std::min(keepIndex, int(view.size()) - 1) : 0;
     pos = float(target);
     animating = false;
@@ -740,7 +751,9 @@ static void topBar(const Game *g) {
     // filtro no meio
     if (filters.size() >= 2) {
         std::string f = filterName(filter) + "  (" + std::to_string(view.size()) + ")";
-        float fw = T.width(f, 10.5f, true) + 14 * u, lb = T.width("LB", 7.5f, true) + 10 * u,
+        float bpx = std::max(1.0f, std::floor(9.5f * G.u / 7.0f + 0.5f));   // bloco das letras de pixel (tema 8 bits)
+        float fw = (theme == PIXEL ? Pixel::largura(Pixel::maiuscula(f), bpx) : T.width(f, 10.5f, true)) + 14 * u,
+              lb = T.width("LB", 7.5f, true) + 10 * u,
               rb = T.width("RB", 7.5f, true) + 10 * u;
         float sx = G.W / 2.0f - (lb + fw + rb) / 2, w1;
         pill("LB", sx, cy, w1);
@@ -916,7 +929,7 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_JOGOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF, OPT_COUNT };
 static bool sysOpen = false;
 static bool restartMenu = false;
 static std::string perfilNome();
@@ -984,6 +997,10 @@ static std::string optLabel(int i) {
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
                                                  : "Energia:   (fixa neste computador)";
     case OPT_JOGOS: return "Trazer jogos do pen drive";
+    case OPT_ARQUIVOS: return "Gerenciador de arquivos";
+    case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
+    case OPT_BACKUP: return "Cópia dos saves no pen drive";
+    case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "0" ? "Desligado" : "Ligado") + " ›";
     case OPT_FONTE: return std::string("Tamanho do texto:   ‹ ") + FONTES[nivelFonte()] + " ›";
     case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›   (A: imagem)";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
@@ -1050,6 +1067,10 @@ static void panelHints(const char *const *H, int n, float x, float y, float w) {
 static std::string ipAddr();
 
 static const char *optAjuda(int o) {
+    if (o == OPT_GRATIS) return "Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.";
+    if (o == OPT_BACKUP) return "Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.";
+    if (o == OPT_AUTOUPD) return "Ligado: quando sai versão nova, o ScrapCade OS baixa sozinho enquanto você joga e só avisa para reiniciar. Desligado: só avisa, e você atualiza em Atualizar o ScrapCade OS.";
+    if (o == OPT_ARQUIVOS) return "Copiar, mover, renomear e apagar jogos, saves, BIOS e o que mais estiver na SCRAP-DADOS, e copiar do pen drive. Apagar manda para a pasta Lixeira, de onde da para trazer de volta.";
     if (o == OPT_FONTE) return "Deixa as letras do ScrapCade maiores: bom para TV longe do sofá ou para quem enxerga pouco. Vale para o menu, o painel e os nomes dos jogos.";
     switch (o) {
     case OPT_PERFIL: return "Troca quem está jogando. Cada perfil tem os seus favoritos, saves, tema e preferências. A abre a tela \"Quem vai jogar?\".";
@@ -1201,7 +1222,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.10" + buf);
+    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.16" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -1647,7 +1668,18 @@ static void drawControle() {
 // Dentro do proprio ScrapCade: escolher uma imagem para um tema seu (modo 1) ou trazer jogos do pen drive (modo 2).
 
 struct ItemNav { std::string nome, caminho; bool pasta; long long tam; };
-static int navModo = 0;   // 0 fechado, 1 imagem do tema, 2 jogos
+static int navModo = 0;   // 0 fechado, 1 imagem do tema, 2 jogos, 3 gerenciador de arquivos
+static std::string navClip;          // arquivo/pasta copiado ou recortado
+static bool navClipMover = false;
+static int navAcao = 0;              // 0 fechado, 1 lista de acoes, 2 confirmar apagar
+static int navAcaoSel = 0;
+static std::vector<std::string> navAcoes;
+static std::atomic<bool> navRecarregar{false};
+static const std::string LIXEIRA = "/userdata/Lixeira";
+static void arqRenomear();
+static void arqNovaPasta();
+static void arqColar();
+static void arqApagar();
 static std::string navDir;   // "" = escolher entre pen drive e SCRAP-DADOS
 static std::vector<std::string> navRaizes;
 static std::vector<ItemNav> navItens;
@@ -1677,7 +1709,7 @@ static void navListar() {
             struct stat st;
             if (stat(c.c_str(), &st) != 0) continue;
             if (S_ISDIR(st.st_mode)) ps.push_back({n, c, true, 0});
-            else if (navModo == 2 || navImagem(n)) fs.push_back({n, c, false, (long long)st.st_size});
+            else if (navModo >= 2 || navImagem(n)) fs.push_back({n, c, false, (long long)st.st_size});
         }
         closedir(d);
     }
@@ -1754,6 +1786,7 @@ static void navCopiarJogo(const ItemNav &it) {
 
 static void drawNavegador() {
     if (!navModo) return;
+    if (navRecarregar.exchange(false)) { int sel = navSel; navListar(); navSel = std::min(sel, std::max(0, int(navItens.size()) - 1)); }
     float u = G.u, w = std::min(G.W - 24.0f * u, 520 * u), lh = 14 * u;
     int vis = std::max(5, std::min(12, int((G.H - 150 * u) / lh)));
     std::string msg;
@@ -1774,7 +1807,9 @@ static void drawNavegador() {
     }
     if (navDir.empty() && navRaizes.size() == 1) add("Nenhum pen drive encontrado: coloque um e abra de novo.", 0xFF5E6269);
     add("");
-    add(msg.empty() ? (navModo == 1 ? "Escolha uma imagem: ela vira o fundo de um tema seu."
+    add(msg.empty() ? (navModo == 3 ? (navClip.empty() ? "X: copiar, mover, renomear, apagar, nova pasta. O pen drive e so leitura."
+                                                        : "Na memoria: " + navClip.substr(navClip.rfind('/') + 1) + "  (X > Colar aqui)")
+                    : navModo == 1 ? "Escolha uma imagem: ela vira o fundo de um tema seu."
                                     : "A copia o jogo (ou a pasta) para \"Jogos novos\"; ele vai sozinho ao console certo.")
                     : msg,
         msg.rfind("Não", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
@@ -1784,11 +1819,132 @@ static void drawNavegador() {
     bool pastaJogo = navModo == 2 && naPasta && !navDir.empty() && !navItens[navSel].caminho.empty();
     float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
-    float top = whitePanel(navModo == 1 ? "Imagem para o tema" : "Trazer jogos", x, y, w, h) + 10 * u;
+    float top = whitePanel(navModo == 3 ? "Arquivos" : navModo == 1 ? "Imagem para o tema" : "Trazer jogos", x, y, w, h) + 10 * u;
     for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
-    panelHints(pastaJogo ? H2 : H1, pastaJogo ? 8 : 6, x, y + h, w);
+    const char *H3[] = {"ud", "escolher", "a", "abrir", "x", "acoes", "b", "voltar"};
+    if (navModo == 3) panelHints(H3, 8, x, y + h, w);
+    else panelHints(pastaJogo ? H2 : H1, pastaJogo ? 8 : 6, x, y + h, w);
+    // lista de acoes do gerenciador (botao X) e a confirmacao de apagar
+    if (navAcao) {
+        std::vector<std::string> A = navAcoes;
+        std::string alvo = navSel < int(navItens.size()) ? navItens[navSel].nome : "";
+        if (navAcao == 2) A = {navDir == LIXEIRA ? "Apagar de vez: " + alvo : "Mandar para a Lixeira: " + alvo};
+        float aw = std::min(w * 0.7f, 320 * u), ah = 22 * u + 12 * u + A.size() * lh + 22 * u;
+        float ax = (G.W - aw) / 2, ay = (G.H - ah) / 2;
+        float at = whitePanel(navAcao == 2 ? "Confirmar" : "O que fazer?", ax, ay, aw, ah) + 8 * u;
+        for (size_t i = 0; i < A.size(); i++)
+            T.draw(std::string(navAcao == 1 && int(i) == navAcaoSel ? "▶  " : "    ") + A[i], ax + 12 * u, at + i * lh + lh / 2, 9.5f,
+                   false, navAcao == 1 && int(i) == navAcaoSel ? 0xFF1E9C4A : (navAcao == 2 ? 0xFFD0362B : 0xFF2B2E33), 0, aw - 24 * u);
+        const char *HA[] = {"a", "fazer", "b", "cancelar"};
+        const char *HC[] = {"a", "sim", "b", "nao"};
+        panelHints(navAcao == 2 ? HC : HA, 4, ax, ay + ah, aw);
+    }
 }
 
+
+// ------------------------------------------------------------------ jogos gratis (homebrew com licenca livre)
+// Baixados do release oficial de cada autor no GitHub e conferidos pelo SHA-256 antes de entrar.
+struct Gratis { const char *nome, *console, *licenca, *autor, *url, *arquivo, *sha; };
+static const Gratis GRATIS[] = {
+    {"µCity", "Game Boy Color", "GPLv3", "AntonioND", "https://github.com/AntonioND/ucity/releases/download/v1.3/ucity.gbc",
+     "µCity.gbc", "9422ee2ca7b7ea1d46b58b2a429fff3f354dfd3e732dee1e7ae6220f148ce6e0"},
+    {"Nova the Squirrel", "NES", "GPLv3", "NovaSquirrel",
+     "https://github.com/NovaSquirrel/NovaTheSquirrel/releases/download/v1.0.6a/nova.nes", "Nova the Squirrel.nes",
+     "e4780e90b9d1587489bfb797d2ca395be21371ea9262fa9f87f99324ec6960ab"},
+    {"Libbet and the Magic Floor", "Game Boy", "zlib", "pinobatch", "https://github.com/pinobatch/libbet/releases/download/v0.08/libbet.gb",
+     "Libbet and the Magic Floor.gb", "3607412031c8287cf878299ce96e581e85b852dde703806343b95576fa3ff1a9"},
+};
+static const int NGRATIS = int(sizeof(GRATIS) / sizeof(GRATIS[0]));
+static bool gratisOn = false;
+static int gratisSel = 0;
+static std::atomic<bool> gratisBaixando{false};
+static std::mutex gratisMu;
+static std::string gratisMsg;
+
+static void abrirGratis() { gratisOn = true; gratisSel = 0; std::lock_guard<std::mutex> l(gratisMu); gratisMsg = ""; }
+
+static bool gratisTem(const Gratis &g) {   // ja esta na biblioteca (em qualquer console) ou chegando
+    for (auto &sys : SYSTEMS) if (isFile(ROMS + "/" + sys.id + "/" + g.arquivo)) return true;
+    return isFile(INBOX + "/" + g.arquivo);
+}
+
+static void gratisBaixar(int i) {
+    if (gratisBaixando) return;
+    gratisBaixando = true;
+    { std::lock_guard<std::mutex> l(gratisMu); gratisMsg = std::string("Baixando ") + GRATIS[i].nome + "..."; }
+    redraw();
+    std::thread([i] {
+        const Gratis &g = GRATIS[i];
+        std::string tmp = "/userdata/.copiando";
+        mkdirs(tmp);
+        std::string f = tmp + "/" + g.arquivo;
+        std::string r = Rede::run("curl -fsSL -m 300 -o '" + f + "' '" + g.url + "' && sha256sum '" + f + "'");
+        bool ok = r.rfind(g.sha, 0) == 0;
+        if (ok) ok = rename(f.c_str(), Arquivos::freeName(INBOX, g.arquivo).c_str()) == 0;
+        else remove(f.c_str());
+        sync();
+        std::lock_guard<std::mutex> l(gratisMu);
+        gratisMsg = ok ? std::string(g.nome) + " baixado: aparece no " + g.console + " em alguns segundos."
+                       : r.empty() ? "Não deu para baixar: confira a internet (Rede e Wi-Fi)."
+                                   : "O arquivo baixado não confere (SHA-256): nada foi colocado.";
+        gratisBaixando = false;
+        redraw();
+    }).detach();
+}
+
+static void drawGratis() {
+    if (!gratisOn) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 520 * u * T.escala), lh = 14 * u * T.escala;
+    std::string msg;
+    { std::lock_guard<std::mutex> l(gratisMu); msg = gratisMsg; }
+    std::vector<std::string> L;
+    std::vector<uint32_t> C;
+    auto add = [&](const std::string &t, uint32_t c = 0xFF2B2E33) { L.push_back(t); C.push_back(c); };
+    add("Jogos de fãs com licença livre: pode baixar, jogar e passar adiante.", 0xFF5E6269);
+    add("");
+    for (int i = 0; i < NGRATIS; i++) {
+        const Gratis &g = GRATIS[i];
+        add(std::string(i == gratisSel ? "▶  " : "    ") + g.nome + "   (" + g.console + ", " + g.licenca + ", de " + g.autor + ")" +
+                (gratisTem(g) ? "   - já tem" : ""),
+            i == gratisSel ? 0xFF1E9C4A : 0xFF2B2E33);
+    }
+    add("");
+    add(msg.empty() ? "A baixa do site oficial do autor e confere antes de colocar no console." : msg,
+        msg.rfind("Não", 0) == 0 || msg.rfind("O arquivo", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
+    float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Jogos grátis", x, y, w, h) + 10 * u;
+    for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
+    static const char *H[] = {"ud", "escolher", "a", "baixar", "b", "voltar"};
+    panelHints(H, 6, x, y + h, w);
+}
+
+// Copia saves, perfis e configuracoes para o pen drive (pasta ScrapCade-saves/<data>)
+static void copiarSaves() {
+    if (!Usb::attach()) { toast("Coloque um pen drive para guardar a cópia dos saves.", 5000); return; }
+    toast("Copiando os saves para o pen drive...", 60000);
+    std::thread([] {
+        char d[32];
+        time_t t = time(nullptr);
+        tm lt;
+        localtime_r(&t, &lt);
+        strftime(d, sizeof d, "%Y-%m-%d_%Hh%M", &lt);
+        std::string dst = Usb::MOUNT + "/ScrapCade-saves/" + d;
+        bool ok = system(("mount -o remount,rw " + Usb::MOUNT).c_str()) == 0;
+        if (ok) {
+            mkdirs(dst);
+            ok = Arquivos::copy("/userdata/saves", dst + "/saves");
+            if (Arquivos::isDirP("/userdata/system/perfis")) Arquivos::copy("/userdata/system/perfis", dst + "/perfis");
+            if (isFile("/userdata/system/perfis.txt")) Arquivos::copy("/userdata/system/perfis.txt", dst + "/perfis.txt");
+            if (Arquivos::isDirP("/userdata/system/configs")) Arquivos::copy("/userdata/system/configs", dst + "/configs");
+            sync();
+        }
+        if (system(("mount -o remount,ro " + Usb::MOUNT).c_str()) != 0) {}
+        toast(ok ? std::string("Saves copiados para o pen drive: ScrapCade-saves/") + d : "Não deu para gravar no pen drive (cheio ou protegido?).",
+              8000);
+        redraw();
+    }).detach();
+}
 
 // ------------------------------------------------------------------ atualizar o ScrapCade (tos-atualizar, A/B)
 
@@ -1852,6 +2008,14 @@ static void drawAtualizar() {
         add("Versão instalada: " + versaoBonita(atual));
         if (nova == "erro") {
             add("Não deu para procurar: confira a internet (Rede e Wi-Fi).", 0xFFD0362B);
+        } else if (nova == "pronta") {
+            add("A versão nova já foi baixada: reinicie para usar.", 0xFF1E9C4A);
+            add("A versão de agora fica guardada: se a nova não ligar, o ScrapCade OS volta para ela sozinho.", 0xFF5E6269);
+            H = H3;
+            nh = 4;
+        } else if (nova == "baixando") {
+            add("A versão nova está sendo baixada em segundo plano.", 0xFF1E9C4A);
+            add("Pode continuar jogando: quando terminar, aparece um aviso para reiniciar.", 0xFF5E6269);
         } else if (nova.empty()) {
             add("O ScrapCade já está na versão mais nova.", 0xFF1E9C4A);
         } else {
@@ -2046,6 +2210,12 @@ static void optAction(int dir) {
     int d = dir == 0 ? 1 : dir;
     switch (optSel) {
     case OPT_JOGOS: if (dir == 0) { sysOpen = false; abrirNavegador(2); } return;
+    case OPT_ARQUIVOS: if (dir == 0) { sysOpen = false; abrirNavegador(3); } return;
+    case OPT_GRATIS: if (dir == 0) { sysOpen = false; abrirGratis(); } return;
+    case OPT_BACKUP: if (dir == 0) copiarSaves(); return;
+    case OPT_AUTOUPD:
+        prefs["autoupd"] = prefs["autoupd"] == "0" ? "1" : "0";
+        break;
     case OPT_FONTE:
         prefs["fonte"] = std::to_string((nivelFonte() + d + 3) % 3);
         T.escala = escalaFonte();
@@ -2198,6 +2368,44 @@ static bool netInput(int b) {
 static bool navInput(int b) {
     if (!navModo) return false;
     int n = int(navItens.size());
+    if (navAcao == 2) {   // confirmar apagar
+        if (b == B_A) arqApagar();
+        if (b == B_A || b == B_B) navAcao = 0;
+        return true;
+    }
+    if (navAcao == 1) {   // lista de acoes
+        int na = int(navAcoes.size());
+        if (b == B_UP && na) navAcaoSel = (navAcaoSel + na - 1) % na;
+        if (b == B_DOWN && na) navAcaoSel = (navAcaoSel + 1) % na;
+        if (b == B_B) navAcao = 0;
+        if (b == B_A && navAcaoSel < na) {
+            std::string a = navAcoes[navAcaoSel];
+            navAcao = 0;
+            const ItemNav &it = navItens[navSel];
+            if (a == "Copiar" || a == "Mover") {
+                navClip = it.caminho;
+                navClipMover = a == "Mover";
+                navAviso(std::string(navClipMover ? "Recortado: " : "Copiado: ") + it.nome + ". Abra a pasta de destino e use X > Colar aqui.");
+            } else if (a == "Colar aqui") arqColar();
+            else if (a == "Renomear") arqRenomear();
+            else if (a == "Nova pasta") arqNovaPasta();
+            else if (a.rfind("Apagar", 0) == 0) navAcao = 2;
+        }
+        return true;
+    }
+    if (navModo == 3 && b == B_X && !navDir.empty()) {   // acoes do gerenciador
+        bool valido = navSel < n && !navItens[navSel].caminho.empty();
+        bool mexe = navDir.rfind("/userdata", 0) == 0;   // pen drive: so leitura
+        navAcoes.clear();
+        if (valido) navAcoes.push_back("Copiar");
+        if (valido && mexe) { navAcoes.push_back("Mover"); navAcoes.push_back("Renomear"); }
+        if (!navClip.empty() && mexe) navAcoes.push_back("Colar aqui");
+        if (mexe) navAcoes.push_back("Nova pasta");
+        if (valido && mexe) navAcoes.push_back(navDir == LIXEIRA ? "Apagar de vez" : "Apagar (vai para a Lixeira)");
+        navAcaoSel = 0;
+        if (!navAcoes.empty()) navAcao = 1;
+        return true;
+    }
     if (b == B_UP && n) navSel = (navSel + n - 1) % n;
     if (b == B_DOWN && n) navSel = (navSel + 1) % n;
     auto subir = [] {
@@ -2215,6 +2423,7 @@ static bool navInput(int b) {
         if (it.pasta && it.caminho.empty()) subir();
         else if (it.pasta) { navDir = it.caminho; navListar(); }
         else if (navModo == 1) navUsarImagem(it);
+        else if (navModo == 3) navAviso("Use X para copiar, mover, renomear ou apagar.");
         else navCopiarJogo(it);
     }
     if (b == B_X && navModo == 2 && navSel < n && !navDir.empty() && navItens[navSel].pasta && !navItens[navSel].caminho.empty())
@@ -2229,6 +2438,15 @@ static bool hdInput(int b) {
     return true;
 }
 
+static bool gratisInput(int b) {
+    if (!gratisOn) return false;
+    if (b == B_UP) gratisSel = (gratisSel + NGRATIS - 1) % NGRATIS;
+    if (b == B_DOWN) gratisSel = (gratisSel + 1) % NGRATIS;
+    if (b == B_A) gratisBaixar(gratisSel);
+    if (b == B_B) { gratisOn = false; sysOpen = true; }
+    return true;
+}
+
 static bool updInput(int b) {
     if (!updStage) return false;
     std::string nova;
@@ -2236,7 +2454,8 @@ static bool updInput(int b) {
         std::lock_guard<std::mutex> l(updMu);
         nova = updNova;
     }
-    if (updStage == 2 && b == B_A && !nova.empty() && nova != "erro") instalarAtualizacao();
+    if (updStage == 2 && b == B_A && nova == "pronta") powerOff(true);
+    else if (updStage == 2 && b == B_A && !nova.empty() && nova != "erro" && nova != "baixando") instalarAtualizacao();
     else if (updStage == 4 && b == B_A && updMsg.rfind("ERRO", 0) != 0) powerOff(true);
     else if ((updStage == 2 || updStage == 4) && (b == B_B || b == B_A)) { updStage = 0; sysOpen = true; }
     return true;
@@ -2287,6 +2506,7 @@ static bool panelInput(Btn b) {
     if (updInput(b)) return true;
     if (hdInput(b)) return true;
     if (navInput(b)) return true;
+    if (gratisInput(b)) return true;
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -2602,6 +2822,75 @@ static void drawPerfis() {
     }
 }
 
+// ------------------------------------------------------------------ acoes do gerenciador de arquivos
+
+static void arqColar() {
+    if (navClip.empty() || navDir.empty()) return;
+    std::string origem = navClip, nome = navClip.substr(navClip.rfind('/') + 1), pasta = navDir;
+    bool mover = navClipMover;
+    if (pasta == origem || pasta.rfind(origem + "/", 0) == 0) { navAviso("Não dá para colar uma pasta dentro dela mesma."); return; }
+    navAviso(std::string(mover ? "Movendo " : "Copiando ") + nome + "...");
+    if (mover) navClip.clear();
+    std::thread([origem, nome, pasta, mover] {
+        std::string dst = Arquivos::freeName(pasta, nome);
+        bool ok = mover && rename(origem.c_str(), dst.c_str()) == 0;   // mesma particao: so troca o nome
+        if (!ok) {
+            ok = Arquivos::copy(origem, dst);
+            if (ok && mover) Arquivos::del(origem);
+            if (!ok) Arquivos::del(dst);
+        }
+        sync();
+        navAviso(ok ? nome + (mover ? " movido." : " copiado.") : "Não deu para colar " + nome + " (falta espaço?).");
+        navRecarregar = true;
+        redraw();
+    }).detach();
+}
+
+static void arqRenomear() {
+    if (navSel >= int(navItens.size())) return;
+    std::string velho = navItens[navSel].caminho, nome = navItens[navSel].nome;
+    abrirTeclado("Novo nome para " + nome, false, [velho](bool ok) {
+        while (!tkTexto.empty() && tkTexto.back() == ' ') tkTexto.pop_back();
+        if (!ok || tkTexto.empty()) return;
+        if (Arquivos::badName(tkTexto)) { navAviso("Nome inválido (sem / no nome)."); return; }
+        std::string novo = velho.substr(0, velho.rfind('/') + 1) + tkTexto;
+        if (isFile(novo) || Arquivos::isDirP(novo)) { navAviso("Já existe um item com esse nome."); return; }
+        navAviso(rename(velho.c_str(), novo.c_str()) == 0 ? "Renomeado para " + tkTexto + "." : "Não deu para renomear.");
+        sync();
+        navRecarregar = true;
+    });
+    tkTexto = nome;
+}
+
+static void arqNovaPasta() {
+    std::string pasta = navDir;
+    abrirTeclado("Nome da pasta nova", false, [pasta](bool ok) {
+        while (!tkTexto.empty() && tkTexto.back() == ' ') tkTexto.pop_back();
+        if (!ok || tkTexto.empty()) return;
+        if (Arquivos::badName(tkTexto)) { navAviso("Nome inválido (sem / no nome)."); return; }
+        navAviso(mkdir((pasta + "/" + tkTexto).c_str(), 0755) == 0 ? "Pasta " + tkTexto + " criada." : "Não deu para criar a pasta.");
+        navRecarregar = true;
+    });
+}
+
+// Apagar manda para a Lixeira (SCRAP-DADOS/Lixeira), de onde da para trazer de volta; dentro dela, apaga de vez
+static void arqApagar() {
+    if (navSel >= int(navItens.size()) || navItens[navSel].caminho.empty()) return;
+    std::string alvo = navItens[navSel].caminho, nome = navItens[navSel].nome;
+    if (navClip == alvo) navClip.clear();
+    bool ok;
+    if (navDir == LIXEIRA) {
+        ok = Arquivos::del(alvo);
+        navAviso(ok ? nome + " apagado de vez." : "Não deu para apagar " + nome + ".");
+    } else {
+        mkdirs(LIXEIRA);
+        ok = rename(alvo.c_str(), Arquivos::freeName(LIXEIRA, nome).c_str()) == 0;
+        navAviso(ok ? nome + " foi para a Lixeira (pasta Lixeira, na SCRAP-DADOS)." : "Não deu para apagar " + nome + ".");
+    }
+    sync();
+    navListar();
+}
+
 static bool tecladoInput(int b) {
     if (!tkOn) return false;
     int cols = tkR < 5 ? 10 : 5;
@@ -2731,6 +3020,7 @@ static void render() {
     drawBluetooth();
     drawAtualizar();
     drawNavegador();
+    drawGratis();
     drawPerguntaHD();
     drawControle();
     drawTeclado();
@@ -2814,11 +3104,13 @@ static void play() {
     const Game *g = current();
     if (!g) return;
     std::string core = coreEscolhido(g->sys->id);
-    if (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so")) {
+    bool port = g->sys->id == "ports";   // Ports (PortMaster): o jogo e um script, sem nucleo do RetroArch
+    if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
         toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
     }
     prefs["plays|" + g->key()] = std::to_string(plays(*g) + 1);
+    prefs["quando|" + g->key()] = std::to_string((long)time(nullptr));
     prefs["ultimo"] = g->key();
     savePrefs();
     float u = G.u;
@@ -3111,7 +3403,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || hdStage || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || hdStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -3145,15 +3437,31 @@ int main() {
             redraw();
         }
         // procura versao nova sozinho (uma vez por boot, com a rede ja de pe) e avisa na tela
-        static std::atomic<int> novaVersao{0};   // 0 nao procurou, 1 procurando, 2 tem versao nova, 3 nada
+        // 0 nao procurou, 1 procurando, 2 tem versao nova, 3 nada, 4 baixou sozinho (falta reiniciar)
+        static std::atomic<int> novaVersao{0};
         if (novaVersao == 0 && now > 40000) {
             novaVersao = 1;
-            std::thread([] {
+            bool sozinho = prefs["autoupd"] != "0";
+            std::thread([sozinho] {
                 std::string r = Rede::run("/usr/bin/tos-atualizar verificar");
                 size_t a = r.find('|'), b = a == std::string::npos ? a : r.find('|', a + 1);
                 std::string n = b == std::string::npos ? "" : r.substr(a + 1, b - a - 1);
-                novaVersao = (!n.empty() && n != "erro") ? 2 : 3;
+                bool tem = !n.empty() && isdigit((unsigned char)n[0]);   // numero de versao nova (nao "pronta"/"baixando")
+                if (n == "pronta") { novaVersao = 4; return; }               // ja baixada: so lembrar de reiniciar
+                if (tem && sozinho) {   // baixa em segundo plano; a versao de agora fica guardada (A/B)
+                    if (system("/usr/bin/tos-atualizar instalar >> /userdata/system/logs/atualizar.log 2>&1") != 0) {}
+                    std::ifstream in("/tmp/tos-atualizar.txt");
+                    int pc = 0;
+                    novaVersao = (in >> pc) && pc >= 100 ? 4 : 2;
+                } else {
+                    novaVersao = tem ? 2 : 3;
+                }
             }).detach();
+        }
+        if (novaVersao == 4 && !updStage) {
+            novaVersao = 3;
+            toast("Versão nova do ScrapCade OS baixada: reinicie para usar (Sistema > Reiniciar)", 15000);
+            redraw();
         }
         if (novaVersao == 2 && !updStage) {
             novaVersao = 3;
@@ -3161,7 +3469,7 @@ int main() {
             redraw();
         }
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {

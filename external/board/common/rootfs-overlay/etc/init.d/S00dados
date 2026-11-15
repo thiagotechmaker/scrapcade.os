@@ -58,6 +58,11 @@ case "$1" in
       mount -t tmpfs -o size=60% tmpfs /userdata
       msg "ScrapCade: sem particao de dados; os jogos ficam na memoria ate desligar."
     fi
+    # PortMaster e os ports usam /roms/ports: /roms aponta para a pasta de jogos
+    ln -sfn /userdata/roms /roms
+    mkdir -p /userdata/roms/ports
+    [ -f /userdata/roms/ports/PortMaster.sh ] || \
+      printf '#!/bin/bash\n# abre o PortMaster (baixa na primeira vez)\nexec /usr/bin/tos-portmaster\n' > /userdata/roms/ports/PortMaster.sh
     mkdir -p /userdata/roms /userdata/bios /userdata/saves /userdata/themes "/userdata/Jogos novos" \
              /userdata/system/logs /userdata/system/connman
     # configuracoes que precisam sobreviver ao desligar (o sistema e somente leitura)

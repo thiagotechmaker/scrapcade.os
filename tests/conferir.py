@@ -19,6 +19,7 @@ ESPERADO = [
     (r"samba desligado: fechada", "desligar o Samba"), (r"samba religado: aberta", "religar o Samba"),
     (r"ssh ligado: aberta", "ligar o SSH"), (r"ssh desligado de novo: fechada", "desligar o SSH"),
     (r"som: tocou", "som pelo PipeWire"),
+    (r"copia dos saves no pen drive: [1-9]", "copia dos saves no pen drive"),
     (r"ota baixou: 1", "atualizacao: baixou a versao nova"),
     (r"ota anterior guardada: sim", "atualizacao: guardou a versao anterior"),
     (r"ota confirmada: sim", "atualizacao: reiniciou na nova e confirmou"),

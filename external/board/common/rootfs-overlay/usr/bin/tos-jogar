@@ -7,6 +7,13 @@ ROM=$2
 CFG=/userdata/system/configs/retroarch
 mkdir -p "$CFG" "/userdata/saves/$SIS" /userdata/bios /userdata/screenshots /userdata/system/logs
 
+# Ports (PortMaster): o "jogo" e um script bash; roda ele e volta para o ScrapCade
+if [ "$SIS" = ports ]; then
+  echo "== $(date "+%d/%m %H:%M") ports $ROM" > /userdata/system/logs/ports.log
+  ( cd "$(dirname "$ROM")" && HOME=/root bash "$ROM" ) >> /userdata/system/logs/ports.log 2>&1
+  exec /usr/bin/scrapcade
+fi
+
 case "$SIS" in
   nes) CORE=mesen ;;
   snes) CORE=snes9x ;;

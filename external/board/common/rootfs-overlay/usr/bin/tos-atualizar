@@ -26,19 +26,26 @@ nova() {   # numero da compilacao da versao publicada (tag "v<BUILD_ID>")
 
 case "$1" in
   verificar)
+    [ -d /tmp/tos-atualizar.trava ] && { echo "$(atual)|baixando|0"; exit 0; }   # baixando em segundo plano
     info || { echo "$(atual)|erro|0"; exit 0; }
     n=$(nova)
+    # ja baixada (falta reiniciar): nao baixa de novo
+    [ -n "$n" ] && [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { echo "$(atual)|pronta|0"; exit 0; }
     tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
     if [ -n "$n" ] && [ "$n" -gt "$(atual)" ] 2>/dev/null; then echo "$(atual)|$n|$(( ${tam:-0} / 1048576 ))"
     else echo "$(atual)||0"; fi
     ;;
   instalar)
+    # uma atualizacao por vez (a automatica em segundo plano e a do painel nao podem baixar juntas)
+    mkdir /tmp/tos-atualizar.trava 2>/dev/null || { p 0 "ERRO: a versão nova já está sendo baixada"; exit 1; }
+    trap 'rmdir /tmp/tos-atualizar.trava 2>/dev/null' EXIT
     grep -q " /boot vfat" /proc/mounts || { p 0 "ERRO: este ScrapCade roda de um .iso ou DVD: grave a imagem nova no pen drive"; exit 1; }
     p 2 "Procurando a versão nova"
     info || { p 0 "ERRO: sem internet"; exit 1; }
     n=$(nova)
     tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
     [ -n "$n" ] && [ "$n" -gt "$(atual)" ] || { p 0 "ERRO: já está na versão mais nova"; exit 1; }
+    [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { p 100 "Pronto! A versão nova já foi baixada: reinicie para usar."; exit 0; }
     mount -o remount,rw /boot || { p 0 "ERRO: não consegui gravar no pen drive"; exit 1; }
     # a versao de agora vai virar a "anterior": a anterior velha e as com problema saem antes, para caber
     rm -f $D/tos-anterior.squashfs $D/bzImage-anterior $D/initrd-anterior.gz           $D/tos-com-problema.squashfs $D/bzImage-com-problema $D/initrd-com-problema.gz
@@ -65,6 +72,7 @@ case "$1" in
     mv $T/tos.squashfs $T/bzImage $T/initrd.gz .
     rm -rf $T tos-com-problema.squashfs bzImage-com-problema initrd-com-problema.gz
     echo 0 > tos-testando
+    echo "$n" > tos-nova-versao   # qual versao esta esperando o reinicio
     sync
     mount -o remount,ro /boot
     p 100 "Pronto! Reinicie para usar a versão nova."
@@ -72,7 +80,10 @@ case "$1" in
   confirmar)
     [ -f $D/tos-testando ] || exit 0
     grep -q "tos.sistema=" /proc/cmdline && exit 0   # ligado pela versao anterior: a nova continua em teste
-    mount -o remount,rw /boot && rm -f $D/tos-testando && sync && mount -o remount,ro /boot
+    # a nova foi baixada mas o computador ainda nao reiniciou: o initrd so conta as tentativas de ligar a nova
+    # (0 = baixada, ainda nao ligou). Quem esta rodando e a velha: nao confirma.
+    [ "$(cat $D/tos-testando 2>/dev/null)" = 0 ] && exit 0
+    mount -o remount,rw /boot && rm -f $D/tos-testando $D/tos-nova-versao && sync && mount -o remount,ro /boot
     ;;
 esac
 exit 0

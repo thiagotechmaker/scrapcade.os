@@ -11,20 +11,24 @@ usbpen() {   # pen drive de jogos (FAT32) com um jogo numa pasta e uma imagem pa
 }
 
 # ---------------------------------------------------------------- pen drive: navegador, tema proprio, perfis
-D=teste/x-pen.img; cp $I/disk.img $D; truncate -s 3G $D
-U=teste/x-usb.img; usbpen $U
-( sleep 30; senha; sleep 60
-  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-  opt 1; k ret; sleep 4; shot x_nav_raiz
-  k ret; sleep 3; k down; k ret; sleep 2; k down; sleep 1; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
-  k esc; sleep 1; k esc; sleep 1; k esc; sleep 1; k esc; sleep 20; shot x_carrossel_pen
-  opt 3; k ret; sleep 3; k ret; sleep 3; k down down; sleep 1; k ret; sleep 8; shot x_tema_proprio
-  opt 0; k ret; sleep 3; k right; k ret; sleep 3; k m a r i a; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
-  opt 0; k ret; sleep 3; shot x_perfis_dois
-  k delete; sleep 2; shot x_perfil_confirma; k ret; sleep 4; shot x_perfil_apagado
-  echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
-    -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
-    -nic user,model=e1000 > teste/q8.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes sai sozinho no inicio: uma segunda tentativa
+  D=teste/x-pen.img; cp $I/disk.img $D; truncate -s 3G $D
+  U=teste/x-usb.img; usbpen $U
+  ( sleep 30; senha; sleep 60
+    k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+    opt 1; k ret; sleep 4; shot x_nav_raiz
+    k ret; sleep 3; k down; k ret; sleep 2; k down; sleep 1; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
+    k esc; sleep 1; k esc; sleep 1; k esc; sleep 1; k esc; sleep 20; shot x_carrossel_pen
+    opt 4; k ret; sleep 3; k ret; sleep 3; k down down; sleep 1; k ret; sleep 8; shot x_tema_proprio
+    opt 0; k ret; sleep 3; k right; k ret; sleep 3; k m a r i a; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
+    opt 0; k ret; sleep 3; shot x_perfis_dois
+    k delete; sleep 2; shot x_perfil_confirma; k ret; sleep 4; shot x_perfil_apagado
+    echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
+      -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
+      -nic user,model=e1000 > teste/q8.log 2>&1
+  log "pen drive: QEMU saiu com ${PIPESTATUS[1]} (tentativa $tentativa)"
+  [ -f teste/z_x_nav_raiz.ppm ] && break
+done
 
 # ---------------------------------------------------------------- rodando de um pen drive USB com HD vazio: pergunta
 D=teste/x-pen-usb.img; cp $I/disk.img $D; truncate -s 3G $D
@@ -53,8 +57,9 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
   echo "http://10.0.2.2:18099/latest" > /tmp/srvt; mcopy -i $D@@$O /tmp/srvt ::boot/tos-servidor-teste
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
-    opt 18; k ret; sleep 20; shot x_ota_achou
-    k ret; sleep 100; shot x_ota_pronto
+    sleep 150; shot x_ota_aviso                      # baixou sozinha em segundo plano (Atualizar sozinho)
+    opt 19; k ret; sleep 20; shot x_ota_achou        # "ja foi baixada: reinicie"
+    rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
     k ret; sleep 200; shot x_ota_reiniciou
     echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q10.log 2>&1
   mdir -b -i $D@@$O ::boot 2>/dev/null | grep -q tos-testando || break
@@ -79,3 +84,27 @@ for modo in uefi bios; do
       -drive file=$H,format=raw,if=virtio -device qemu-xhci \
       -drive if=none,id=pen,file=$P,format=raw -device usb-storage,drive=pen,bootindex=0 > teste/q11-$modo.log 2>&1
 done
+
+# ---------------------------------------------------------------- jogos gratis (baixa de verdade), copia dos saves, gerenciador
+D=teste/x-gratis.img; cp $I/disk.img $D; truncate -s 3G $D
+U=teste/x-usb2.img; usbpen $U
+( sleep 30; senha; sleep 60
+  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+  opt 22; k ret; sleep 3; shot x_gratis
+  k ret; sleep 40; k down; k ret; sleep 40; k down; k ret; sleep 40; shot x_gratis_baixou
+  k esc; sleep 2; k esc; sleep 45; shot x_carrossel_gratis
+  opt 23; k ret; sleep 25; shot x_copia_saves; fecha
+  opt 2; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k x; sleep 2; shot x_arq_acoes
+  k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; k x; sleep 2; shot x_arq_colar
+  k ret; sleep 10; shot x_arq_colou
+  echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
+    -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
+    -nic user,model=e1000 > teste/q12.log 2>&1
+log "copia dos saves no pen drive: $(mdir -/ -b -i $U ::ScrapCade-saves 2>/dev/null | grep -c saves)"
+
+# ---------------------------------------------------------------- PortMaster: baixa a versao oficial e abre
+D=teste/x-portmaster.img; cp $I/disk.img $D; truncate -s 3G $D
+( sleep 30; senha; sleep 60
+  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
+  shot x_ports_carrossel; k ret; sleep 30; shot x_portmaster_baixando; sleep 120; shot x_portmaster
+  echo quit ) | timeout 600 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q13.log 2>&1

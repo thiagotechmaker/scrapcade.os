@@ -9,6 +9,26 @@ mount -t sysfs sysfs /sys
 echo 0 > /proc/sys/kernel/printk
 mkdir -p /boot /lower /rw /newroot
 
+# logo do ScrapCade OS na tela grafica (UEFI ou VESA da BIOS) enquanto o sistema liga. O Linux nao mostra a
+# logo dele quando o boot e silencioso (quiet); entao o initrd desenha a nossa, linha por linha, em /dev/fb0.
+logo() {
+  f=/sys/class/graphics/fb0
+  [ -c /dev/fb0 ] && [ -r $f/bits_per_pixel ] || return 0
+  bpp=$(cat $f/bits_per_pixel); [ -f /logo$bpp.raw ] || return 0
+  m=$(head -1 $f/modes 2>/dev/null | sed -n 's/.*:\([0-9]*\)x\([0-9]*\).*/\1 \2/p')
+  [ -n "$m" ] || m=$(tr ',' ' ' < $f/virtual_size)
+  set -- $m; w=$1; h=$2; st=$(cat $f/stride); bypp=$((bpp / 8)); lw=480; lh=64
+  [ "$w" -ge $lw ] && [ "$h" -ge $lh ] || return 0
+  printf '\033[2J\033[H' > /dev/tty1 2>/dev/null
+  x0=$(( (w - lw) / 2 )); y0=$(( (h - lh) * 2 / 5 )); r=0
+  while [ $r -lt $lh ]; do
+    dd if=/logo$bpp.raw of=/dev/fb0 bs=$((lw * bypp)) count=1 skip=$r \
+       seek=$(( (y0 + r) * st + x0 * bypp )) oflag=seek_bytes conv=notrunc 2>/dev/null
+    r=$((r + 1))
+  done
+}
+grep -q "loglevel=7" /proc/cmdline || logo
+
 achou=""
 # O GRUB diz de qual particao ele mesmo veio (tos.uuid=): usa essa, para o pen drive escolhido na BIOS/UEFI
 # nao ligar a instalacao do HD. Sem tos.uuid (menu syslinux, que so existe nos pen drives): prefere USB.

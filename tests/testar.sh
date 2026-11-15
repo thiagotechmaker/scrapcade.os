@@ -12,6 +12,7 @@ rotulos() {   # nomes das particoes de um disco (sem precisar de root)
     blkid -p -o value -s LABEL -O $((st * 512)) "$1" 2>/dev/null; done | tr '\n' ' '; }
 k() { for c in "$@"; do echo "sendkey $c"; sleep 0.5; done; }
 shot() { echo "screendump $TOS/teste/z_$1.ppm"; }
+acorda() { for i in 1 2 3 4 5 6 7; do echo "sendkey up"; sleep 1; done; }   # para a contagem do menu de boot assim que ele aparece
 senha() { k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; }
 Q="qemu-system-x86_64 -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
 EFI="-bios /usr/share/ovmf/OVMF.fd"
@@ -19,16 +20,17 @@ rm -f teste/z_*.ppm
 
 # ---------------------------------------------------------------- menu de boot e teste de memoria
 D=teste/t-bios.img; cp $I/disk.img $D; truncate -s 3G $D
-( sleep 2; k down; sleep 1; k down down down; sleep 1; shot boot_bios_memsel; k ret; sleep 25; shot boot_bios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q1.log 2>&1
-( sleep 6; k down; k ret; sleep 9; shot boot_logo_kernel; sleep 26; senha; sleep 70; shot boot_bios_compat; echo quit ) | timeout 200 $Q -drive file=$D,format=raw > teste/q2.log 2>&1
+( acorda; k down; sleep 1; k down down down; sleep 1; shot boot_bios_memsel; k ret; sleep 25; shot boot_bios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q1.log 2>&1
+( acorda; k down; k ret; sleep 9; shot boot_logo_kernel; sleep 36; senha; sleep 70; shot boot_bios_compat; echo quit ) | timeout 200 $Q -drive file=$D,format=raw > teste/q2.log 2>&1
 cp $I/disk.img $D; truncate -s 3G $D
-( sleep 4; shot boot_uefi_menu; k down down down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
+( sleep 4; shot boot_uefi_menu; k up; sleep 1; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
 # .iso gravado direto: arruma no 1o boot; no 2o boot (BIOS, GRUB) o teste de memoria
 D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
 ( sleep 40; senha; sleep 60; echo quit ) | timeout 200 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q4.log 2>&1
 log "iso arrumado: $(sfdisk -l $D 2>/dev/null | grep -c "^$D")"
 log "iso particoes: $(rotulos $D)"
-( sleep 2; shot boot_grubbios_menu; k down; sleep 2; shot boot_grubbios_d1; k down down; sleep 2; shot boot_grubbios_d3; k ret; sleep 25; shot boot_grubbios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q5.log 2>&1
+( acorda; shot boot_grubbios_menu; k down; sleep 2; shot boot_grubbios_d1; k down down; sleep 2; shot boot_grubbios_d3; k ret; sleep 25; shot boot_grubbios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q5.log 2>&1
+( sleep 14; shot boot_logo_grubbios; echo quit ) | timeout 40 $Q -drive file=$D,format=raw > teste/q5b.log 2>&1
 
 # ---------------------------------------------------------------- ScrapCade e painel Sistema
 D=teste/t-sc.img; cp $I/disk.img $D; truncate -s 3G $D
@@ -68,23 +70,23 @@ RO=$TOS/tests/roms
   k ret; sleep 30; shot sc_jogando; echo "sendkey esc 1000"; sleep 75; shot sc_voltou_do_jogo
   log "samba antes: $(porta 18445)  ssh antes: $(porta 18022)"
   opt 0; k ret; sleep 3; shot p_perfil; fecha
-  opt 2; k right; sleep 2; shot p_energia; fecha
-  opt 3; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 3; k left; sleep 1; fecha
-  opt 5; k right; sleep 2; shot p_anim; k left; fecha
-  opt 6; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
-  opt 7; k right; sleep 2; shot p_fundo_off; k left; fecha
-  opt 8; sleep 1; shot p_motor; fecha
-  opt 10; k ret; sleep 8; shot p_rede; fecha
-  opt 11; k ret; sleep 12; shot p_bluetooth; fecha
-  opt 12; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
-  opt 13; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
-  opt 14; k ret; sleep 3; shot p_controle; fecha
-  opt 16; k ret; sleep 3; shot p_comojogar; fecha
-  opt 17; k ret; sleep 4; shot p_bios; fecha
-  opt 18; k ret; sleep 20; shot p_atualizar; fecha
-  opt 19; k ret; sleep 4; shot p_instalar; fecha
-  opt 20; k ret; sleep 4; shot p_info; fecha
-  opt 15; k ret; sleep 40; shot p_desktop
+  opt 3; k right; sleep 2; shot p_energia; fecha
+  opt 4; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 4; k left; sleep 1; fecha
+  opt 6; k right; sleep 2; shot p_anim; k left; fecha
+  opt 7; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
+  opt 8; k right; sleep 2; shot p_fundo_off; k left; fecha
+  opt 9; sleep 1; shot p_motor; fecha
+  opt 11; k ret; sleep 8; shot p_rede; fecha
+  opt 12; k ret; sleep 12; shot p_bluetooth; fecha
+  opt 13; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
+  opt 14; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
+  opt 15; k ret; sleep 3; shot p_controle; fecha
+  opt 17; k ret; sleep 3; shot p_comojogar; fecha
+  opt 18; k ret; sleep 4; shot p_bios; fecha
+  opt 19; k ret; sleep 20; shot p_atualizar; fecha
+  opt 20; k ret; sleep 4; shot p_instalar; fecha
+  opt 21; k ret; sleep 4; shot p_info; fecha
+  opt 16; k ret; sleep 40; shot p_desktop
   echo quit
 ) | timeout 1200 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080,hostfwd=tcp:127.0.0.1:18445-:445,hostfwd=tcp:127.0.0.1:18022-:22 \
@@ -93,7 +95,7 @@ RO=$TOS/tests/roms
 log "disco particoes: $(rotulos $D)"
 D=teste/t-som.img; cp $I/disk.img $D; truncate -s 3G $D
 ( sleep 30; senha; sleep 60; k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
-  opt 9; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
+  opt 10; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
 log "som: $(python3 -c 'import wave,struct,sys
 w=wave.open(sys.argv[1]);d=w.readframes(w.getnframes());s=struct.unpack("<%dh"%(len(d)//2),d[:len(d)//2*2]);print("tocou" if max(map(abs,s or [0]))>1000 else "silencio")' teste/som2.wav)"
 log "fim: $(ls teste/z_*.ppm | wc -l) capturas"
