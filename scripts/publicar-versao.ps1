@@ -9,9 +9,12 @@
 # Travas: so publica o que passou nos testes automaticos, com a versao no CHANGELOG e sem tag repetida.
 param([string]$Repo = "thiagotechmaker/scrapcade.os", [switch]$So64,
       [string]$Pasta = (Join-Path (Split-Path $PSScriptRoot) "output\x86_64\images\atualizacao"))
-$ErrorActionPreference = "Stop"
+# "Continue": no PowerShell 5.1, com "Stop" qualquer texto que o gh escreve no stderr vira erro.
+# Cada passo e conferido (arquivos com Test-Path, comandos pelo $LASTEXITCODE).
+$ErrorActionPreference = "Continue"
 $raiz = Split-Path $PSScriptRoot
 function Para($m) { Write-Host "PARADO: $m"; exit 1 }
+foreach ($f in "BUILD_ID", "VERSION") { if (-not (Test-Path "$Pasta\$f")) { Para "falta $Pasta\$f (compile antes: bash build-x86_64.sh)" } }
 
 $b = (Get-Content "$Pasta\BUILD_ID").Trim()
 $v = (Get-Content "$Pasta\VERSION").Trim()
@@ -54,4 +57,6 @@ $commit = (git -C $raiz -c safe.directory=* rev-parse HEAD).Trim()
 $tmp = New-TemporaryFile
 [IO.File]::WriteAllText($tmp, $notas, (New-Object Text.UTF8Encoding $false))   # UTF-8 sem BOM
 gh release create "v$v" -R $Repo --target $commit --title "ScrapCade OS v$v" --notes-file $tmp --latest @arq
+$ok = $LASTEXITCODE
 Remove-Item $tmp
+if ($ok) { Para "gh release create falhou" }
