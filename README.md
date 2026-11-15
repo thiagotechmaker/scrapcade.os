@@ -27,7 +27,14 @@ Cada pessoa tem o seu **perfil** (avatar, favoritos e saves próprios). Ao ligar
 
 ![Perfil](docs/capturas/10_perfil_avatar.png)
 
-No **painel Sistema** (botão Select ou tecla Tab) fica tudo: Wi-Fi, Bluetooth, som, tema, tamanho do texto, trazer jogos do pen drive, gerenciador de arquivos, BIOS, cópia dos saves no pen drive, ejetar o pen drive, atualizar, instalar no HD. Do lado direito ele explica o que cada opção faz.
+No **painel Sistema** (botão Select ou tecla Tab) fica tudo, em seções como o menu de ajustes de um console:
+
+- **Jogos:** perfil, jogos grátis, trazer do pen drive, gerenciador de arquivos, ejetar o pen drive, ordenar jogos, capas, BIOS, cópia dos saves.
+- **Jogando:** voltar de onde parou, filtro de imagem (liso ou TV de tubo), proporção, menos atraso nos controles, FPS na tela, emulador de cada console.
+- **Aparência:** 8 temas ou um seu, tamanho do texto, animações, proteção de tela.
+- **Controle e som, Tela e energia, Rede e Sistema:** controle, volume, Bluetooth, energia, desligar sozinho, relógio, Wi-Fi, pasta na rede do Windows, atualizar, instalar no HD, voltar ao padrão.
+
+Do lado direito ele explica o que cada opção faz.
 
 ![Painel Sistema](docs/capturas/11_painel_sistema.png)
 
@@ -53,7 +60,7 @@ Os jogos vão sozinhos para o console certo, com capa e dados. Jogos, BIOS e ROM
 
 ## Consoles
 
-NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama (FBNeo) e Neo Geo, pelo RetroArch. Também Doom e jogos `.wad` (PrBoom) e os ports do PortMaster.
+NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama (FBNeo) e Neo Geo, pelo RetroArch. Também Doom e jogos `.wad` (PrBoom), **Half-Life** (Xash3D: copie a pasta `valve` da sua cópia da Steam para `roms/halflife`) e os ports do PortMaster.
 
 **Atalhos em todo jogo:** Select + Start sai, Select + X abre o menu do emulador. No teclado: Esc sai.
 
