@@ -52,10 +52,17 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
     echo "savestate_directory = \"$SAVES\""
   } > /tmp/tos-console.cfg
   EXTRA=/tmp/tos-console.cfg
+  # o que foi escolhido no painel Sistema > JOGANDO (voltar de onde parou, filtro, proporcao, atraso, FPS)
+  SET=""
+  if [ -f "$CFG/scrapcade-jogo.cfg" ]; then
+    EXTRA="$EXTRA|$CFG/scrapcade-jogo.cfg"
+    SHADER=$(sed -n 's/^video_shader = "\(.*\)"/\1/p' "$CFG/scrapcade-jogo.cfg")
+    [ -n "$SHADER" ] && [ -f "$SHADER" ] && SET="--set-shader $SHADER"
+  fi
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
   echo "== $(date "+%d/%m %H:%M") $SIS $CORE $ROM" > /userdata/system/logs/retroarch.log
   INICIO=$(cut -d. -f1 /proc/uptime)
-  retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" -L "$SO" "$ROM" \
+  retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" $SET -L "$SO" "$ROM" \
     >> /userdata/system/logs/retroarch.log 2>&1
   # fechou em menos de 4 s: o jogo nao abriu (arquivo com defeito, versao errada, falta BIOS). Avisa o ScrapCade
   if [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ]; then

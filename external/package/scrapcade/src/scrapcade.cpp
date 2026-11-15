@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.17 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - versao 1.18 (conversao do ScrapCade do iChroma para C++/SDL2)
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -674,6 +674,35 @@ static void loadBackdrop(const Game *g) {
 
 // ------------------------------------------------------------------ filtros (Home.buildFilters)
 
+// ------------------------------------------------------------------ opcoes do painel que valem no carrossel e no jogo
+static const char *ORDENS[] = {"Nome", "Ano", "Mais jogados", "Últimos jogados"};
+static int ordemAtual() { int v = atoi(prefs["ordem"].c_str()); return v < 0 || v > 3 ? 0 : v; }
+static const char *FILTROS_IMG[] = {"Nenhum", "Liso", "TV de tubo"};
+static int filtroImg() { int v = atoi(prefs["filtro"].c_str()); return v < 0 || v > 2 ? 0 : v; }
+static const char *PROPORCOES[] = {"Original", "4:3", "Tela cheia", "Escala inteira"};
+static int proporcao() { int v = atoi(prefs["proporcao"].c_str()); return v < 0 || v > 3 ? 0 : v; }
+static bool prefLigada(const char *k, bool padrao) {
+    auto it = prefs.find(k);
+    return it == prefs.end() || it->second.empty() ? padrao : it->second != "0";
+}
+// O que o painel JOGANDO escolheu vai para o RetroArch por este arquivo (o tos-jogar acrescenta a configuracao)
+static void gravarJogoCfg() {
+    mkdirs("/userdata/system/configs");
+    std::ofstream o("/userdata/system/configs/scrapcade-jogo.cfg");
+    bool resume = prefLigada("resume", true), run = prefLigada("runahead", false), fps = prefLigada("fps", false);
+    int f = filtroImg(), pr = proporcao();
+    o << "savestate_auto_save = \"" << (resume ? "true" : "false") << "\"\n";
+    o << "savestate_auto_load = \"" << (resume ? "true" : "false") << "\"\n";
+    o << "video_smooth = \"" << (f == 1 ? "true" : "false") << "\"\n";
+    o << "video_shader_enable = \"" << (f == 2 ? "true" : "false") << "\"\n";
+    if (f == 2) o << "video_shader = \"/usr/share/tos/shaders/tv.glslp\"\n";
+    o << "aspect_ratio_index = \"" << (pr == 1 ? 0 : pr == 2 ? 24 : 22) << "\"\n";   // 0 = 4:3, 22 = do console, 24 = tela cheia
+    o << "video_scale_integer = \"" << (pr == 3 ? "true" : "false") << "\"\n";
+    o << "run_ahead_enabled = \"" << (run ? "true" : "false") << "\"\n";
+    o << "run_ahead_frames = \"1\"\n";
+    o << "fps_show = \"" << (fps ? "true" : "false") << "\"\n";
+}
+
 static const std::string F_ALL = "", F_FAV = "*fav", F_TOP = "*top", F_REC = "*rec";
 static std::vector<std::string> filters;
 static std::string filter = F_ALL;
@@ -685,8 +714,12 @@ static void buildFilters() {
     if (rec) filters.push_back(F_REC);   // logo depois de Todos: os ultimos jogos abertos
     if (fav) filters.push_back(F_FAV);
     if (top) filters.push_back(F_TOP);
-    for (auto &s : SYSTEMS)
-        for (auto &g : all) if (g.sys == &s) { filters.push_back(s.id); break; }
+    bool vazios = prefLigada("vazios", false);   // painel: mostrar tambem os consoles sem jogo
+    for (auto &s : SYSTEMS) {
+        bool tem = false;
+        for (auto &g : all) if (g.sys == &s) { tem = true; break; }
+        if (tem || vazios) filters.push_back(s.id);
+    }
     if (std::find(filters.begin(), filters.end(), filter) == filters.end()) filter = F_ALL;
 }
 
@@ -708,6 +741,17 @@ static void applyFilter(int keepIndex = -1) {
         if (filter == F_REC && quando(g) <= 0) continue;
         if (!filter.empty() && filter[0] != '*' && g.sys->id != filter) continue;
         view.push_back(g);
+    }
+    if (filter != F_TOP && filter != F_REC) {   // Ordenar jogos (painel): nome e a ordem de sempre
+        int o = ordemAtual();
+        if (o == 1) std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) {
+            Meta::Info ma, mb;
+            std::string ya = Meta::get(a.key(), ma) ? ma.year : "", yb = Meta::get(b.key(), mb) ? mb.year : "";
+            if (ya.empty() != yb.empty()) return !ya.empty();   // sem ano: no fim
+            return ya < yb;
+        });
+        else if (o == 2) std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) { return plays(a) > plays(b); });
+        else if (o == 3) std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) { return quando(a) > quando(b); });
     }
     if (filter == F_TOP)
         std::stable_sort(view.begin(), view.end(), [](const Game &a, const Game &b) { return plays(a) > plays(b); });
@@ -770,8 +814,8 @@ static void topBar(const Game *g) {
     time_t now = time(nullptr);
     tm lt;
     localtime_r(&now, &lt);
-    char hora[8], data[32];
-    strftime(hora, sizeof hora, "%H:%M", &lt);
+    char hora[16], data[32];
+    strftime(hora, sizeof hora, prefs["relogio"] == "12" ? "%I:%M %p" : "%H:%M", &lt);
     static const char *DIAS[] = {"dom", "seg", "ter", "qua", "qui", "sex", "sáb"};
     snprintf(data, sizeof data, "%s, %02d/%02d", DIAS[lt.tm_wday], lt.tm_mday, lt.tm_mon + 1);
     static std::string ip;
@@ -934,14 +978,52 @@ static void drawDetails() {
 
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
-enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF, OPT_COUNT };
+enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_COUNT };
 static bool sysOpen = false;
+
+// Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
+// (A bateria de testes conta as opcoes nesta ordem: tests/testar.sh, funcao opt.)
+struct Secao { const char *nome; std::vector<int> opts; };
+static const std::vector<Secao> SECOES = {
+    {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
+    {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO}},
+    {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG}},
+    {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH}},
+    {"TELA E ENERGIA", {OPT_ENERGIA, OPT_RELOGIO}},
+    {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR}},
+    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_REBOOT, OPT_OFF}},
+};
+static std::vector<int> painelLinhas;   // -(secao + 1) = titulo da secao; >= 0 = opcao
+static std::vector<int> painelOpts;     // so as opcoes, na ordem da tela
+static int optSel = 0;                  // opcao destacada (OPT_...)
+static void montarPainel() {
+    painelLinhas.clear();
+    painelOpts.clear();
+    for (size_t i = 0; i < SECOES.size(); i++) {
+        painelLinhas.push_back(-int(i) - 1);
+        for (int o : SECOES[i].opts) { painelLinhas.push_back(o); painelOpts.push_back(o); }
+    }
+}
+static int painelPos(int opt) {
+    for (size_t i = 0; i < painelLinhas.size(); i++) if (painelLinhas[i] == opt) return int(i);
+    return 0;
+}
+static const char *secaoDe(int opt) {
+    for (auto &sc : SECOES) for (int o : sc.opts) if (o == opt) return sc.nome;
+    return "";
+}
+static void painelMover(int d) {   // pula os titulos das secoes
+    if (painelOpts.empty()) montarPainel();
+    int n = int(painelOpts.size()), i = 0;
+    while (i < n && painelOpts[i] != optSel) i++;
+    optSel = painelOpts[(i + d + n) % n];
+}
 static bool restartMenu = false;
 static std::string perfilNome();
 static void abrirPerfis();
 static int volume = -2;   // -2 ainda nao leu, -1 sem placa de som, 0..100
 static const std::string DESKTOP = "/usr/bin/tos-desktop";
-static int optSel = 0;
 static std::string textTitle;                 // painel de texto (Como jogar, Informacoes)
 static std::vector<std::string> textLines;
 static int cpuPct = 0, memPct = 0, diskPct = 0;
@@ -996,8 +1078,27 @@ static const char *FONTES[] = {"Normal", "Grande", "Maior"};
 static int nivelFonte() { return std::max(0, std::min(2, atoi(prefs["fonte"].c_str()))); }
 static float escalaFonte() { return nivelFonte() == 2 ? 1.3f : nivelFonte() == 1 ? 1.15f : 1.0f; }
 
+static std::string emuNome(const Sys *s);
+
 static std::string optLabel(int i) {
     switch (i) {
+    case OPT_ORDENAR: return std::string("Ordenar jogos:   ‹ ") + ORDENS[ordemAtual()] + " ›";
+    case OPT_VAZIOS: return std::string("Consoles vazios:   ‹ ") + (prefLigada("vazios", false) ? "Mostrar" : "Esconder") + " ›";
+    case OPT_CAPAS: return "Capas e dados dos jogos:   baixar de novo";
+    case OPT_LIMPAR: return "Limpar \"Continuar jogando\"";
+    case OPT_RESUME: return std::string("Voltar de onde parou:   ‹ ") + (prefLigada("resume", true) ? "Ligado" : "Desligado") + " ›";
+    case OPT_FILTRO: return std::string("Filtro de imagem:   ‹ ") + FILTROS_IMG[filtroImg()] + " ›";
+    case OPT_PROPORCAO: return std::string("Proporção da imagem:   ‹ ") + PROPORCOES[proporcao()] + " ›";
+    case OPT_RUNAHEAD: return std::string("Menos atraso nos controles:   ‹ ") + (prefLigada("runahead", false) ? "Ligado" : "Desligado") + " ›";
+    case OPT_FPS: return std::string("Mostrar FPS no jogo:   ‹ ") + (prefLigada("fps", false) ? "Sim" : "Não") + " ›";
+    case OPT_NUCLEO: {
+        const Game *g = current();
+        if (!g) return "Emulador do console:   (escolha um jogo)";
+        return "Emulador do " + g->sys->name + ":   ‹ " + emuNome(g->sys) + " ›";
+    }
+    case OPT_RELOGIO: return std::string("Relógio:   ‹ ") + (prefs["relogio"] == "12" ? "12 h (AM/PM)" : "24 h") + " ›";
+    case OPT_ENVIAR: return "Enviar jogos do PC:   http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
+    case OPT_PADRAO: return "Voltar tudo ao padrão";
     case OPT_PERFIL: return "Perfil:   " + perfilNome() + "   (A troca)";
     case OPT_ENERGIA: return energiaDisponivel() ? std::string("Energia:   ‹ ") + ENERGIA[energia] + " ›"
                                                  : "Energia:   (fixa neste computador)";
@@ -1073,6 +1174,21 @@ static void panelHints(const char *const *H, int n, float x, float y, float w) {
 static std::string ipAddr();
 
 static const char *optAjuda(int o) {
+    switch (o) {
+    case OPT_ORDENAR: return "Ordem dos jogos no carrossel: pelo nome, pelo ano (os sem ano ficam no fim), pelos mais jogados ou pelos últimos que você abriu.";
+    case OPT_VAZIOS: return "Mostrar: os consoles sem jogo também aparecem nos filtros LB/RB. Esconder: só os consoles que têm jogo.";
+    case OPT_CAPAS: return "Procura de novo, na internet, as capas e os dados dos jogos que ficaram sem. Bom depois de ligar a rede ou de arrumar o nome de um jogo.";
+    case OPT_LIMPAR: return "Esvazia a lista \"Continuar jogando\" (os últimos jogos abertos). Favoritos e saves não são mexidos.";
+    case OPT_RESUME: return "Ligado: ao sair de um jogo o ponto é guardado, e na próxima vez ele continua dali. Desligado: o jogo sempre começa do início (os saves do próprio jogo continuam valendo).";
+    case OPT_FILTRO: return "Nenhum: pixels como o console mostrava. Liso: suaviza a imagem. TV de tubo: linhas de varredura leves, como numa TV antiga.";
+    case OPT_PROPORCAO: return "Original: a proporção que o console usava. 4:3: como numa TV antiga. Tela cheia: estica até as bordas. Escala inteira: pixels sempre do mesmo tamanho, sem borrar.";
+    case OPT_RUNAHEAD: return "Ligado: o emulador adianta um quadro para o botão responder mais rápido, como no console de verdade. Gasta mais processador: desligue se o jogo engasgar.";
+    case OPT_FPS: return "Mostra os quadros por segundo no canto do jogo. Útil para ver se o computador está dando conta.";
+    case OPT_NUCLEO: return "Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.";
+    case OPT_RELOGIO: return "Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).";
+    case OPT_ENVIAR: return "No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.";
+    case OPT_PADRAO: return "Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.";
+    }
     if (o == OPT_GRATIS) return "Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.";
     if (o == OPT_EJETAR) return "Solta o pen drive com segurança antes de tirar (grava o que ainda faltava). Para usar de novo, tire e coloque.";
     if (o == OPT_BACKUP) return "Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.";
@@ -1122,22 +1238,30 @@ static float drawParagrafo(const std::string &t, float x, float y, float w, floa
 
 static void drawSystem() {
     if (!sysOpen) return;
-    float u = G.u, w = std::min(G.W - 24.0f * u, 420 * u * T.escala);   // letra maior: painel mais largo
-    float rowH = 15 * u;
-    // muitas opcoes: mostra as que cabem e rola junto com a selecao
-    int vis = std::max(4, std::min(int(OPT_COUNT), int((G.H - 110 * u) / (rowH + 1.6f * u))));
-    int first = std::max(0, std::min(OPT_COUNT - vis, optSel - vis / 2));
-    float h = 22 * u + 10 * u + vis * (rowH + 1.6f * u) + 14 * u + 22 * u;
+    if (painelLinhas.empty()) montarPainel();
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u * T.escala);   // letra maior: painel mais largo
+    float rowH = 15 * u, passo = rowH + 1.6f * u;
+    // secoes e opcoes numa lista so: mostra as linhas que cabem e rola junto com a selecao
+    int total = int(painelLinhas.size());
+    int vis = std::max(6, std::min(total, int((G.H - 110 * u) / passo)));
+    int first = std::max(0, std::min(total - vis, painelPos(optSel) - vis / 2));
+    float h = 22 * u + 10 * u + vis * passo + 14 * u + 22 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
     float top = whitePanel("Sistema", x, y, w, h) + 8 * u;
-    float lx = x + 12 * u, lw = (w - 24 * u) * 0.53f, rx = lx + lw + 14 * u, rw = x + w - 12 * u - rx;
-    T.draw("Opções", lx, top + 5 * u, 11, false, 0xFF2B2E33);
+    float lx = x + 12 * u, lw = (w - 24 * u) * 0.55f, rx = lx + lw + 14 * u, rw = x + w - 12 * u - rx;
+    T.draw(secaoDe(optSel), lx, top + 5 * u, 11, false, 0xFF2B2E33);
     if (first > 0) T.draw("▲", lx + lw, top + 5 * u, 8, false, 0xFF5E6269, 2);
-    if (first + vis < OPT_COUNT) T.draw("▼", lx + lw, top + 13 * u + vis * (rowH + 1.6f * u) + 3 * u, 8, false, 0xFF5E6269, 2);
-    for (int i = first; i < first + vis; i++) {
-        float ry = top + 13 * u + (i - first) * (rowH + 1.6f * u);
-        G.fillRect(lx, ry, lw, rowH, i == optSel ? 0xFF2CCF9A : 0xFF4A4D52);
-        T.draw(optLabel(i), lx + 8 * u, ry + rowH / 2, 9.5f, false, 0xFFFFFFFF, 0, lw - 16 * u);
+    if (first + vis < total) T.draw("▼", lx + lw, top + 13 * u + vis * passo + 3 * u, 8, false, 0xFF5E6269, 2);
+    for (int i = first; i < first + vis && i < total; i++) {
+        float ry = top + 13 * u + (i - first) * passo;
+        int o = painelLinhas[i];
+        if (o < 0) {   // titulo da secao: letra pequena cinza com um fio embaixo
+            G.fillRect(lx, ry + rowH - 1.5f * u, lw, std::max(1.0f, u * 0.6f), 0xFFD5D8DC);
+            T.draw(SECOES[-o - 1].nome, lx + 2 * u, ry + rowH / 2 + u, 7.5f, true, 0xFF8A9099);
+            continue;
+        }
+        G.fillRect(lx, ry, lw, rowH, o == optSel ? 0xFF2CCF9A : 0xFF4A4D52);
+        T.draw(optLabel(o), lx + 8 * u, ry + rowH / 2, 9.5f, false, 0xFFFFFFFF, 0, lw - 16 * u);
     }
     float ry = top + 5 * u;
     T.draw("Endereço IP", rx, ry, 11, false, 0xFF2B2E33);
@@ -1158,6 +1282,21 @@ static void drawSystem() {
     drawParagrafo(optAjuda(optSel), rx, ry + 12 * u, rw, 9, 0xFF5E6269, 12.5f * u, y + h - 24 * u);
     static const char *H[] = {"ud", "escolher", "lr", "mudar", "a", "abrir", "b", "fechar"};
     panelHints(H, 8, x, y + h, w);
+}
+
+// Caixa "tem certeza?" generica: A faz, B cancela
+static std::string confTitulo, confTexto;
+static std::function<void()> confAcao;
+static void abrirConfirmacao(const std::string &t, const std::string &x, std::function<void()> f) { confTitulo = t; confTexto = x; confAcao = f; }
+static void drawConfirmacao() {
+    if (confTitulo.empty()) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 380 * u * T.escala), lh = 12.5f * u * T.escala;
+    float h = 22 * u + 12 * u + 4 * lh + 10 * u + 22 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel(confTitulo, x, y, w, h) + 12 * u;
+    drawParagrafo(confTexto, x + 14 * u, top, w - 28 * u, 9.5f, 0xFF2B2E33, lh, y + h - 24 * u);
+    static const char *H[] = {"a", "sim", "b", "não"};
+    panelHints(H, 4, x, y + h, w);
 }
 
 static void drawTextPanel() {
@@ -1229,7 +1368,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.17" + buf);
+    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.18" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -2267,9 +2406,60 @@ static void drawPerguntaHD() {
 }
 
 // dir: -1/+1 = mudar valor (esquerda/direita); 0 = confirmar (A)
+static void trocarNucleo(const Game *g);
+
 static void optAction(int dir) {
     int d = dir == 0 ? 1 : dir;
     switch (optSel) {
+    case OPT_ORDENAR: {
+        prefs["ordem"] = std::to_string((ordemAtual() + d + 4) % 4);
+        const Game *g = current();
+        std::string k = g ? g->key() : "";
+        applyFilter();
+        for (size_t i = 0; i < view.size(); i++) if (view[i].key() == k) { target = int(i); pos = float(target); }
+        break;
+    }
+    case OPT_VAZIOS: prefs["vazios"] = prefLigada("vazios", false) ? "0" : "1"; buildFilters(); break;
+    case OPT_CAPAS:
+        if (dir == 0) {
+            remove((ROMS + "/.sem_capa").c_str());
+            remove((ROMS + "/.sem_fundo").c_str());
+            toast("As capas e os dados que faltavam vão ser procurados de novo (precisa de internet).", 5000);
+        }
+        return;
+    case OPT_LIMPAR:
+        if (dir == 0) {
+            for (auto it = prefs.begin(); it != prefs.end();) it = it->first.rfind("quando|", 0) == 0 ? prefs.erase(it) : std::next(it);
+            savePrefs();
+            buildFilters();
+            applyFilter();
+            toast("\"Continuar jogando\" limpo.", 3000);
+        }
+        return;
+    case OPT_RESUME: prefs["resume"] = prefLigada("resume", true) ? "0" : "1"; gravarJogoCfg(); break;
+    case OPT_FILTRO: prefs["filtro"] = std::to_string((filtroImg() + d + 3) % 3); gravarJogoCfg(); break;
+    case OPT_PROPORCAO: prefs["proporcao"] = std::to_string((proporcao() + d + 4) % 4); gravarJogoCfg(); break;
+    case OPT_RUNAHEAD: prefs["runahead"] = prefLigada("runahead", false) ? "0" : "1"; gravarJogoCfg(); break;
+    case OPT_FPS: prefs["fps"] = prefLigada("fps", false) ? "0" : "1"; gravarJogoCfg(); break;
+    case OPT_NUCLEO: if (current()) trocarNucleo(current()); return;
+    case OPT_RELOGIO: prefs["relogio"] = prefs["relogio"] == "12" ? "24" : "12"; break;
+    case OPT_ENVIAR:
+        if (dir == 0) toast("No PC ou no celular, na mesma rede, abra http://" + ipAddr() + ":" + std::to_string(Envio::PORT) + " e arraste os jogos.", 6000);
+        return;
+    case OPT_PADRAO:
+        if (dir == 0)
+            abrirConfirmacao("Voltar tudo ao padrão",
+                             "Tema, filtros, opções de jogo e do menu voltam ao padrão. Favoritos, saves, perfis e jogos ficam como estão. O ScrapCade reabre.", [] {
+                for (auto it = prefs.begin(); it != prefs.end();) {
+                    const std::string &k = it->first;
+                    bool fica = k.rfind("fav|", 0) == 0 || k.rfind("plays|", 0) == 0 || k.rfind("quando|", 0) == 0 || k == "ultimo";
+                    it = fica ? std::next(it) : prefs.erase(it);
+                }
+                savePrefs();
+                gravarJogoCfg();
+                restartMenu = true;   // reabre com os padroes
+            });
+        return;
     case OPT_JOGOS: if (dir == 0) { sysOpen = false; abrirNavegador(2); } return;
     case OPT_ARQUIVOS: if (dir == 0) { sysOpen = false; abrirNavegador(3); } return;
     case OPT_GRATIS: if (dir == 0) { sysOpen = false; abrirGratis(); } return;
@@ -2568,8 +2758,16 @@ static bool installInput(int b) {
     return true;   // instalando: nada mexe no menu
 }
 
+static bool confirmacaoInput(int b) {
+    if (confTitulo.empty()) return false;
+    if (b == B_A) { auto f = confAcao; confTitulo.clear(); confAcao = nullptr; if (f) f(); }
+    else if (b == B_B) confTitulo.clear();
+    return true;
+}
+
 static bool panelInput(Btn b) {
     if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
+    if (confirmacaoInput(b)) return true;
     if (tecladoInput(b)) return true;
     if (perfisInput(b)) return true;
     if (netInput(b)) return true;
@@ -2585,8 +2783,8 @@ static bool panelInput(Btn b) {
     }
     if (!sysOpen) return false;
     switch (b) {
-    case B_UP: optSel = (optSel + OPT_COUNT - 1) % OPT_COUNT; break;
-    case B_DOWN: optSel = (optSel + 1) % OPT_COUNT; break;
+    case B_UP: painelMover(-1); break;
+    case B_DOWN: painelMover(1); break;
     case B_LEFT: optAction(-1); break;
     case B_RIGHT: optAction(1); break;
     case B_A: optAction(0); break;
@@ -3108,6 +3306,7 @@ static void render() {
     drawAtualizar();
     drawNavegador();
     drawGratis();
+    drawConfirmacao();
     drawPerguntaHD();
     drawControle();
     drawTeclado();
@@ -3347,6 +3546,8 @@ int main() {
     T.bold = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf";
 
     loadPrefs();
+    gravarJogoCfg();
+    montarPainel();
     scanTemas();
     aplicarTemaPrefs();
     T.escala = escalaFonte();

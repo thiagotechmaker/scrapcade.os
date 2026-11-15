@@ -47,7 +47,8 @@ try:
 except Exception as e: print("fechada")
 P
 }
-opt() { k tab; sleep 2; for i in $(seq $1); do echo "sendkey down"; sleep 0.25; done; sleep 1; }
+opt() { k tab; sleep 2;   # painel em secoes: conta so as opcoes (os titulos sao pulados)
+  for i in $(seq $1); do echo "sendkey down"; sleep 0.25; done; sleep 1; }
 fecha() { k esc; sleep 1; k esc; sleep 1; }
 up() { curl -g -s -m 30 -T "$1" "$W/$2" -o /dev/null -w "%{http_code}"; }
 enc() { python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$1"; }
@@ -70,32 +71,36 @@ RO=$TOS/tests/roms
   k ret; sleep 30; shot sc_jogando; echo "sendkey esc 1000"; sleep 75; shot sc_voltou_do_jogo
   log "samba antes: $(porta 18445)  ssh antes: $(porta 18022)"
   opt 0; k ret; sleep 3; shot p_perfil; fecha
-  opt 3; k right; sleep 2; shot p_energia; fecha
-  opt 4; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 4; k left; sleep 1; fecha
-  opt 6; k right; sleep 2; shot p_anim; k left; fecha
-  opt 7; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
-  opt 8; k right; sleep 2; shot p_fundo_off; k left; fecha
-  opt 9; sleep 1; shot p_motor; fecha
-  opt 11; k ret; sleep 8; shot p_rede; fecha
-  opt 12; k ret; sleep 12; shot p_bluetooth; fecha
-  opt 13; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
-  opt 14; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
-  opt 15; k ret; sleep 3; shot p_controle; fecha
-  opt 17; k ret; sleep 3; shot p_comojogar; fecha
-  opt 18; k ret; sleep 4; shot p_bios; fecha
-  opt 19; k ret; sleep 20; shot p_atualizar; fecha
-  opt 20; k ret; sleep 4; shot p_instalar; fecha
-  opt 21; k ret; sleep 4; shot p_info; fecha
-  opt 16; k ret; sleep 40; shot p_desktop
+  opt 25; k right; sleep 2; shot p_energia; fecha
+  opt 17; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 17; k left; sleep 1; fecha
+  opt 19; k right; sleep 2; shot p_anim; k left; fecha
+  opt 20; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
+  opt 21; k right; sleep 2; shot p_fundo_off; k left; fecha
+  opt 35; sleep 1; shot p_motor; fecha
+  opt 27; k ret; sleep 8; shot p_rede; fecha
+  opt 24; k ret; sleep 12; shot p_bluetooth; fecha
+  opt 28; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
+  opt 29; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
+  opt 22; k ret; sleep 3; shot p_controle; fecha
+  opt 36; k ret; sleep 3; shot p_comojogar; fecha
+  opt 9; k ret; sleep 4; shot p_bios; fecha
+  opt 31; k ret; sleep 20; shot p_atualizar; fecha
+  opt 33; k ret; sleep 4; shot p_instalar; fecha
+  opt 37; k ret; sleep 4; shot p_info; fecha
+  opt 34; k ret; sleep 40; shot p_desktop
   echo quit
 ) | timeout 1200 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080,hostfwd=tcp:127.0.0.1:18445-:445,hostfwd=tcp:127.0.0.1:18022-:22 \
     > teste/q6.log 2>&1
 # o que ficou gravado na TOS-DADOS (perfil, preferencias, jogos)
 log "disco particoes: $(rotulos $D)"
-D=teste/t-som.img; cp $I/disk.img $D; truncate -s 3G $D
-( sleep 30; senha; sleep 60; k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
-  opt 10; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai ao ligar ("dumped core"): uma segunda tentativa
+  D=teste/t-som.img; cp $I/disk.img $D; truncate -s 3G $D
+  ( sleep 30; senha; sleep 60; k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
+    opt 23; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
+  [ -s teste/som2.wav ] && [ -f teste/z_p_volume.ppm ] && break
+  log "som: QEMU caiu (tentativa $tentativa), repetindo"
+done
 log "som: $(python3 -c 'import wave,struct,sys
 w=wave.open(sys.argv[1]);d=w.readframes(w.getnframes());s=struct.unpack("<%dh"%(len(d)//2),d[:len(d)//2*2]);print("tocou" if max(map(abs,s or [0]))>1000 else "silencio")' teste/som2.wav)"
 log "fim: $(ls teste/z_*.ppm | wc -l) capturas"
