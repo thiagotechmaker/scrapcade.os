@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_PICODRIVE
+	bool "libretro-picodrive"
+	help
+	  Nucleo libretro picodrive (leve, para o ScrapCade OS de 32 bits).

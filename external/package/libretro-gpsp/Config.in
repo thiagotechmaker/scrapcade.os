@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_GPSP
+	bool "libretro-gpsp"
+	help
+	  Nucleo libretro gpsp (leve, para o ScrapCade OS de 32 bits).

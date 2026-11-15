@@ -1,0 +1,9 @@
+# ScrapCade OS 32 bits: PCs antigos (Pentium M, Pentium 4, Atom, Athlon XP). Sem PAE (o Pentium M nao tem),
+# com memoria alta ate 4 GB, e EFI de 32 bits (alguns Atom e Macs antigos ligam so por UEFI de 32 bits).
+# CONFIG_64BIT is not set
+CONFIG_M686=y
+CONFIG_X86_GENERIC=y
+CONFIG_HIGHMEM4G=y
+# CONFIG_X86_PAE is not set
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
