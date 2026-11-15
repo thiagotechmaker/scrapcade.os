@@ -1,0 +1,9 @@
+#!/bin/sh
+# ScrapCade OS: suspende o computador (como um console): o jogo e o menu continuam de onde estavam ao acordar.
+# Usa a suspensao na memoria (S3); se a placa nao tiver, a de baixo consumo do Linux (s2idle).
+sync
+echo "== $(date "+%d/%m %H:%M") suspender" >> /userdata/system/logs/energia.log 2>/dev/null
+if grep -qs "deep" /sys/power/mem_sleep; then echo deep > /sys/power/mem_sleep; echo mem > /sys/power/state
+elif grep -qs "mem" /sys/power/state; then echo mem > /sys/power/state
+else echo freeze > /sys/power/state; fi
+echo "== $(date "+%d/%m %H:%M") acordou" >> /userdata/system/logs/energia.log 2>/dev/null

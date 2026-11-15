@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.19 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - o menu do ScrapCade OS (conversao do ScrapCade do iChroma para C++/SDL2); versao no arquivo VERSION
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -42,6 +42,8 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <cmath>
+#include <SDL_mixer.h>
 
 
 // ------------------------------------------------------------------ preferencias (favoritos, jogados, tema)
@@ -480,8 +482,12 @@ static void drawCardTitle(const std::string &t, float l, float top, float r, flo
     }
 }
 
+static std::string fotoDoPonto(const Game &g);
+static bool cartoesPonto = false;   // "Continuar jogando" aberto: as capas viram a foto do ponto salvo
+static void render();
 static Card &card(const Game &g) {
-    std::string key = g.key() + "|" + std::to_string(theme) + (showCovers ? "" : "|s");
+    std::string ponto = cartoesPonto ? fotoDoPonto(g) : "";
+    std::string key = g.key() + "|" + std::to_string(theme) + (showCovers ? "" : "|s") + (ponto.empty() ? "" : "|ponto");
     auto it = cardInfo.find(key);
     if (it != cardInfo.end()) return it->second;
     float cw = coverW(), ch = coverH(), m = margin(), u = G.u;
@@ -496,7 +502,7 @@ static Card &card(const Game &g) {
     SDL_Texture *art = nullptr;
     int aw = 0, ah = 0;
     if (showCovers) {
-        std::string p = coverOf(g);
+        std::string p = ponto.empty() ? coverOf(g) : ponto;   // "Continuar jogando": a foto de onde voce parou
         if (!p.empty()) art = IMG_LoadTexture(G.r, p.c_str());
         if (art) SDL_QueryTexture(art, nullptr, nullptr, &aw, &ah);
     }
@@ -560,6 +566,13 @@ static Card &card(const Game &g) {
     cards[key] = t;
     cardInfo[key] = Card{t, top, side};
     return cardInfo[key];
+}
+
+static std::string fotoDoPonto(const Game &g) {
+    std::string pid = perfilAtual >= 0 && perfilAtual < int(perfis.size()) ? perfis[perfilAtual].id : "1";
+    std::string dir = "/userdata/saves/" + g.sys->id + (pid != "1" && !pid.empty() ? "/perfil-" + pid : "");
+    std::string f = dir + "/" + g.base + ".state.auto.png";
+    return isFile(f) ? f : "";
 }
 
 static void clearCards() {
@@ -681,7 +694,74 @@ static const int PROTECAO_MIN[] = {0, 5, 10, 30};
 static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 2 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 2 : v; }
 static const int DESLIGAR_MIN[] = {0, 30, 60, 120};
 static int desligarIdx() { int v = atoi(prefs["desligar"].c_str()); return v < 0 || v > 3 ? 0 : v; }
-static Uint32 ultimaTecla = 0;      // ultimo botao ou tecla (para a protecao de tela e o desligar sozinho)
+static Uint32 ultimaTecla = 0;
+// musica (da pasta music da SCRAP-DADOS: .ogg, .mp3, .flac, .wav) e sons do menu, desligados por padrao
+static const std::string MUSICA_DIR = "/userdata/music";
+static bool mixerAberto = false;
+static Mix_Music *musicaAtual = nullptr;
+static std::atomic<bool> musicaAcabou{false};
+static Mix_Chunk *somMover = nullptr, *somOk = nullptr, *somVoltar = nullptr;
+static bool abrirMixer() {
+    if (mixerAberto) return true;
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return false;
+    if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) != 0) { SDL_QuitSubSystem(SDL_INIT_AUDIO); return false; }
+    Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC);
+    mixerAberto = true;
+    return true;
+}
+// bipe curto e suave (sem arquivo): frequencia que desliza de f0 para f1 em ms milissegundos
+static Mix_Chunk *bipe(float f0, float f1, int ms) {
+    int n = 44100 * ms / 1000;
+    Sint16 *b = (Sint16 *)SDL_malloc(n * 4);
+    double fase = 0;
+    for (int i = 0; i < n; i++) {
+        float t = float(i) / n, f = f0 + (f1 - f0) * t, env = t < 0.1f ? t / 0.1f : (1 - t) / 0.9f;
+        fase += 2 * M_PI * f / 44100;
+        Sint16 v = Sint16(sin(fase) * 6000 * env);
+        b[2 * i] = b[2 * i + 1] = v;
+    }
+    Mix_Chunk *c = Mix_QuickLoad_RAW((Uint8 *)b, n * 4);
+    return c;
+}
+static void tocarSom(Mix_Chunk *c) {
+    if (prefs["sons"] != "1" || !c || !mixerAberto) return;
+    Mix_PlayChannel(-1, c, 0);
+}
+static std::vector<std::string> musicas() {
+    std::vector<std::string> v;
+    if (DIR *d = opendir(MUSICA_DIR.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (endsWith(n, ".ogg") || endsWith(n, ".mp3") || endsWith(n, ".flac") || endsWith(n, ".wav")) v.push_back(MUSICA_DIR + "/" + n);
+        }
+        closedir(d);
+    }
+    return v;
+}
+static void tocarMusica() {   // uma musica sorteada da pasta; quando acaba, a proxima
+    if (prefs["musica"] != "1" || !abrirMixer()) return;
+    auto v = musicas();
+    if (v.empty()) return;
+    if (musicaAtual) { Mix_HaltMusic(); Mix_FreeMusic(musicaAtual); musicaAtual = nullptr; }
+    musicaAtual = Mix_LoadMUS(v[rand() % v.size()].c_str());
+    if (!musicaAtual) return;
+    Mix_VolumeMusic(MIX_MAX_VOLUME * 35 / 100);
+    Mix_HookMusicFinished([] { musicaAcabou = true; });
+    Mix_PlayMusic(musicaAtual, 1);
+}
+static void pararMusica() {
+    if (musicaAtual) { Mix_HaltMusic(); Mix_FreeMusic(musicaAtual); musicaAtual = nullptr; }
+}
+static void prepararSons() {
+    if (prefs["sons"] != "1" && prefs["musica"] != "1") return;
+    if (!abrirMixer()) return;
+    if (!somMover) { somMover = bipe(1250, 1250, 22); somOk = bipe(880, 1320, 70); somVoltar = bipe(990, 660, 60); }
+}
+// menu do botao de energia (o acpid manda SIGUSR1 ao ScrapCade)
+static volatile sig_atomic_t botaoEnergia = 0;
+static void onBotaoEnergia(int) { botaoEnergia = 1; }
+static int energiaMenu = 0;   // 0 fechado; senao 1 + opcao destacada
+static const char *ENERGIA_OPCOES[] = {"Suspender", "Reiniciar", "Desligar", "Cancelar"};      // ultimo botao ou tecla (para a protecao de tela e o desligar sozinho)
 static bool protecaoOn = false;
 static const char *FILTROS_IMG[] = {"Nenhum", "Liso", "TV de tubo"};
 static int filtroImg() { int v = atoi(prefs["filtro"].c_str()); return v < 0 || v > 2 ? 0 : v; }
@@ -740,6 +820,7 @@ static std::string filterName(const std::string &id) {
 }
 
 static void applyFilter(int keepIndex = -1) {
+    cartoesPonto = filter == F_REC;
     view.clear();
     for (auto &g : all) {
         if (filter == F_FAV && !isFav(g)) continue;
@@ -985,7 +1066,7 @@ static void drawDetails() {
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
 enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
-       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_COUNT };
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_COUNT };
 static bool sysOpen = false;
 
 // Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
@@ -995,10 +1076,10 @@ static const std::vector<Secao> SECOES = {
     {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
     {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO}},
     {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_PROTECAO}},
-    {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH}},
+    {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH, OPT_MUSICA, OPT_SONS}},
     {"TELA E ENERGIA", {OPT_ENERGIA, OPT_DESLIGAR, OPT_RELOGIO}},
     {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR}},
-    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_REBOOT, OPT_OFF}},
+    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_SUSPENDER, OPT_REBOOT, OPT_OFF}},
 };
 static std::vector<int> painelLinhas;   // -(secao + 1) = titulo da secao; >= 0 = opcao
 static std::vector<int> painelOpts;     // so as opcoes, na ordem da tela
@@ -1105,6 +1186,13 @@ static std::string optLabel(int i) {
     case OPT_RELOGIO: return std::string("Relógio:   ‹ ") + (prefs["relogio"] == "12" ? "12 h (AM/PM)" : "24 h") + " ›";
     case OPT_ENVIAR: return "Enviar jogos do PC:   http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
     case OPT_PADRAO: return "Voltar tudo ao padrão";
+    case OPT_MUSICA: {
+        size_t n = musicas().size();
+        return std::string("Música do menu:   ‹ ") + (prefs["musica"] == "1" ? "Ligada" : "Desligada") + " ›" +
+               (n ? "   (" + std::to_string(n) + (n == 1 ? " música)" : " músicas)") : "   (pasta music vazia)");
+    }
+    case OPT_SONS: return std::string("Sons do menu:   ‹ ") + (prefs["sons"] == "1" ? "Ligados" : "Desligados") + " ›";
+    case OPT_SUSPENDER: return "Suspender (continua de onde parou)";
     case OPT_PROTECAO: { int m = PROTECAO_MIN[protecaoIdx()]; return std::string("Proteção de tela:   ‹ ") + (m ? std::to_string(m) + " min" : "Desligada") + " ›"; }
     case OPT_DESLIGAR: {
         int m = DESLIGAR_MIN[desligarIdx()];
@@ -1198,6 +1286,9 @@ static const char *optAjuda(int o) {
     case OPT_NUCLEO: return "Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.";
     case OPT_RELOGIO: return "Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).";
     case OPT_ENVIAR: return "No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.";
+    case OPT_MUSICA: return "Toca as músicas que você colocar na pasta music da SCRAP-DADOS (.ogg, .mp3, .flac ou .wav), em ordem sorteada, só no menu. O ScrapCade não traz músicas.";
+    case OPT_SONS: return "Um som curto ao andar pelo carrossel, ao escolher e ao voltar.";
+    case OPT_SUSPENDER: return "Desliga a tela e quase tudo, como um console em descanso. Ao apertar o botão de energia (ou abrir a tampa) volta exatamente onde estava. O botão de energia também abre este menu.";
     case OPT_PROTECAO: return "Parado no menu por esse tempo, a tela escurece e a logo com a hora muda de lugar devagar (a imagem não marca a TV). Qualquer botão volta, sem fazer nada.";
     case OPT_DESLIGAR: return "Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.";
     case OPT_PADRAO: return "Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.";
@@ -1314,7 +1405,36 @@ static void drawConfirmacao() {
 
 static void drawProtecao() {
     if (!protecaoOn) return;
-    G.fillRect(0, 0, float(G.W), float(G.H), 0xF5000000);
+    G.fillRect(0, 0, float(G.W), float(G.H), 0xFF000000);
+    // modo atracao (como os fliperamas parados): a cena de um jogo sorteado a cada 10 s, escurecida, com nome e console
+    static long cenaVez = -1;
+    static SDL_Texture *cena = nullptr;
+    static std::string cenaNome, cenaSis;
+    long vez = long(time(nullptr) / 10);
+    if (vez != cenaVez) {
+        cenaVez = vez;
+        if (cena) { SDL_DestroyTexture(cena); cena = nullptr; }
+        std::vector<const Game *> com;
+        for (auto &g : all) if (!coverOf(g, "-fundo").empty()) com.push_back(&g);
+        if (!com.empty()) {
+            const Game *g = com[(unsigned(vez) * 2654435761u) % com.size()];
+            cena = IMG_LoadTexture(G.r, coverOf(*g, "-fundo").c_str());
+            cenaNome = g->title;
+            cenaSis = g->sys->name;
+        }
+    }
+    if (cena) {
+        int cw = 0, chh = 0;
+        SDL_QueryTexture(cena, nullptr, nullptr, &cw, &chh);
+        float esc = std::max(G.W / float(std::max(1, cw)), G.H / float(std::max(1, chh)));
+        SDL_FRect d{(G.W - cw * esc) / 2, (G.H - chh * esc) / 2, cw * esc, chh * esc};
+        SDL_SetTextureColorMod(cena, 110, 110, 110);
+        SDL_RenderCopyF(G.r, cena, nullptr, &d);
+        float u = G.u;
+        G.fillRect(0, G.H - 46 * u, float(G.W), 46 * u, 0x99000000);
+        T.draw(cenaNome, 18 * u, G.H - 30 * u, 13, true, 0xFFFFFFFF, 0, G.W * 0.6f);
+        T.draw(cenaSis, 18 * u, G.H - 13 * u, 9, false, 0xFFB8BEC8, 0);
+    }
     float u = G.u, lw = 300 * u, lh = lw * 200 / 1489;   // logo de pixel (1489x200)
     unsigned semente = unsigned(time(nullptr) / 10);   // muda de lugar a cada 10 s
     semente = semente * 1103515245u + 12345u;
@@ -1331,6 +1451,20 @@ static void drawProtecao() {
     char hora[16];
     strftime(hora, sizeof hora, prefs["relogio"] == "12" ? "%I:%M %p" : "%H:%M", &lt);
     T.draw(hora, x + lw / 2, y + lh + 18 * u, 16, true, 0xCCFFFFFF, 1);
+}
+
+static void drawEnergia() {
+    if (!energiaMenu) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 300 * u * T.escala), rh = 17 * u * T.escala;
+    float h = 22 * u + 8 * u + 4 * rh + 8 * u + 22 * u, x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Energia", x, y, w, h) + 8 * u;
+    for (int i = 0; i < 4; i++) {
+        bool sel = energiaMenu - 1 == i;
+        if (sel) G.fillRect(x, top + i * rh, w, rh, 0xFF2FD09A);
+        T.draw(ENERGIA_OPCOES[i], x + 14 * u, top + i * rh + rh / 2, 10, sel, 0xFF2B2E33);
+    }
+    static const char *H[] = {"ud", "escolher", "a", "fazer", "b", "cancelar"};
+    panelHints(H, 6, x, y + h, w);
 }
 
 static void drawTextPanel() {
@@ -1402,7 +1536,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.19" + buf);
+    textLines.push_back("Sistema: ScrapCade OS v" + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -2187,8 +2321,9 @@ static std::string updAtual, updNova, updMB, updMsg;
 static int updPct = 0;
 static std::mutex updMu;
 
-static std::string versaoBonita(const std::string &b) {   // 202611132145 -> 13/11/2026 21:45
-    if (b.size() < 12) return b;
+static std::string versaoBonita(const std::string &b) {   // 0.20.0-beta -> v0.20.0-beta; 202611132145 -> 13/11/2026 21:45
+    bool data = b.size() == 12 && b.find_first_not_of("0123456789") == std::string::npos;
+    if (!data) return !b.empty() && isdigit((unsigned char)b[0]) ? "v" + b : b;
     return b.substr(6, 2) + "/" + b.substr(4, 2) + "/" + b.substr(0, 4) + " " + b.substr(8, 2) + ":" + b.substr(10, 2);
 }
 
@@ -2478,6 +2613,18 @@ static void optAction(int dir) {
     case OPT_NUCLEO: if (current()) trocarNucleo(current()); return;
     case OPT_RELOGIO: prefs["relogio"] = prefs["relogio"] == "12" ? "24" : "12"; break;
     case OPT_PROTECAO: prefs["protecao"] = std::to_string((protecaoIdx() + d + 4) % 4); break;
+    case OPT_MUSICA:
+        prefs["musica"] = prefs["musica"] == "1" ? "0" : "1";
+        if (prefs["musica"] == "1") {
+            if (musicas().empty()) toast("Coloque músicas (.ogg, .mp3, .flac, .wav) na pasta music da SCRAP-DADOS.", 6000);
+            prepararSons();
+            tocarMusica();
+        } else pararMusica();
+        break;
+    case OPT_SONS: prefs["sons"] = prefs["sons"] == "1" ? "0" : "1"; prepararSons(); tocarSom(somOk); break;
+    case OPT_SUSPENDER:
+        if (dir == 0) { sysOpen = false; savePrefs(); render(); if (system("/usr/bin/tos-suspender") != 0) {} ultimaTecla = SDL_GetTicks(); }
+        return;
     case OPT_DESLIGAR: prefs["desligar"] = std::to_string((desligarIdx() + d + 4) % 4); break;
     case OPT_ENVIAR:
         if (dir == 0) toast("No PC ou no celular, na mesma rede, abra http://" + ipAddr() + ":" + std::to_string(Envio::PORT) + " e arraste os jogos.", 6000);
@@ -2801,8 +2948,24 @@ static bool confirmacaoInput(int b) {
     return true;
 }
 
+static bool energiaInput(int b) {
+    if (!energiaMenu) return false;
+    if (b == B_UP) energiaMenu = (energiaMenu + 2) % 4 + 1;
+    if (b == B_DOWN) energiaMenu = energiaMenu % 4 + 1;
+    if (b == B_B) energiaMenu = 0;
+    if (b == B_A) {
+        int o = energiaMenu - 1;
+        energiaMenu = 0;
+        if (o == 0) { savePrefs(); render(); if (system("/usr/bin/tos-suspender") != 0) {} ultimaTecla = SDL_GetTicks(); }
+        else if (o == 1) powerOff(true);
+        else if (o == 2) powerOff(false);
+    }
+    return true;
+}
+
 static bool panelInput(Btn b) {
     if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
+    if (energiaInput(b)) return true;
     if (confirmacaoInput(b)) return true;
     if (tecladoInput(b)) return true;
     if (perfisInput(b)) return true;
@@ -3346,6 +3509,7 @@ static void render() {
     drawPerguntaHD();
     drawControle();
     drawTeclado();
+    drawEnergia();
     drawToast();
     drawProtecao();
     SDL_RenderPresent(G.r);
@@ -3450,6 +3614,7 @@ static void play() {
            false, 0xFFDDE1E8, 1);
     SDL_RenderPresent(G.r);
     SDL_Delay(1800);
+    pararMusica();
     launchSys = g->sys->id;
     launchRom = g->dir + "/" + g->file;
     launchCore = core;
@@ -3457,6 +3622,17 @@ static void play() {
 }
 
 // ------------------------------------------------------------------ principal
+
+// Troca rapida (como o Game Switcher dos portateis): vai direto para "Continuar jogando"; de novo, volta para Todos
+static void trocaRapida() {
+    details = false;
+    if (filter == F_REC) { filter = F_ALL; applyFilter(); clearCards(); toast("Todos os jogos", 1500); return; }
+    if (std::find(filters.begin(), filters.end(), F_REC) == filters.end()) { toast("Nenhum jogo para continuar ainda: abra um jogo primeiro.", 3500); return; }
+    filter = F_REC;
+    applyFilter();
+    clearCards();
+    toast("Continuar jogando: A volta de onde você parou", 2500);
+}
 
 static volatile sig_atomic_t quit = 0;
 static void onSignal(int) { quit = 1; }
@@ -3548,6 +3724,7 @@ int main() {
     if (getenv("INBOX_DIR")) INBOX = getenv("INBOX_DIR");
     signal(SIGTERM, onSignal);
     signal(SIGINT, onSignal);
+    signal(SIGUSR1, onBotaoEnergia);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     {   // voltando de um jogo ou do desktop: as preferencias sao as do perfil que estava jogando
@@ -3586,6 +3763,8 @@ int main() {
     loadPrefs();
     gravarJogoCfg();
     montarPainel();
+    prepararSons();
+    tocarMusica();
     scanTemas();
     aplicarTemaPrefs();
     T.escala = escalaFonte();
@@ -3644,6 +3823,13 @@ int main() {
             if (botao) {
                 ultimaTecla = SDL_GetTicks();
                 if (protecaoOn) { protecaoOn = false; continue; }   // acorda: o botao nao faz mais nada
+                // sons do menu: andar, escolher, voltar
+                int k = e.type == SDL_KEYDOWN ? e.key.keysym.sym : -1, cb = e.type == SDL_CONTROLLERBUTTONDOWN ? e.cbutton.button : -1;
+                if (k == SDLK_RETURN || k == SDLK_SPACE || cb == SDL_CONTROLLER_BUTTON_A) tocarSom(somOk);
+                else if (k == SDLK_ESCAPE || k == SDLK_BACKSPACE || cb == SDL_CONTROLLER_BUTTON_B) tocarSom(somVoltar);
+                else if (k == SDLK_LEFT || k == SDLK_RIGHT || k == SDLK_UP || k == SDLK_DOWN || cb == SDL_CONTROLLER_BUTTON_DPAD_LEFT ||
+                         cb == SDL_CONTROLLER_BUTTON_DPAD_RIGHT || cb == SDL_CONTROLLER_BUTTON_DPAD_UP || cb == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+                    tocarSom(somMover);
             }
             switch (e.type) {
             case SDL_QUIT: quit = 1; break;
@@ -3715,6 +3901,7 @@ int main() {
                 case SDLK_q: case SDLK_PAGEUP: nextFilter(-1); break;
                 case SDLK_e: case SDLK_PAGEDOWN: nextFilter(1); break;
                 case SDLK_TAB: details = false; openSystem(); break;
+                case SDLK_c: trocaRapida(); break;
                 }
                 break;
             }
@@ -3736,6 +3923,7 @@ int main() {
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: nextFilter(-1); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: nextFilter(1); break;
                 case SDL_CONTROLLER_BUTTON_BACK: details = false; openSystem(); break;
+                case SDL_CONTROLLER_BUTTON_START: trocaRapida(); break;
                 }
                 break;
             }
@@ -3809,6 +3997,15 @@ int main() {
             toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade OS", 9000);
             redraw();
         }
+        if (botaoEnergia) {   // botao de energia apertado com o menu na tela
+            botaoEnergia = 0;
+            protecaoOn = false;
+            ultimaTecla = now;
+            energiaMenu = energiaMenu ? 0 : 1;
+            any = true;
+        }
+        if (musicaAcabou.exchange(false)) tocarMusica();
+        if (energiaMenu) any = true;
         // protecao de tela e desligar sozinho: so com o menu parado (jogando, o ScrapCade nem esta aberto)
         {
             if (!ultimaTecla) ultimaTecla = now;

@@ -1,0 +1,3 @@
+# ScrapCade OS: o botao de energia abre o menu (ou suspende jogando)
+event=button[ /]power
+action=/usr/bin/tos-botao-energia energia

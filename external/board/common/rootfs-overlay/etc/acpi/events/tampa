@@ -1,0 +1,3 @@
+# ScrapCade OS: fechar a tampa do notebook suspende
+event=button[ /]lid
+action=/usr/bin/tos-botao-energia tampa

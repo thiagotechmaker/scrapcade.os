@@ -4,16 +4,16 @@
 #
 ################################################################################
 
-SCRAPCADE_VERSION = 1.19
+SCRAPCADE_VERSION = $(shell cat $(BR2_EXTERNAL_TOS_PATH)/../VERSION)
 SCRAPCADE_SITE = $(BR2_EXTERNAL_TOS_PATH)/package/scrapcade/src
 SCRAPCADE_SITE_METHOD = local
 SCRAPCADE_LICENSE = GPL-3.0-or-later
-SCRAPCADE_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image zlib libzip libcurl openssl
+SCRAPCADE_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image sdl2_mixer zlib libzip libcurl openssl
 
 define SCRAPCADE_BUILD_CMDS
 	$(TARGET_CXX) $(TARGET_CXXFLAGS) -std=c++17 -O2 -Wall -D_REENTRANT \
 		-I$(STAGING_DIR)/usr/include/SDL2 -o $(@D)/scrapcade $(@D)/scrapcade.cpp \
-		$(TARGET_LDFLAGS) -lSDL2_ttf -lSDL2_image -lSDL2 -lcurl -lcrypto -lzip -lz -lpthread
+		$(TARGET_LDFLAGS) -lSDL2_ttf -lSDL2_image -lSDL2_mixer -lSDL2 -lcurl -lcrypto -lzip -lz -lpthread
 endef
 
 define SCRAPCADE_INSTALL_TARGET_CMDS

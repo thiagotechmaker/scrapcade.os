@@ -72,23 +72,23 @@ RO=$TOS/tests/roms
   k ret; sleep 30; shot sc_jogando; echo "sendkey esc 1000"; sleep 75; shot sc_voltou_do_jogo
   log "samba antes: $(porta 18445)  ssh antes: $(porta 18022)"
   opt 0; k ret; sleep 3; shot p_perfil; fecha
-  opt 26; k right; sleep 2; shot p_energia; fecha
+  opt 28; k right; sleep 2; shot p_energia; fecha
   opt 17; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 17; k left; sleep 1; fecha
   opt 19; k right; sleep 2; shot p_anim; k left; fecha
   opt 20; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
   opt 21; k right; sleep 2; shot p_fundo_off; k left; fecha
-  opt 37; sleep 1; shot p_motor; fecha
-  opt 29; k ret; sleep 8; shot p_rede; fecha
+  opt 39; sleep 1; shot p_motor; fecha
+  opt 31; k ret; sleep 8; shot p_rede; fecha
   opt 25; k ret; sleep 12; shot p_bluetooth; fecha
-  opt 30; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
-  opt 31; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
+  opt 32; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
+  opt 33; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
   opt 23; k ret; sleep 3; shot p_controle; fecha
-  opt 38; k ret; sleep 3; shot p_comojogar; fecha
+  opt 40; k ret; sleep 3; shot p_comojogar; fecha
   opt 9; k ret; sleep 4; shot p_bios; fecha
-  opt 33; k ret; sleep 20; shot p_atualizar; fecha
-  opt 35; k ret; sleep 4; shot p_instalar; fecha
-  opt 39; k ret; sleep 4; shot p_info; fecha
-  opt 36; k ret; sleep 40; shot p_desktop
+  opt 35; k ret; sleep 20; shot p_atualizar; fecha
+  opt 37; k ret; sleep 4; shot p_instalar; fecha
+  opt 41; k ret; sleep 4; shot p_info; fecha
+  opt 38; k ret; sleep 40; shot p_desktop
   echo quit
 ) | timeout 1200 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080,hostfwd=tcp:127.0.0.1:18445-:445,hostfwd=tcp:127.0.0.1:18022-:22 \
