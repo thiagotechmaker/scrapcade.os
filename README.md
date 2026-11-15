@@ -57,6 +57,17 @@ NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Co
 
 **Atalhos em todo jogo:** Select + Start sai, Select + X abre o menu do emulador. No teclado: Esc sai.
 
+## As duas versões do ScrapCade
+
+| | **ScrapCade OS** (este repositório) | **Fliperama iChroma** |
+|---|---|---|
+| Máquina | PCs e notebooks de 64 bits (32 bits em breve) | Placa ARM de 1 núcleo a 1 GHz (iChroma II, Android 2.3), tirada do lixo eletrônico |
+| Sistema | Linux próprio, montado com o Buildroot | Android de fábrica, com kernel e boot próprios |
+| Menu | ScrapCade em C++ e SDL2 | ScrapCade em Java (o original) |
+| Emuladores | Todos os que o PC aguentar | Só os leves (até PlayStation 1 e Nintendo 64, com limites) |
+
+Os dois menus são o mesmo por desenho: carrossel de capas, painel Sistema, gerenciador de arquivos, jogos pelo navegador e pelo pen drive. O que nasce num é levado para o outro, dentro do que cada máquina aguenta. O fliperama do iChroma é um projeto pessoal, sem repositório público.
+
 ## Mais informações
 
 - [Detalhes técnicos](docs/DETALHES.md): emuladores, partições, gravação, versões, modo desktop.
