@@ -2,7 +2,7 @@
 
 Todas as mudanças importantes do ScrapCade OS ficam aqui. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/) (fase beta enquanto for `0.x`).
 
-Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilação como tag (por exemplo `v202611151519`); a partir da v0.20.0-beta a tag é o número SemVer. Quem estiver na v0.19.0-beta ou antes precisa gravar o `.iso` novo uma vez, porque o atualizador antigo só reconhece tags de data.
+Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilação como tag (por exemplo `v202611151519`); em 15/11/2026 essas Releases foram renomeadas para o número SemVer (`v0.19.0-beta`, `v0.17.0-beta`, `v0.16.0-beta`), e da v0.20.0-beta em diante a tag já nasce assim. Quem estiver na v0.19.0-beta ou antes precisa gravar o `.iso` novo uma vez, porque o atualizador antigo só reconhece tags de data.
 
 ## [Unreleased]
 
@@ -21,7 +21,7 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 
 ## [0.19.0-beta] - 2026-11-15
 
-Publicada com a tag `v202611151519`.
+Publicada com a tag `v202611151519`, depois renomeada para SemVer.
 
 ### Adicionado
 - Half-Life pelo Xash3D FWGS, com as bibliotecas do hlsdk-portable; os dados vêm da cópia da Steam do usuário (`roms/halflife/valve`).
@@ -34,7 +34,7 @@ Publicada com a tag `v202611151519`.
 
 ## [0.17.0-beta] - 2026-11-15
 
-Publicada com a tag `v202611150727`.
+Publicada com a tag `v202611150727`, depois renomeada para SemVer.
 
 ### Adicionado
 - Console Doom (PrBoom) e o Freedoom nos Jogos grátis, com capas feitas das telas dos próprios jogos.
@@ -46,7 +46,7 @@ Publicada com a tag `v202611150727`.
 
 ## [0.16.0-beta] - 2026-11-15
 
-Publicada com a tag `v202611150307`.
+Publicada com a tag `v202611150307`, depois renomeada para SemVer.
 
 ### Adicionado
 - PortMaster no console Ports.
