@@ -122,44 +122,17 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 5. **Compilação:** cerca de 27 minutos na primeira vez (Ryzen 7, 16 threads), poucos minutos nas seguintes.
 6. **Teste:** máquina virtual QEMU com firmware UEFI (OVMF).
 
-## Estrutura do repositório
+## Estrutura, compilação e testes
 
-```
-external/
-  external.desc              nome da árvore externa (TOS)
-  Config.in, external.mk     pacotes próprios do ScrapCade
-  package/scrapcade/         menu de jogos (código em C, serviço de início)
-  configs/
-    tos_x86_64_defconfig     configuração da imagem para PC 64 bits
-  board/
-    x86_64/                  GRUB, kernel, scripts de imagem do PC (base do Buildroot)
-    common/rootfs-overlay/   arquivos que entram em todas as imagens (identidade do ScrapCade)
-build-x86_64.sh              compila a imagem x64
-docs/capturas/               prints do sistema
-```
-
-## Como compilar
-
-No Ubuntu (ou WSL2 com Ubuntu):
-
-```bash
-sudo apt install -y build-essential git rsync bc cpio unzip wget file python3 libncurses-dev perl patch gzip bzip2 tar
-git clone https://github.com/thiagotechmaker/scrapcade.git ~/t-os
-git clone --depth 1 --branch 2026.02.3 https://gitlab.com/buildroot.org/buildroot.git ~/t-os/buildroot
-bash ~/t-os/build-x86_64.sh
-```
-
-A imagem fica em `~/t-os/output/x86_64/images/disk.img`.
-
-## Como testar sem gravar pen drive
+A estrutura de pastas, os pacotes que o computador precisa e os comandos de compilação estão no [README](../README.md#estrutura-de-pastas). Para ligar a imagem pronta numa máquina virtual, sem gravar pen drive:
 
 ```bash
 sudo apt install -y qemu-system-x86 ovmf
 qemu-system-x86_64 -m 2048 -bios /usr/share/ovmf/OVMF.fd \
-  -drive file=$HOME/t-os/output/x86_64/images/disk.img,format=raw,if=virtio -snapshot
+  -drive file=$HOME/scrapcade.os/output/x86_64/images/disk.img,format=raw,if=virtio -snapshot
 ```
 
-No primeiro boot o ScrapCade pede para criar a senha do administrador (`root`) antes de liberar o login. A imagem não traz senha fixa, porque uma senha publicada seria a mesma em todo aparelho.
+A bateria automática (`bash tests/testar.sh`) faz isso em BIOS e UEFI, passa por cada tela e opção e compara com as telas de referência em `tests/referencias`. Só uma compilação aprovada por ela pode ser publicada (`scripts/publicar-versao.ps1`).
 
 ## Capas, dados e organização automática
 
