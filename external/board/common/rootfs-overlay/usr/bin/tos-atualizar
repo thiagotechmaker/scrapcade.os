@@ -11,6 +11,9 @@ D=/boot/boot
 [ -f $D/tos-servidor-teste ] && API=$(cat $D/tos-servidor-teste)   # so para testes (servidor falso)
 p() { echo "$1 $2" > $P; }
 atual() { sed -n 's/^BUILD_ID=//p' /etc/os-release; }
+# PC de 32 bits: a versao publicada traz os arquivos com -32 no nome (tos-32.squashfs, bzImage-32, initrd-32.gz)
+case "$(uname -m)" in i?86) X=-32 ;; *) X= ;; esac
+SQ=tos$X.squashfs; BZ=bzImage$X; IR=initrd$X.gz; SUMS=SHA256SUMS$X
 
 info() {   # baixa a descricao da ultima versao publicada (404 = nenhuma versao publicada ainda: conta como em dia)
   c=$(curl -sSL -m 20 -H "Accept: application/vnd.github+json" "$API" -o /tmp/tos-release.json -w '%{http_code}' 2>/dev/null)
@@ -31,7 +34,7 @@ case "$1" in
     n=$(nova)
     # ja baixada (falta reiniciar): nao baixa de novo
     [ -n "$n" ] && [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { echo "$(atual)|pronta|0"; exit 0; }
-    tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
+    tam=$(grep -o "\"name\": *\"$SQ\"[^}]*\"size\": *[0-9]*" /tmp/tos-release.json | sed 's/.*"size": *//')
     if [ -n "$n" ] && [ "$n" -gt "$(atual)" ] 2>/dev/null; then echo "$(atual)|$n|$(( ${tam:-0} / 1048576 ))"
     else echo "$(atual)||0"; fi
     ;;
@@ -43,7 +46,7 @@ case "$1" in
     p 2 "Procurando a versão nova"
     info || { p 0 "ERRO: sem internet"; exit 1; }
     n=$(nova)
-    tam=$(grep -o '"name": *"tos.squashfs"[^}]*"size": *[0-9]*' /tmp/tos-release.json | sed 's/.*"size": *//')
+    tam=$(grep -o "\"name\": *\"$SQ\"[^}]*\"size\": *[0-9]*" /tmp/tos-release.json | sed 's/.*"size": *//')
     [ -n "$n" ] && [ "$n" -gt "$(atual)" ] || { p 0 "ERRO: já está na versão mais nova"; exit 1; }
     [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { p 100 "Pronto! A versão nova já foi baixada: reinicie para usar."; exit 0; }
     mount -o remount,rw /boot || { p 0 "ERRO: não consegui gravar no pen drive"; exit 1; }
@@ -55,15 +58,17 @@ case "$1" in
     T=$D/novo
     rm -rf $T; mkdir -p $T
     i=0
-    for f in tos.squashfs bzImage initrd.gz SHA256SUMS; do
+    for f in $SQ $BZ $IR $SUMS; do
       i=$((i + 1))
       p $((5 + i * 20)) "Baixando $f"
       u=$(asset $f)
       [ -n "$u" ] && curl -fsSL -m 3600 "$u" -o $T/$f || { rm -rf $T; mount -o remount,ro /boot; p 0 "ERRO: download de $f falhou"; exit 1; }
     done
     p 88 "Conferindo os arquivos (SHA-256)"
-    ( cd $T && grep -E " (tos.squashfs|bzImage|initrd.gz)$" SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) \
+    ( cd $T && grep -E " ($SQ|$BZ|$IR)$" $SUMS | sha256sum -c - >/dev/null 2>&1 ) \
       || { rm -rf $T; mount -o remount,ro /boot; p 0 "ERRO: os arquivos baixados não conferem; nada foi trocado"; exit 1; }
+    # no pen drive os nomes sao sempre os mesmos (o boot nao muda com a arquitetura)
+    [ -n "$X" ] && { mv $T/$SQ $T/tos.squashfs; mv $T/$BZ $T/bzImage; mv $T/$IR $T/initrd.gz; }
     p 94 "Trocando (a versão de agora fica guardada como anterior)"
     cd $D
     mv tos.squashfs tos-anterior.squashfs

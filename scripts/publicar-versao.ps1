@@ -25,4 +25,13 @@ $notas = @"
 Jogos, BIOS e ROMs nao acompanham o sistema.
 "@
 $arq = "tos.squashfs","bzImage","initrd.gz","SHA256SUMS","scrapcade-os-$v-pc-64bits.iso" | ForEach-Object { Join-Path $Pasta $_ }
+# 32 bits: sobe junto se a compilacao for da mesma versao (bash build-i686.sh <BUILD_ID>) e o teste dela passou
+$P32 = $Pasta -replace "x86_64", "i686"
+if ((Test-Path "$P32\BUILD_ID") -and (Get-Content "$P32\BUILD_ID").Trim() -eq $v) {
+  $ap32 = Join-Path (Split-Path $PSScriptRoot) "teste/aprovado-32"
+  if ((Test-Path $ap32) -and (Get-Content $ap32).Trim() -eq $v) {
+    $arq += "tos-32.squashfs","bzImage-32","initrd-32.gz","SHA256SUMS-32","scrapcade-os-$v-pc-32bits.iso" | ForEach-Object { Join-Path $P32 $_ }
+    $notas += "`n`n**PC de 32 bits** (Pentium 4, Pentium M, Atom): ``scrapcade-os-$v-pc-32bits.iso``. Leva os emuladores leves (sem PS2, GameCube, PSP, Saturn e Dreamcast)."
+  } else { Write-Host "32 bits: a compilacao $v nao passou no teste de 32 bits; sobe so a de 64 bits" }
+}
 gh release create "v$v" -R $Repo --target $commit --title "ScrapCade OS $data" --notes $notas --latest @arq

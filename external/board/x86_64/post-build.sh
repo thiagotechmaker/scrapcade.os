@@ -56,4 +56,5 @@ chmod 755 "$TARGET_DIR/etc/init.d/S91tos-rede"
 
 # ScrapCade: numero da compilacao (ano mes dia hora minuto); a atualizacao so troca por uma mais nova
 sed -i '/^BUILD_ID=/d' "$TARGET_DIR/etc/os-release"
-echo "BUILD_ID=$(date +%Y%m%d%H%M)" >> "$TARGET_DIR/etc/os-release"
+# TOS_BUILD_ID: a compilacao de 32 bits usa o mesmo numero da de 64 bits (as duas saem na mesma versao publicada)
+echo "BUILD_ID=${TOS_BUILD_ID:-$(date +%Y%m%d%H%M)}" >> "$TARGET_DIR/etc/os-release"
