@@ -47,9 +47,11 @@ Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade.os/
 
 | Arquivo | Para quê |
 |---|---|
-| `scrapcade-<versão>-pc-64bits.iso` | **o ScrapCade inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
+| `scrapcade-os-v<versão>-pc-64bits.iso` | **o ScrapCade inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
 | `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
 | `SHA256SUMS` | confere todos os arquivos |
+
+A partir da v0.20.0-beta, a mesma versão traz também os arquivos de 32 bits: `scrapcade-os-v<versão>-pc-32bits.iso`, `tos-32.squashfs`, `bzImage-32`, `initrd-32.gz` e `SHA256SUMS-32`.
 
 Quem já tem o ScrapCade não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o ScrapCade OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
@@ -73,7 +75,7 @@ No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, co
 
 O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
 
-**Painel Sistema** (botão **Select** ou tecla **Tab**): tema, animações, capas, fundo do jogo, **motor gráfico**, **modo desktop**, como jogar, informações do sistema, reiniciar e desligar, com IP, endereço da página e uso de CPU, memória e disco.
+**Painel Sistema** (botão **Select** ou tecla **Tab**), em seções: Jogos, Jogando, Aparência, Controle e som, Tela e energia, Rede e Sistema (com **motor gráfico**, **modo desktop**, como jogar, informações, reiniciar e desligar). No alto aparecem o IP, o endereço da página e o uso de CPU, memória e disco.
 
 **Modo desktop** (Sistema > Modo desktop): Fluxbox com um pacote leve de programas: **navegador** (NetSurf), **arquivos** (PCManFM), **terminal**, **editor de texto** (nano), **vídeos e músicas** (mpv), **imagens** (feh), **PDF** (MuPDF) e **volume do som**. O menu abre com o botão direito ou **Alt + F1**. **O que o navegador baixa vai para "Jogos novos"** e entra sozinho no console certo (o ScrapCade não traz endereço de jogos). "Voltar ao modo jogo" reabre o ScrapCade. LibreOffice não existe no Buildroot.
 
@@ -89,7 +91,7 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 
 | Parte | O que faz |
 |---|---|
-| **GRUB 2 (UEFI)** | Primeiro programa que roda quando o PC liga. Encontra o kernel na partição de boot e o inicia. |
+| **GRUB 2 e syslinux** | Primeiros programas que rodam quando o PC liga (GRUB no UEFI e no disco instalado, syslinux no BIOS antigo). Mostram o menu de boot, acham o kernel na partição SCRAPCADE e o iniciam. |
 | **Kernel Linux 6.12.47 (LTS)** | Coração do sistema: conversa com o processador, a memória, os discos, a placa de rede e o vídeo. A versão LTS recebe correções por anos. |
 | **Compilador Bootlin (glibc)** | Conjunto de compiladores pronto, usado para compilar o sistema todo. Economiza cerca de 30 minutos por compilação. |
 | **BusyBox** | Reúne em um só programa pequeno o `init` (primeiro processo, que inicia os outros), o terminal e os comandos básicos (`ls`, `cp`, `mount`...). |
@@ -105,22 +107,22 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 | **Mesa + LLVM** | Drivers de vídeo abertos (Intel, AMD, NVIDIA/Nouveau) e o `llvmpipe` para PC sem placa de vídeo. |
 | **SDL2** | Base do ScrapCade: tela pela GPU (KMS/DRM, sem servidor gráfico), controles, imagens PNG/JPEG e fontes. |
 | **DejaVu Sans** | Fonte usada no menu (só as variantes Sans, para economizar espaço). |
-| **genimage** | Monta o `disk.img` final: tabela GPT, partição EFI (com o GRUB e o kernel) e partição do sistema (ext4, 512 MB). |
+| **genimage e xorriso** | Montam o `disk.img` (tabela MBR e a partição SCRAPCADE, FAT32 de 1 GB, com o GRUB, o kernel e o `tos.squashfs`) e o `.iso`. |
 
 ## Como foi feito
 
 1. **Ambiente:** Ubuntu 24.04 no WSL2 (Windows), com as ferramentas que o Buildroot exige (`build-essential`, `git`, `rsync`, `bc`, `cpio`, `unzip`, `wget`, `file`, `python3`, `libncurses-dev`...).
 2. **Buildroot 2026.02.3 (LTS)**, baixado do repositório oficial.
 3. **Árvore externa própria** (`external/`): tudo que é do ScrapCade fica separado do Buildroot. Assim dá para atualizar o Buildroot sem perder as mudanças.
-4. **Configuração `tos_x86_64_defconfig`**, partindo da configuração de PC com UEFI do Buildroot, com:
+4. **Configurações `tos_x86_64_defconfig` e `tos_i686_defconfig`**, partindo da configuração de PC do Buildroot, com:
    - nome, versão e hostname do ScrapCade (`/etc/os-release`, `/etc/issue`);
    - compilador estável da Bootlin;
-   - partição do sistema de 512 MB;
-   - menu do GRUB com o nome ScrapCade e espera de 1 segundo;
+   - sistema em `tos.squashfs` numa partição FAT32 de 1 GB, com initrd próprio;
+   - menu de boot próprio (GRUB e syslinux) com fundo e logo do ScrapCade OS;
    - boot silencioso (`quiet`), sem os textos do kernel na tela;
    - pedido de senha do administrador no primeiro boot.
-5. **Compilação:** cerca de 27 minutos na primeira vez (Ryzen 7, 16 threads), poucos minutos nas seguintes.
-6. **Teste:** máquina virtual QEMU com firmware UEFI (OVMF).
+5. **Compilação:** algumas horas na primeira vez (baixa e compila tudo, inclusive o LLVM), minutos nas seguintes.
+6. **Teste:** bateria automática em máquinas virtuais QEMU, com BIOS antigo (SeaBIOS) e UEFI (OVMF).
 
 ## Estrutura, compilação e testes
 
