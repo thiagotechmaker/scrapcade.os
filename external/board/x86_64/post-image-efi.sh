@@ -37,7 +37,7 @@ cp "$B/grub-live.cfg" "$BINARIES_DIR/efi-part/EFI/BOOT/grub.cfg"
 # menu de boot do BIOS antigo (syslinux): configuracao, fundo e modulos do menu
 S=$BINARIES_DIR/tos-syslinux
 rm -rf "$S"; mkdir -p "$S"
-cp "$B/boot-menu.cfg" "$S/syslinux.cfg"
+sed "s/@VERSAO@/v$VER/" "$B/boot-menu.cfg" > "$S/syslinux.cfg"   # versao no titulo do menu
 cp "$B/boot-fundo.png" "$S/fundo.png"
 cp "$BINARIES_DIR"/syslinux/*.c32 "$S/"
 MT=$(ls "$BINARIES_DIR"/memtest*.bin "$TARGET_DIR"/boot/memtest*.bin 2>/dev/null | head -1)

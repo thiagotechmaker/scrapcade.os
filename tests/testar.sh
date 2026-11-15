@@ -26,8 +26,12 @@ D=teste/t-bios.img; cp $I/disk.img $D; truncate -s 3G $D
 cp $I/disk.img $D; truncate -s 3G $D
 ( sleep 4; shot boot_uefi_menu; k up; sleep 1; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
 # .iso gravado direto: arruma no 1o boot; no 2o boot (BIOS, GRUB) o teste de memoria
-D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
-( sleep 40; senha; sleep 60; echo quit ) | timeout 200 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q4.log 2>&1
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa, com o .iso intacto de novo
+  D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
+  ( sleep 40; senha; sleep 60; echo quit ) | timeout 200 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q4.log 2>&1
+  rotulos $D | grep -q SCRAP-DADOS && break
+  log "iso: o primeiro boot nao arrumou (tentativa $tentativa), repetindo"
+done
 log "iso arrumado: $(sfdisk -l $D 2>/dev/null | grep -c "^$D")"
 log "iso particoes: $(rotulos $D)"
 ( acorda; shot boot_grubbios_menu; k down; sleep 2; shot boot_grubbios_d1; k down down; sleep 2; shot boot_grubbios_d3; k ret; sleep 25; shot boot_grubbios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q5.log 2>&1

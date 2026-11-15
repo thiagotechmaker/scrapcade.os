@@ -65,7 +65,8 @@ for n in ("iso_primeiro_boot", "carrossel", "jogando", "voltou", "info"):
     im = abre(n)
     cores = len(im.getcolors(1 << 20) or []) if im else 0
     print(f"tela {n}: {'falta' if not im else f'{im.size[0]}x{im.size[1]}, {cores} cores'}")
-    if not im or cores < 20: ok = False
+    minimo = 2 if n == "jogando" else 20     # a ROM de teste e falsa: o emulador desenha uma cor so, com as bordas
+    if not im or cores < minimo: ok = False
 c, j = abre("carrossel"), abre("jogando")
 if c and j:
     dif = sum(ImageChops.difference(c, j.resize(c.size)).convert("L").histogram()[30:])
