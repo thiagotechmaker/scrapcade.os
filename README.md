@@ -61,7 +61,6 @@ O mesmo menu roda num analisador de laboratório reaproveitado como fliperama: [
 | Máquina | Boot | Vídeo | Som | Rede | Controles | Situação |
 |---|---|---|---|---|---|---|
 | QEMU x86_64 (UEFI/OVMF e BIOS) | ✅ | ✅ virtio/std | ✅ Intel HDA | ✅ e1000 | ✅ teclado e controle | testado a cada versão (bateria automática) |
-| Dell Inspiron N5010 (Core i3/i5 1ª geração, Intel HD, BIOS) | ⏳ | ⏳ | ⏳ | ⏳ Wi-Fi | ⏳ | aguardando teste no aparelho |
 | PCs de 32 bits (Pentium 4, Pentium M, Atom) | — | — | — | — | — | versão i686 em desenvolvimento |
 
 <details><summary>Ver os drivers incluídos</summary>
