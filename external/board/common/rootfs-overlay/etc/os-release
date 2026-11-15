@@ -1,5 +1,5 @@
 NAME="ScrapCade OS"
-VERSION="2026.11"
+VERSION="0.0.0-dev"
 ID=tos
-PRETTY_NAME="ScrapCade OS 2026.11"
-HOME_URL="https://github.com/thiagotechmaker"
+PRETTY_NAME="ScrapCade OS"
+HOME_URL="https://github.com/thiagotechmaker/scrapcade.os"

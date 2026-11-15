@@ -1,6 +1,6 @@
 #!/bin/sh
 # ScrapCade: atualizacao segura A/B pelas GitHub Releases do projeto.
-#   tos-atualizar verificar  -> "atual|nova|MB" (nova vazia = ja esta em dia; "erro" = sem internet)
+#   tos-atualizar verificar  -> "atual|nova|MB" com as versoes SemVer (nova vazia = ja esta em dia; "erro" = sem internet)
 #   tos-atualizar instalar   -> baixa, confere o SHA-256 e troca; a versao de agora vira a "anterior"
 #   tos-atualizar confirmar  -> a versao nova ligou bem (o ScrapCade chama): nao volta mais sozinha
 # Progresso em /tmp/tos-atualizar.txt ("porcentagem mensagem"), mostrado no painel Sistema.
@@ -10,7 +10,8 @@ P=/tmp/tos-atualizar.txt
 D=/boot/boot
 [ -f $D/tos-servidor-teste ] && API=$(cat $D/tos-servidor-teste)   # so para testes (servidor falso)
 p() { echo "$1 $2" > $P; }
-atual() { sed -n 's/^BUILD_ID=//p' /etc/os-release; }
+atual() { sed -n 's/^BUILD_ID=//p' /etc/os-release; }   # numero da compilacao (ano mes dia hora minuto)
+rotulo() { v=$(sed -n 's/^VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /etc/os-release); echo "${v:-$(atual)}"; }
 # PC de 32 bits: a versao publicada traz os arquivos com -32 no nome (tos-32.squashfs, bzImage-32, initrd-32.gz)
 case "$(uname -m)" in i?86) X=-32 ;; *) X= ;; esac
 SQ=tos$X.squashfs; BZ=bzImage$X; IR=initrd$X.gz; SUMS=SHA256SUMS$X
@@ -23,20 +24,24 @@ info() {   # baixa a descricao da ultima versao publicada (404 = nenhuma versao 
 asset() {   # endereco de download de um arquivo da versao
   grep -o "\"browser_download_url\": *\"[^\"]*/$1\"" /tmp/tos-release.json | sed 's/.*"\(http[^"]*\)"/\1/'
 }
-nova() {   # numero da compilacao da versao publicada (tag "v<BUILD_ID>")
-  sed -n 's/.*"tag_name": *"v\{0,1\}\([0-9]\{12\}\)".*/\1/p' /tmp/tos-release.json | head -1
+tag() { sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' /tmp/tos-release.json | head -1; }
+nova() {   # numero da compilacao da versao publicada: o arquivo BUILD_ID da versao (tags antigas: o proprio "v<BUILD_ID>")
+  t=$(tag)
+  case "$t" in [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) echo "$t"; return ;; esac
+  u=$(asset BUILD_ID)
+  [ -n "$u" ] && curl -fsSL -m 20 "$u" 2>/dev/null | tr -dc 0-9 | head -c 12
 }
 
 case "$1" in
   verificar)
-    [ -d /tmp/tos-atualizar.trava ] && { echo "$(atual)|baixando|0"; exit 0; }   # baixando em segundo plano
-    info || { echo "$(atual)|erro|0"; exit 0; }
+    [ -d /tmp/tos-atualizar.trava ] && { echo "$(rotulo)|baixando|0"; exit 0; }   # baixando em segundo plano
+    info || { echo "$(rotulo)|erro|0"; exit 0; }
     n=$(nova)
     # ja baixada (falta reiniciar): nao baixa de novo
-    [ -n "$n" ] && [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { echo "$(atual)|pronta|0"; exit 0; }
+    [ -n "$n" ] && [ -f $D/tos-testando ] && [ "$(cat $D/tos-nova-versao 2>/dev/null)" = "$n" ] && { echo "$(rotulo)|pronta|0"; exit 0; }
     tam=$(grep -o "\"name\": *\"$SQ\"[^}]*\"size\": *[0-9]*" /tmp/tos-release.json | sed 's/.*"size": *//')
-    if [ -n "$n" ] && [ "$n" -gt "$(atual)" ] 2>/dev/null; then echo "$(atual)|$n|$(( ${tam:-0} / 1048576 ))"
-    else echo "$(atual)||0"; fi
+    if [ -n "$n" ] && [ "$n" -gt "$(atual)" ] 2>/dev/null; then echo "$(rotulo)|$(tag)|$(( ${tam:-0} / 1048576 ))"
+    else echo "$(rotulo)||0"; fi
     ;;
   instalar)
     # uma atualizacao por vez (a automatica em segundo plano e a do painel nao podem baixar juntas)

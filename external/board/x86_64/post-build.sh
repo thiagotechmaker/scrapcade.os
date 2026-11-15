@@ -58,3 +58,11 @@ chmod 755 "$TARGET_DIR/etc/init.d/S91tos-rede"
 sed -i '/^BUILD_ID=/d' "$TARGET_DIR/etc/os-release"
 # TOS_BUILD_ID: a compilacao de 32 bits usa o mesmo numero da de 64 bits (as duas saem na mesma versao publicada)
 echo "BUILD_ID=${TOS_BUILD_ID:-$(date +%Y%m%d%H%M)}" >> "$TARGET_DIR/etc/os-release"
+
+# ScrapCade: versao (SemVer) do arquivo VERSION na raiz do repositorio; e a que aparece no menu, no .iso e na tag
+VER=$(tr -d ' \r\n' < "$BOARD_DIR/../../../VERSION" 2>/dev/null)
+[ -n "$VER" ] || VER=0.0.0-dev
+sed -i -e "s/^VERSION=.*/VERSION=\"$VER\"/" -e "s/^PRETTY_NAME=.*/PRETTY_NAME=\"ScrapCade OS v$VER\"/" \
+	-e '/^VERSION_ID=/d' "$TARGET_DIR/etc/os-release"
+echo "VERSION_ID=$VER" >> "$TARGET_DIR/etc/os-release"
+printf 'ScrapCade OS v%s (\\l)\n\n' "$VER" > "$TARGET_DIR/etc/issue"
