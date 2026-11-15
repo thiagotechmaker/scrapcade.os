@@ -96,7 +96,7 @@ U=teste/x-usb2.img; usbpen $U
   opt 23; k ret; sleep 25; shot x_copia_saves; fecha
   opt 2; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
   k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; shot x_arq_colar
-  k x; sleep 10; shot x_arq_colou; fecha
+  k x; sleep 10; shot x_arq_colou; k esc; sleep 1; fecha   # 3 Esc: pasta, raizes, painel
   opt 24; k ret; sleep 3; shot x_ejetou
   echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
