@@ -4,7 +4,8 @@
 # tela com tests/referencias. Mostra so o resumo; as telas que mudaram vao para teste/falhas.png.
 #   bash tests/testar.sh --referencias   grava as telas desta rodada como as novas referencias
 TOS=$(cd "$(dirname "$0")/.." && pwd); cd $TOS;
-export PATH=$TOS/output/x86_64/host/sbin:$TOS/output/x86_64/host/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin mkdir -p teste; I=output/x86_64/images; ISO=$(ls -t $I/*.iso | head -1)   # o .iso mais novo
+export PATH=$TOS/output/x86_64/host/sbin:$TOS/output/x86_64/host/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+mkdir -p teste; I=output/x86_64/images; ISO=$(ls -t $I/*.iso | head -1)   # o .iso mais novo
 R=teste/resumo.txt; : > $R
 log() { echo "$*" | tee -a $R >&2; }
 rotulos() {   # nomes das particoes de um disco (sem precisar de root)
