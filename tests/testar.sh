@@ -3,8 +3,8 @@
 # Liga a imagem em BIOS e UEFI, passa por cada tela e opcao, confere rede, envio e som, e no fim compara cada
 # tela com tests/referencias. Mostra so o resumo; as telas que mudaram vao para teste/falhas.png.
 #   bash tests/testar.sh --referencias   grava as telas desta rodada como as novas referencias
-export PATH=/home/thiago/t-os/output/x86_64/host/sbin:/home/thiago/t-os/output/x86_64/host/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-TOS=$(cd "$(dirname "$0")/.." && pwd); cd $TOS; mkdir -p teste; I=output/x86_64/images; ISO=$(ls -t $I/*.iso | head -1)   # o .iso mais novo
+TOS=$(cd "$(dirname "$0")/.." && pwd); cd $TOS;
+export PATH=$TOS/output/x86_64/host/sbin:$TOS/output/x86_64/host/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin mkdir -p teste; I=output/x86_64/images; ISO=$(ls -t $I/*.iso | head -1)   # o .iso mais novo
 R=teste/resumo.txt; : > $R
 log() { echo "$*" | tee -a $R >&2; }
 rotulos() {   # nomes das particoes de um disco (sem precisar de root)
@@ -92,7 +92,7 @@ RO=$TOS/tests/roms
 ) | timeout 1200 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080,hostfwd=tcp:127.0.0.1:18445-:445,hostfwd=tcp:127.0.0.1:18022-:22 \
     > teste/q6.log 2>&1
-# o que ficou gravado na TOS-DADOS (perfil, preferencias, jogos)
+# o que ficou gravado na SCRAP-DADOS (perfil, preferencias, jogos)
 log "disco particoes: $(rotulos $D)"
 for tentativa in 1 2; do   # o QEMU as vezes cai ao ligar ("dumped core"): uma segunda tentativa
   D=teste/t-som.img; cp $I/disk.img $D; truncate -s 3G $D

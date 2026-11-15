@@ -4,7 +4,7 @@
 #   - scrapcade-os-<versao>-pc-64bits.iso         para instalar do zero (Rufus em qualquer modo, balenaEtcher, DVD)
 #   - tos.squashfs, bzImage, initrd.gz        usados pela atualizacao automatica (Sistema > Atualizar o ScrapCade OS)
 #   - SHA256SUMS                              confere todos
-param([string]$Repo = "thiagotechmaker/scrapcade.os", [string]$Pasta = "\\wsl.localhost\Ubuntu-24.04\home\thiago\t-os\output\x86_64\images\atualizacao")
+param([string]$Repo = "thiagotechmaker/scrapcade.os", [string]$Pasta = (Join-Path (Split-Path $PSScriptRoot) "output\x86_64\images\atualizacao"))
 $ErrorActionPreference = "Stop"
 $v = (Get-Content "$Pasta\BUILD_ID").Trim()
 # trava: so publica a compilacao aprovada pelos testes automaticos (bash tests/testar.sh)

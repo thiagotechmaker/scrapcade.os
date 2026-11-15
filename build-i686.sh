@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compila o ScrapCade OS para PC de 32 bits (i686). Uso: bash ~/t-os/build-i686.sh [BUILD_ID da versao de 64 bits]
+# Compila o ScrapCade OS para PC de 32 bits (i686). Uso: bash build-i686.sh [BUILD_ID da versao de 64 bits]
 # Com o BUILD_ID, as duas compilacoes saem com o mesmo numero e vao juntas na mesma versao publicada.
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TOS=$(cd "$(dirname "$0")" && pwd)
