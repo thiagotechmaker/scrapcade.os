@@ -1,0 +1,32 @@
+#!/bin/sh
+# ScrapCade OS: cabo de rede que funciona em qualquer PC. O ConnMan cuida da rede, mas em alguns computadores a placa
+# com cabo nao sobe sozinha (o driver demora, a placa fica desligada ou o ConnMan nao cria o servico dela).
+# Por 60 s depois do boot: liga toda placa com cabo; se o cabo estiver conectado e sem endereco, pede ao ConnMan e,
+# se ainda assim nao vier, pede o endereco direto ao roteador (udhcpc). Registro em /tmp/tos-cabo.log.
+L=/tmp/tos-cabo.log
+cabo() {
+  connmanctl enable ethernet >/dev/null 2>&1
+  t=0
+  while [ $t -lt 12 ]; do
+    for d in /sys/class/net/*; do
+      i=${d##*/}
+      [ -e "$d/device" ] && [ "$(cat "$d/type" 2>/dev/null)" = 1 ] || continue    # placa de verdade, Ethernet
+      [ -d "$d/wireless" ] || [ -d "$d/phy80211" ] && continue                    # Wi-Fi fica com o ConnMan
+      ip link set "$i" up 2>/dev/null
+      [ "$(cat "$d/carrier" 2>/dev/null)" = 1 ] || continue                        # sem cabo conectado
+      ip -4 addr show "$i" | grep -q "inet " && continue                           # ja tem endereco
+      s=ethernet_$(tr -d ':' < "$d/address")_cable
+      if [ $t -lt 6 ]; then
+        connmanctl connect "$s" >/dev/null 2>&1 && echo "$(date +%T) $i: conectado pelo ConnMan ($s)" >> $L
+      elif ! pgrep -f "udhcpc -i $i" >/dev/null; then
+        echo "$(date +%T) $i: cabo conectado sem endereco; pedindo direto ao roteador (udhcpc)" >> $L
+        udhcpc -i "$i" -b -t 5 -T 3 -s /usr/share/udhcpc/default.script >> $L 2>&1
+      fi
+    done
+    t=$((t + 1)); sleep 5
+  done
+}
+case "$1" in
+  start) cabo > /dev/null 2>&1 & ;;
+esac
+exit 0

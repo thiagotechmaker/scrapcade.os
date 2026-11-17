@@ -91,14 +91,31 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
     [ -n "$SHADER" ] && [ -f "$SHADER" ] && SET="--set-shader $SHADER"
   fi
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
+  # N64 em placa de video sem OpenGL 3.3 (Intel antigas, GMA): o GLideN64 nao abre. Neste PC o desenho e pelo
+  # processador (angrylion): mais lento, mas abre em qualquer placa. A marca fica guardada para as proximas vezes.
+  N64SW=/userdata/system/configs/n64-software
+  n64_software() {
+    printf 'mupen64plus-rdp-plugin = "angrylion"\nmupen64plus-rsp-plugin = "hle"\n' > /tmp/tos-n64.opt
+    echo "core_options_path = \"/tmp/tos-n64.opt\"" >> /tmp/tos-console.cfg
+  }
+  [ "$CORE" = mupen64plus_next ] && [ -f "$N64SW" ] && n64_software
   echo "== $(date "+%d/%m %H:%M") $SIS $CORE $ROM" > /userdata/system/logs/retroarch.log
-  INICIO=$(cut -d. -f1 /proc/uptime)
-  /usr/bin/tos-carregando 8     # logo + CARREGANDO na tela ate o emulador aparecer (nada de terminal)
-  retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" $SET -L "$SO" "$ROM" \
-    >> /userdata/system/logs/retroarch.log 2>&1 &
-  RA=$!
-  sleep 3; /usr/bin/tos-carregando para   # o emulador ja tem a tela: a animacao para de gastar processador
-  wait $RA
+  abre() {
+    INICIO=$(cut -d. -f1 /proc/uptime)
+    /usr/bin/tos-carregando 8     # logo + CARREGANDO na tela ate o emulador aparecer (nada de terminal)
+    retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" $SET -L "$SO" "$ROM" \
+      >> /userdata/system/logs/retroarch.log 2>&1 &
+    RA=$!
+    sleep 3; /usr/bin/tos-carregando para   # o emulador ja tem a tela: a animacao para de gastar processador
+    wait $RA
+  }
+  abre
+  # so troca se o motivo foi a placa de video (erro de OpenGL/contexto no registro), nao uma ROM com defeito
+  if [ "$CORE" = mupen64plus_next ] && [ ! -f "$N64SW" ] && [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ] &&
+     grep -qiE "opengl|egl|glsl|gl context|hw context|hw render|gliden" /userdata/system/logs/retroarch.log; then
+    echo "== nao abriu com o GLideN64: tentando de novo com o desenho pelo processador (angrylion)" >> /userdata/system/logs/retroarch.log
+    touch "$N64SW"; n64_software; abre
+  fi
   # fechou em menos de 4 s: o jogo nao abriu (arquivo com defeito, versao errada, falta BIOS). Avisa o ScrapCade
   if [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ]; then
     MOTIVO=$(grep -i "\[error\]" /userdata/system/logs/retroarch.log | tail -1 | sed 's/.*\[[Ee][Rr][Rr][Oo][Rr]\] *//; s/^\[[^]]*\] *//; s/\.*$//' | cut -c1-90)

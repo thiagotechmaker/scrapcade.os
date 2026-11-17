@@ -751,7 +751,7 @@ static Mix_Chunk *bipe(float f0, float f1, int ms) {
     return c;
 }
 static void tocarSom(Mix_Chunk *c) {
-    if (prefs["sons"] != "1" || !c || !mixerAberto) return;
+    if (prefs["sons"] == "0" || !c || !mixerAberto) return;
     Mix_PlayChannel(-1, c, 0);
 }
 static std::vector<std::string> musicas() {
@@ -780,7 +780,7 @@ static void pararMusica() {
     if (musicaAtual) { Mix_HaltMusic(); Mix_FreeMusic(musicaAtual); musicaAtual = nullptr; }
 }
 static void prepararSons() {
-    if (prefs["sons"] != "1" && prefs["musica"] != "1") return;
+    if (prefs["sons"] == "0" && prefs["musica"] != "1") return;
     if (!abrirMixer()) return;
     if (!somMover) { somMover = bipe(1250, 1250, 22); somOk = bipe(880, 1320, 70); somVoltar = bipe(990, 660, 60); }
 }
@@ -1218,7 +1218,7 @@ static std::string optLabel(int i) {
         return std::string("Música do menu:   ‹ ") + (prefs["musica"] == "1" ? "Ligada" : "Desligada") + " ›" +
                (n ? "   (" + std::to_string(n) + (n == 1 ? " música)" : " músicas)") : "   (pasta music vazia)");
     }
-    case OPT_SONS: return std::string("Sons do menu:   ‹ ") + (prefs["sons"] == "1" ? "Ligados" : "Desligados") + " ›";
+    case OPT_SONS: return std::string("Sons do menu:   ‹ ") + (prefs["sons"] != "0" ? "Ligados" : "Desligados") + " ›";
     case OPT_SUSPENDER: return "Suspender (continua de onde parou)";
     case OPT_PROTECAO: { int m = PROTECAO_MIN[protecaoIdx()]; return std::string("Proteção de tela:   ‹ ") + (m ? std::to_string(m) + " min" : "Desligada") + " ›"; }
     case OPT_DESLIGAR: {
@@ -1233,7 +1233,7 @@ static std::string optLabel(int i) {
     case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
     case OPT_BACKUP: return "Cópia dos saves no pen drive";
     case OPT_EJETAR: return "Ejetar pen drive";
-    case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "0" ? "Desligado" : "Ligado") + " ›";
+    case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "1" ? "Ligado" : "Desligado") + " ›";
     case OPT_FONTE: return std::string("Tamanho do texto:   ‹ ") + FONTES[nivelFonte()] + " ›";
     case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›   (A: imagem)";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
@@ -2709,7 +2709,7 @@ static void optAction(int dir) {
             tocarMusica();
         } else pararMusica();
         break;
-    case OPT_SONS: prefs["sons"] = prefs["sons"] == "1" ? "0" : "1"; prepararSons(); tocarSom(somOk); break;
+    case OPT_SONS: prefs["sons"] = prefs["sons"] != "0" ? "0" : "1"; prepararSons(); tocarSom(somOk); break;
     case OPT_SUSPENDER:
         if (dir == 0) { sysOpen = false; savePrefs(); render(); if (system("/usr/bin/tos-suspender") != 0) {} ultimaTecla = SDL_GetTicks(); }
         return;
@@ -2739,7 +2739,7 @@ static void optAction(int dir) {
         if (dir == 0) toast(Usb::eject() ? "Pode tirar o pen drive." : "Nenhum pen drive em uso.", 4000);
         return;
     case OPT_AUTOUPD:
-        prefs["autoupd"] = prefs["autoupd"] == "0" ? "1" : "0";
+        prefs["autoupd"] = prefs["autoupd"] == "1" ? "0" : "1";
         break;
     case OPT_FONTE:
         prefs["fonte"] = std::to_string((nivelFonte() + d + 3) % 3);
@@ -4109,7 +4109,7 @@ int main() {
         static std::atomic<int> novaVersao{0};
         if (novaVersao == 0 && now > 40000) {
             novaVersao = 1;
-            bool sozinho = prefs["autoupd"] != "0";
+            bool sozinho = prefs["autoupd"] == "1";   // de fabrica so avisa
             std::thread([sozinho] {
                 std::string r = Rede::run("/usr/bin/tos-atualizar verificar");
                 size_t a = r.find('|'), b = a == std::string::npos ? a : r.find('|', a + 1);
