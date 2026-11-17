@@ -63,10 +63,11 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
   echo "http://10.0.2.2:18099/latest" > /tmp/srvt; mcopy -i $D@@$O /tmp/srvt ::boot/tos-servidor-teste
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
-    sleep 150; shot x_ota_aviso                      # baixou sozinha em segundo plano (Atualizar sozinho)
-    opt 35; k ret; sleep 20; shot x_ota_achou        # "ja foi baixada: reinicie"
+    sleep 150; shot x_ota_avisou                     # de fabrica so avisa que ha versao nova (nao baixa sozinho)
+    opt 35; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
+    k ret; sleep 90; shot x_ota_baixou               # A: baixa, confere e troca (a de agora fica como anterior)
     rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
-    k ret; sleep 200; shot x_ota_reiniciou
+    k ret; sleep 200; shot x_ota_reiniciou           # A: reinicia na versao nova
     echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q10.log 2>&1
   mdir -b -i $D@@$O ::boot 2>/dev/null | grep -q tos-testando || break
   log "atualizacao: tentativa $tentativa sem confirmar, repetindo"
@@ -128,7 +129,7 @@ done
 for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa
   D=teste/x-doom.img; cp $I/disk.img $D; truncate -s 3G $D
   head -c 1048576 /dev/zero > "/tmp/Jogo Quebrado.z64"   # N64 de mentira: o emulador fecha na hora
-  W=http://127.0.0.1:18080
+  W=http://127.0.0.1:18082   # porta propria: a parte principal pode rodar ao mesmo tempo
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
     log "envio Jogo Quebrado.z64: $(curl -g -s -m 30 -T "/tmp/Jogo Quebrado.z64" "$W/envio/Jogo%20Quebrado.z64" -o /dev/null -w '%{http_code}')"
@@ -139,7 +140,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
     k ret; sleep 30; shot x_freedoom_jogando; echo "sendkey esc 1000"; sleep 60
     k c; sleep 5; shot x_troca_rapida   # Start/C: Continuar jogando com a foto do ponto salvo
     echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
-      -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080 > teste/q14.log 2>&1
+      -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18082-:8080 > teste/q14.log 2>&1
   [ -f teste/z_x_freedoom_jogando.ppm ] && break
   log "QEMU caiu antes de x_freedoom_jogando (tentativa $tentativa), repetindo"
 done
@@ -164,7 +165,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
   D=teste/x-protecao.img; cp $I/disk.img $D; truncate -s 3G $D
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-    opt 22; k left; sleep 1; fecha; sleep 320; shot x_protecao_tela
+    sleep 320; shot x_protecao_tela                  # de fabrica a protecao entra com 5 min parado
     k down; sleep 3; shot x_protecao_acordou
     echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q16.log 2>&1
   [ -f teste/z_x_protecao_acordou.ppm ] && break

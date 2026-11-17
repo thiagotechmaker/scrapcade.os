@@ -3,10 +3,12 @@
 # Liga a imagem em BIOS e UEFI, passa por cada tela e opcao, confere rede, envio e som, e no fim compara cada
 # tela com tests/referencias. Mostra so o resumo; as telas que mudaram vao para teste/falhas.png.
 #   bash tests/testar.sh --referencias   grava as telas desta rodada como as novas referencias
+#   PARTE=principal ou PARTE=extras: so metade (tests/testar-rapido.sh roda as duas juntas e confere no fim)
 TOS=$(cd "$(dirname "$0")/.." && pwd); cd $TOS;
 export PATH=$TOS/output/x86_64/host/sbin:$TOS/output/x86_64/host/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 mkdir -p teste; I=output/x86_64/images; ISO=$(ls -t $I/*.iso | head -1)   # o .iso mais novo
-R=teste/resumo.txt; : > $R
+PARTE=${PARTE:-tudo}
+R=teste/resumo.txt; [ "$PARTE" = tudo ] || R=teste/resumo-$PARTE.txt; : > $R
 log() { echo "$*" | tee -a $R >&2; }
 rotulos() {   # nomes das particoes de um disco (sem precisar de root)
   sfdisk -d "$1" 2>/dev/null | sed -n 's/.*start= *\([0-9]*\).*/\1/p' | while read st; do
@@ -17,29 +19,7 @@ acorda() { for i in 1 2 3 4 5 6 7; do echo "sendkey up"; sleep 1; done; }   # pa
 senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao ligar o SSH
 Q="qemu-system-x86_64 -accel kvm -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
 EFI="-bios /usr/share/ovmf/OVMF.fd"
-rm -f teste/z_*.ppm
-
-# ---------------------------------------------------------------- menu de boot e teste de memoria
-D=teste/t-bios.img; cp $I/disk.img $D; truncate -s 3G $D
-( acorda; k down; sleep 1; k down down down; sleep 1; shot boot_bios_memsel; k ret; sleep 25; shot boot_bios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q1.log 2>&1
-( acorda; k down; k ret; sleep 9; shot boot_logo_kernel; sleep 36; senha; sleep 70; shot boot_bios_compat; echo quit ) | timeout 200 $Q -drive file=$D,format=raw > teste/q2.log 2>&1
-cp $I/disk.img $D; truncate -s 3G $D
-( sleep 4; shot boot_uefi_menu; k up; sleep 1; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
-# .iso gravado direto: arruma no 1o boot; no 2o boot (BIOS, GRUB) o teste de memoria
-for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa, com o .iso intacto de novo
-  D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
-  ( sleep 40; senha; sleep 60; echo quit ) | timeout 200 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q4.log 2>&1
-  rotulos $D | grep -q SCRAP-DADOS && break
-  log "iso: o primeiro boot nao arrumou (tentativa $tentativa), repetindo"
-done
-log "iso arrumado: $(sfdisk -l $D 2>/dev/null | grep -c "^$D")"
-log "iso particoes: $(rotulos $D)"
-( acorda; shot boot_grubbios_menu; k down; sleep 2; shot boot_grubbios_d1; k down down; sleep 2; shot boot_grubbios_d3; k ret; sleep 25; shot boot_grubbios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q5.log 2>&1
-( sleep 14; shot boot_logo_grubbios; echo quit ) | timeout 40 $Q -drive file=$D,format=raw > teste/q5b.log 2>&1
-
-# ---------------------------------------------------------------- ScrapCade e painel Sistema
-D=teste/t-sc.img; cp $I/disk.img $D; truncate -s 3G $D
-W=http://127.0.0.1:18080
+# ajudantes usados pelas duas partes
 porta() {   # aberta = conecta e nao fecha na hora (Samba espera, SSH manda a saudacao)
   python3 - "$1" <<'P'
 import socket,sys,time
@@ -58,6 +38,30 @@ fecha() { k esc; sleep 1; k esc; sleep 1; }
 up() { curl -g -s -m 30 -T "$1" "$W/$2" -o /dev/null -w "%{http_code}"; }
 enc() { python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$1"; }
 RO=$TOS/tests/roms
+[ "$PARTE" = tudo ] && rm -f teste/z_*.ppm   # nas metades, quem apaga e o testar-rapido.sh
+if [ "$PARTE" != extras ]; then
+
+# ---------------------------------------------------------------- menu de boot e teste de memoria
+D=teste/t-bios.img; cp $I/disk.img $D; truncate -s 3G $D
+( acorda; k down; sleep 1; k down down down; sleep 1; shot boot_bios_memsel; k ret; sleep 25; shot boot_bios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q1.log 2>&1
+( acorda; k down; k ret; sleep 9; shot boot_logo_kernel; sleep 36; senha; sleep 70; shot boot_bios_compat; echo quit ) | timeout 200 $Q -drive file=$D,format=raw > teste/q2.log 2>&1
+cp $I/disk.img $D; truncate -s 3G $D
+( sleep 4; shot boot_uefi_menu; k up; sleep 1; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
+# .iso gravado direto: arruma no 1o boot; no 2o boot (BIOS, GRUB) o teste de memoria
+for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa, com o .iso intacto de novo
+  D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
+  ( sleep 40; senha; sleep 60; echo quit ) | timeout 200 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q4.log 2>&1
+  rotulos $D | grep -q SCRAP-DADOS && break
+  log "iso: o primeiro boot nao arrumou (tentativa $tentativa), repetindo"
+done
+log "iso arrumado: $(sfdisk -l $D 2>/dev/null | grep -c "^$D")"
+log "iso particoes: $(rotulos $D)"
+( acorda; shot boot_grubbios_menu; k down; sleep 2; shot boot_grubbios_d1; k down down; sleep 2; shot boot_grubbios_d3; k ret; sleep 25; shot boot_grubbios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q5.log 2>&1
+( sleep 8; shot boot_logo_grubbios; echo quit ) | timeout 40 $Q -drive file=$D,format=raw > teste/q5b.log 2>&1   # com KVM o boot e mais rapido
+
+# ---------------------------------------------------------------- ScrapCade e painel Sistema
+D=teste/t-sc.img; cp $I/disk.img $D; truncate -s 3G $D
+W=http://127.0.0.1:18080
 (
   sleep 30; senha; sleep 60
   k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
@@ -109,7 +113,9 @@ done
 log "som: $(python3 -c 'import wave,struct,sys
 w=wave.open(sys.argv[1]);d=w.readframes(w.getnframes());s=struct.unpack("<%dh"%(len(d)//2),d[:len(d)//2*2]);print("tocou" if max(map(abs,s or [0]))>1000 else "silencio")' teste/som2.wav)"
 log "fim: $(ls teste/z_*.ppm | wc -l) capturas"
-source "$TOS/tests/testar-extra.sh"   # pen drive, tema proprio, perfis, instalar no HD, atualizacao
+fi   # fim da parte principal
+[ "$PARTE" != principal ] && source "$TOS/tests/testar-extra.sh"   # pen drive, tema proprio, perfis, instalar no HD, atualizacao
+[ "$PARTE" = tudo ] || exit 0   # as metades nao conferem: o testar-rapido.sh confere tudo junto
 if /usr/bin/python3 -c "import PIL" 2>/dev/null; then
   rm -f teste/aprovado
   if /usr/bin/python3 "$TOS/tests/conferir.py" "$TOS/teste" "$TOS/tests/referencias" "$1"; then
