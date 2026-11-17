@@ -2,7 +2,7 @@
 
 O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela frente, na ordem combinada. Cada versão só é publicada depois de passar na bateria automática (`tests/testar.sh`).
 
-## v0.21.0-beta (próxima)
+## v0.21.0-beta (próxima: junta o que era a v0.21 e a v0.22)
 
 - **Consoles novos:** Sega CD, 32X e Master System como consoles próprios; PC Engine/TurboGrafx; Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan e Virtual Boy. **MAME 2003-Plus** no fliperama, junto do FBNeo.
 - **Jogos livres nativos:** Cave Story (NXEngine), Quake shareware (TyrQuake) e mais homebrews nos Jogos grátis.
@@ -14,10 +14,7 @@ O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela
 - **Fuso horário** no painel (Brasília de fábrica).
 - **Boot sem texto nenhum:** calar a frase do initrd ("procurando o sistema no pen drive...") fora do modo de diagnóstico.
 - **Fliperama do iChroma:** troca rápida, coleções, atualizar o app pela página do navegador, fuso no painel (e sons do menu, se o som da placa voltar).
-
-## v0.22.0-beta
-
-- **PS2, GameCube, Wii e 3DS** (PCSX2, Dolphin, Azahar), só na versão de 64 bits.
+- **PS2, GameCube, Wii e 3DS** (LRPS2, Dolphin, Citra), só na versão de 64 bits.
 - **Conquistas** (RetroAchievements) e **saves sincronizados** (Syncthing).
 - **Idioma inglês** no menu, no painel e na página.
 - **Desempenho automático:** o sistema mede o PC no primeiro boot e escolhe os ajustes de cada emulador.

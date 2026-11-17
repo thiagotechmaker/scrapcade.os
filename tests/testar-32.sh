@@ -44,7 +44,7 @@ for tentativa in 1 2; do
     log "envio nes: $(curl -g -s -m 60 -T "$TOS/tests/roms/nes/Aventura de Teste.nes" "$W/envio/Aventura%20de%20Teste.nes" -o /dev/null -w '%{http_code}')"
     sleep 60; k right; sleep 6; shot carrossel
     k ret; sleep 50; shot jogando; echo "sendkey esc 1000"; sleep 90; shot voltou
-    opt 41; k ret; sleep 6; shot info; fecha
+    opt 49; k ret; sleep 6; shot info; fecha
     echo quit
   ) | timeout 1200 $Q -drive file=$D,format=raw -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18081-:8080 > teste/q32b.log 2>&1
   [ -f teste/y32_carrossel.ppm ] && break

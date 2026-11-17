@@ -60,11 +60,33 @@ case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais
   dreamcast) CORE=flycast ;;
   doom) CORE=prboom ;;
   dos) CORE=dosbox_pure ;;
+  mastersystem|segacd) CORE=$(primeiro genesis_plus_gx picodrive) ;;
+  gamegear) CORE=genesis_plus_gx ;;
+  sega32x) CORE=picodrive ;;
+  pcengine) CORE=mednafen_pce_fast ;;
+  atari2600) CORE=stella2014 ;;
+  atari7800) CORE=prosystem ;;
+  lynx) CORE=handy ;;
+  ngp) CORE=mednafen_ngp ;;
+  wswan) CORE=mednafen_wswan ;;
+  virtualboy) CORE=mednafen_vb ;;
+  ps2) CORE=pcsx2 ;;
+  gamecube|wii) CORE=dolphin ;;
+  3ds) CORE=citra ;;
+  quake) CORE=tyrquake ;;
+  cavestory) CORE=nxengine ;;
   *) CORE="" ;;
 esac
 # o ScrapCade pode mandar o nucleo escolhido pelo usuario (ex.: bsnes no lugar do snes9x)
 [ -n "$3" ] && [ -f "/usr/lib/libretro/$3_libretro.so" ] && CORE=$3
 SO=/usr/lib/libretro/${CORE}_libretro.so
+# Quake e Cave Story: o "jogo" e um atalho (.quake, .cavestory) com o caminho do arquivo de verdade na primeira linha
+case "$SIS" in quake|cavestory) R=$(head -1 "$ROM" | tr -d '\r'); [ -n "$R" ] && ROM="$(dirname "$ROM")/$R" ;; esac
+# Dolphin e PCSX2 precisam dos arquivos deles (Sys, GameIndex) na pasta de BIOS (copia uma vez)
+[ "$CORE" = dolphin ] && [ ! -d /userdata/bios/dolphin-emu/Sys ] && mkdir -p /userdata/bios/dolphin-emu && cp -r /usr/share/tos/dolphin-emu/Sys /userdata/bios/dolphin-emu/
+[ "$CORE" = pcsx2 ] && [ ! -f /userdata/bios/pcsx2/resources/GameIndex.yaml ] && mkdir -p /userdata/bios/pcsx2/bios && cp -r /usr/share/tos/pcsx2/resources /userdata/bios/pcsx2/
+# o NXEngine precisa dos dados livres dele (fontes, sons) na pasta de BIOS
+[ "$CORE" = nxengine ] && [ ! -d /userdata/bios/nxengine ] && cp -r /usr/share/retroarch/system/nxengine /userdata/bios/nxengine
 # o PrBoom precisa do prboom.wad dele na pasta de BIOS
 [ "$CORE" = prboom ] && [ ! -f /userdata/bios/prboom.wad ] && cp /usr/share/tos/prboom.wad /userdata/bios/
 # o PPSSPP precisa das fontes e imagens dele na pasta de BIOS (copia uma vez: o exFAT nao tem atalhos)
@@ -90,6 +112,36 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
     SHADER=$(sed -n 's/^video_shader = "\(.*\)"/\1/p' "$CFG/scrapcade-jogo.cfg")
     [ -n "$SHADER" ] && [ -f "$SHADER" ] && SET="--set-shader $SHADER"
   fi
+  # filtro escolhido so para este console (painel: Filtro do <console>); vem depois do filtro geral
+  SC=/userdata/system/configs
+  : > /tmp/tos-console2.cfg
+  if [ -f "$SC/shaders/$SIS" ]; then
+    S=$(head -1 "$SC/shaders/$SIS")
+    case "$S" in
+      nenhum) printf 'video_shader_enable = "false"\nvideo_smooth = "false"\n' >> /tmp/tos-console2.cfg; SET="" ;;
+      liso) printf 'video_shader_enable = "false"\nvideo_smooth = "true"\n' >> /tmp/tos-console2.cfg; SET="" ;;
+      *) [ -f "$S" ] && { echo 'video_shader_enable = "true"' >> /tmp/tos-console2.cfg; SET="--set-shader $S"; } ;;
+    esac
+  fi
+  # moldura nos consoles de mesa (imagem 4:3): a do formato da tela (16:9, 16:10 ou 5:4)
+  if [ -f "$SC/moldura" ]; then
+    case "$SIS" in gb|gbc|gba|nds|3ds|psp|gamegear|lynx|ngp|wswan|virtualboy|ports|doom|quake|cavestory|dos|halflife) ;; *)
+      T=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null); W=${T%,*}; H=${T#*,}; M=169
+      [ -n "$H" ] && [ "$H" -gt 0 ] && { R=$(( W * 100 / H )); [ $R -lt 170 ] && M=1610; [ $R -lt 140 ] && M=54; [ $R -lt 130 ] && M=""; }
+      [ -n "$M" ] && printf 'input_overlay_enable = "true"\ninput_overlay = "/usr/share/tos/molduras/moldura-%s.cfg"\ninput_overlay_opacity = "1.000000"\ninput_overlay_hide_in_menu = "true"\naspect_ratio_index = "0"\nvideo_scale_integer = "false"\n' "$M" >> /tmp/tos-console2.cfg ;;
+    esac
+  fi
+  EXTRA="$EXTRA|/tmp/tos-console2.cfg"
+  # jogar online: hospedar ou entrar no IP do amigo (painel: Jogar online)
+  if [ -f "$SC/online" ]; then
+    read -r MODO IP < "$SC/online"
+    NOME=$(cut -d'|' -f2 /tmp/tos-perfil 2>/dev/null)
+    [ -n "$NOME" ] && echo "netplay_nickname = \"$NOME\"" >> /tmp/tos-console2.cfg
+    [ "$MODO" = host ] && SET="$SET --host"
+    [ "$MODO" = connect ] && [ -n "$IP" ] && SET="$SET --connect $IP"
+  fi
+  # conquistas (painel: RetroAchievements com a conta do usuario)
+  [ -f "$SC/conquistas.cfg" ] && EXTRA="$EXTRA|$SC/conquistas.cfg"
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
   # N64 em placa de video sem OpenGL 3.3 (Intel antigas, GMA): o GLideN64 nao abre. Neste PC o desenho e pelo
   # processador (angrylion): mais lento, mas abre em qualquer placa. A marca fica guardada para as proximas vezes.

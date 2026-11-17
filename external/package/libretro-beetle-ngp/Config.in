@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_BEETLE_NGP
+	bool "libretro-beetle-ngp"
+	help
+	  Nucleo libretro: Neo Geo Pocket e Pocket Color.

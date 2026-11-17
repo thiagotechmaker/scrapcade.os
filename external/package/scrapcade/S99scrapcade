@@ -14,6 +14,8 @@ export SDL_GAMECONTROLLERCONFIG_FILE=/tmp/gamecontrollerdb.txt
 if grep -q "tos.seguro=1" /proc/cmdline; then
   export LIBGL_ALWAYS_SOFTWARE=1 SDL_RENDER_DRIVER=software
 fi
+# fuso escolhido no painel (Brasilia de fabrica, pelo /etc/localtime)
+[ -s /userdata/system/configs/fuso ] && export TZ="$(cat /userdata/system/configs/fuso)"
 DAEMON=/usr/bin/scrapcade
 PIDFILE=/var/run/scrapcade.pid
 LOG=/userdata/system/logs/scrapcade.log

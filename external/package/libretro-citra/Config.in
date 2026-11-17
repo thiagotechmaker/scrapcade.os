@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_CITRA
+	bool "libretro-citra"
+	depends on BR2_x86_64
+	help
+	  Nucleo libretro: Nintendo 3DS (Citra). So na versao de 64 bits.

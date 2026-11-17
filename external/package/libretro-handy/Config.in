@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_HANDY
+	bool "libretro-handy"
+	help
+	  Nucleo libretro: Atari Lynx.

@@ -87,6 +87,8 @@ static std::vector<Nucleo> nucleos(const std::string &id) {
     if (id == "nes") return {{"mesen", "Mesen"}, {"fceumm", "FCEUmm (mais leve)"}};
     if (id == "megadrive") return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
     if (id == "gba") return {{"mgba", "mGBA"}, {"gpsp", "gpSP (mais leve)"}};
+    if (id == "arcade") return {{"fbneo", "FBNeo"}, {"mame2003_plus", "MAME 2003-Plus (romset 0.78)"}};
+    if (id == "mastersystem" || id == "segacd") return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
     return {};
 }
 
@@ -792,6 +794,106 @@ static const char *ENERGIA_OPCOES[] = {"Suspender", "Reiniciar", "Desligar", "Ca
 static bool protecaoOn = false;
 static const char *FILTROS_IMG[] = {"Nenhum", "Liso", "TV de tubo"};
 static int filtroImg() { int v = atoi(prefs["filtro"].c_str()); return v < 0 || v > 2 ? 0 : v; }
+// Filtro de cada console: os do pacote completo (glsl-shaders) mais usados; todos os outros ficam no menu do RetroArch (F1).
+struct ShaderOpc { const char *nome, *arq; };
+static const ShaderOpc SHADERS[] = {
+    {"Igual aos outros", ""}, {"Nenhum", "nenhum"}, {"Liso", "liso"}, {"TV de tubo", "/usr/share/tos/shaders/tv.glslp"},
+    {"CRT Easymode", "crt/crt-easymode.glslp"}, {"CRT Geom (tela curva)", "crt/crt-geom.glslp"},
+    {"CRT Lottes", "crt/crt-lottes.glslp"}, {"CRT Royale (pesado)", "crt/crt-royale.glslp"},
+    {"Linhas de varredura", "scanlines/scanline.glslp"}, {"LCD de portátil", "handheld/lcd3x.glslp"},
+    {"Game Boy verde", "handheld/gameboy.glslp"}, {"Pixels suaves (xBR)", "xbr/xbr-lv2.glslp"},
+    {"ScaleFX", "scalefx/scalefx.glslp"}, {"Nítido (sharp bilinear)", "interpolation/sharp-bilinear.glslp"},
+};
+static const int NSHADERS = int(sizeof(SHADERS) / sizeof(SHADERS[0]));
+static int shaderSis(const std::string &sis) { int v = atoi(prefs["shader|" + sis].c_str()); return v < 0 || v >= NSHADERS ? 0 : v; }
+static void gravarShaderSis(const std::string &sis) {
+    std::string d = "/userdata/system/configs/shaders", p = d + "/" + sis;
+    mkdirs(d);
+    int v = shaderSis(sis);
+    if (v == 0) { remove(p.c_str()); return; }
+    std::string a = SHADERS[v].arq;
+    if (a[0] != '/' && a != "nenhum" && a != "liso") a = "/usr/share/retroarch/shaders/glsl/" + a;
+    std::ofstream(p) << a << "\n";
+}
+// Fuso horario: o relogio do ScrapCade e do sistema (TZ); Brasilia de fabrica
+struct FusoOpc { const char *nome, *tz; };
+static const FusoOpc FUSOS[] = {
+    {"Brasília (UTC-3)", "America/Sao_Paulo"}, {"Fernando de Noronha (UTC-2)", "America/Noronha"},
+    {"Manaus e Cuiabá (UTC-4)", "America/Manaus"}, {"Acre (UTC-5)", "America/Rio_Branco"},
+    {"Lisboa", "Europe/Lisbon"}, {"Nova York", "America/New_York"}, {"UTC", "UTC"},
+};
+static const int NFUSOS = int(sizeof(FUSOS) / sizeof(FUSOS[0]));
+static int fusoIdx() { int v = atoi(prefs["fuso"].c_str()); return v < 0 || v >= NFUSOS ? 0 : v; }
+static void aplicarFuso() {
+    mkdirs("/userdata/system/configs");
+    std::ofstream("/userdata/system/configs/fuso") << FUSOS[fusoIdx()].tz << "\n";
+    setenv("TZ", FUSOS[fusoIdx()].tz, 1);
+    tzset();
+}
+// Jogar online (netplay do RetroArch): hospedar ou entrar no IP de um amigo; vale para o proximo jogo aberto
+static const char *ONLINE[] = {"Desligado", "Hospedar", "Entrar num amigo"};
+static int onlineIdx() { int v = atoi(prefs["online"].c_str()); return v < 0 || v > 2 ? 0 : v; }
+static void gravarOnline() {
+    std::string p = "/userdata/system/configs/online";
+    int v = onlineIdx();
+    if (v == 0) { remove(p.c_str()); return; }
+    std::ofstream(p) << (v == 1 ? std::string("host") : "connect " + prefs["online_ip"]) << "\n";
+}
+// Conquistas: o RetroArch entra com a conta do usuario (digitada por ele) e depois guarda so o token
+static const std::string CONQ_CFG = "/userdata/system/configs/conquistas.cfg";
+static void gravarConquistas(const std::string &user, const std::string &senha) {
+    if (user.empty()) { remove(CONQ_CFG.c_str()); return; }
+    std::ofstream o(CONQ_CFG);
+    o << "cheevos_enable = \"true\"\ncheevos_hardcore_mode_enable = \"false\"\n";
+    o << "cheevos_username = \"" << user << "\"\ncheevos_password = \"" << senha << "\"\n";
+}
+// Saves sincronizados: liga o Syncthing (S48syncthing) com a pasta de saves
+static bool syncLigado() { return isFile("/userdata/system/configs/syncthing"); }
+static void ligarSync(bool on) {
+    if (on) std::ofstream("/userdata/system/configs/syncthing") << "1\n"; else remove("/userdata/system/configs/syncthing");
+    std::system(on ? "/etc/init.d/S48syncthing start >/dev/null 2>&1 &" : "/etc/init.d/S48syncthing stop >/dev/null 2>&1 &");
+}
+// Desempenho automatico: mede o PC (nucleos x MHz do processador e se a placa de video desenha de verdade)
+// e escolhe os emuladores mais leves nos PCs fracos. 0 fraco, 1 medio, 2 forte.
+static std::string glName;
+static const char *DESEMPENHO[] = {"Fraco (emuladores leves)", "Médio", "Forte"};
+static int medirDesempenho(std::string *conta = nullptr) {
+    int nucleos = 0; double mhz = 0;
+    std::ifstream ci("/proc/cpuinfo");
+    for (std::string l; std::getline(ci, l);) {
+        if (l.rfind("processor", 0) == 0) nucleos++;
+        if (l.rfind("cpu MHz", 0) == 0) mhz = std::max(mhz, atof(l.substr(l.find(':') + 1).c_str()));
+    }
+    std::ifstream mx("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
+    long khz = 0;
+    if (mx >> khz && khz > 0) mhz = khz / 1000.0;
+    double pontos = nucleos * mhz / 1000.0;   // ex.: 2 nucleos de 1,6 GHz = 3,2
+    bool softGL = glName.find("llvmpipe") != std::string::npos || glName.find("softpipe") != std::string::npos;
+    int c = pontos < 5 ? 0 : pontos < 14 ? 1 : 2;
+    if (softGL && c > 0) c--;
+    if (conta) {
+        char b[160];
+        snprintf(b, sizeof b, "%d núcleos de %.1f GHz%s", nucleos, mhz / 1000.0, softGL ? ", vídeo sem aceleração" : "");
+        *conta = b;
+    }
+    return c;
+}
+static int desempenhoIdx() { int v = atoi(prefs["desempenho"].c_str()); return v < 0 || v > 2 ? 1 : v; }
+static void aplicarDesempenho(int c) {
+    prefs["desempenho"] = std::to_string(c);
+    const char *leves[][2] = {{"snes", "snes9x2010"}, {"nes", "fceumm"}, {"megadrive", "picodrive"}, {"gba", "gpsp"},
+                              {"mastersystem", "picodrive"}, {"segacd", "picodrive"}};
+    for (auto &l : leves) {
+        if (c == 0) prefs[std::string("core|") + l[0]] = l[1];
+        else if (prefs[std::string("core|") + l[0]] == l[1]) prefs.erase(std::string("core|") + l[0]);
+    }
+    if (c == 0) prefs["runahead"] = "0";
+    savePrefs();
+}
+static void gravarMoldura(bool on) {
+    std::string p = "/userdata/system/configs/moldura";
+    if (on) std::ofstream(p) << "1\n"; else remove(p.c_str());
+}
 static const char *PROPORCOES[] = {"Original", "4:3", "Tela cheia", "Escala inteira"};
 static int proporcao() { int v = atoi(prefs["proporcao"].c_str()); return v < 0 || v > 3 ? 0 : v; }
 static bool prefLigada(const char *k, bool padrao) {
@@ -816,7 +918,17 @@ static void gravarJogoCfg() {
     o << "fps_show = \"" << (fps ? "true" : "false") << "\"\n";
 }
 
-static const std::string F_ALL = "", F_FAV = "*fav", F_TOP = "*top", F_REC = "*rec";
+static void abrirTecladoFwd(const std::string &titulo, bool oculto, std::function<void(bool)> fim);
+static std::string tkTextoFwd();
+static const std::string F_ALL = "", F_FAV = "*fav", F_TOP = "*top", F_REC = "*rec", F_COL = "*col:";
+// colecoes: prefs "col|<nome>|<jogo>"; a lista de nomes sai das proprias chaves
+static std::vector<std::string> colecoes() {
+    std::set<std::string> s;
+    for (auto &p : prefs)
+        if (p.first.rfind("col|", 0) == 0) { size_t b = p.first.find('|', 4); if (b != std::string::npos) s.insert(p.first.substr(4, b - 4)); }
+    return std::vector<std::string>(s.begin(), s.end());
+}
+static bool naColecao(const std::string &c, const Game &g) { return prefs.count("col|" + c + "|" + g.key()) > 0; }
 static std::vector<std::string> filters;
 static std::string filter = F_ALL;
 
@@ -827,6 +939,7 @@ static void buildFilters() {
     if (rec) filters.push_back(F_REC);   // logo depois de Todos: os ultimos jogos abertos
     if (fav) filters.push_back(F_FAV);
     if (top) filters.push_back(F_TOP);
+    for (auto &c : colecoes()) filters.push_back(F_COL + c);
     bool vazios = prefLigada("vazios", false);   // painel: mostrar tambem os consoles sem jogo
     for (auto &s : SYSTEMS) {
         bool tem = false;
@@ -842,6 +955,7 @@ static std::string filterName(const std::string &id) {
     if (id == F_REC) return "Continuar jogando";
     if (id == F_FAV) return "Favoritos";
     if (id == F_TOP) return "Mais jogados";
+    if (id.rfind(F_COL, 0) == 0) return id.substr(F_COL.size());
     for (auto &s : SYSTEMS) if (s.id == id) return s.name;
     return "Todos";
 }
@@ -853,6 +967,7 @@ static void applyFilter(int keepIndex = -1) {
         if (filter == F_FAV && !isFav(g)) continue;
         if (filter == F_TOP && plays(g) <= 0) continue;
         if (filter == F_REC && quando(g) <= 0) continue;
+        if (filter.rfind(F_COL, 0) == 0 && !naColecao(filter.substr(F_COL.size()), g)) continue;
         if (!filter.empty() && filter[0] != '*' && g.sys->id != filter) continue;
         view.push_back(g);
     }
@@ -1082,6 +1197,11 @@ static void drawDetails() {
     int n = plays(*g);
     L.push_back(n == 0 ? "Ainda não jogado" : (n == 1 ? "Jogado 1 vez" : "Jogado " + std::to_string(n) + " vezes"));
     L.push_back(std::string("Favorito: ") + (isFav(*g) ? "sim" : "não") + "  (o botão X marca e desmarca)");
+    {
+        std::string cs;
+        for (auto &c : colecoes()) if (naColecao(c, *g)) cs += (cs.empty() ? "" : ", ") + c;
+        L.push_back("Coleções: " + (cs.empty() ? std::string("nenhuma") : cs) + "  (A escolhe)");
+    }
     float w = std::min(G.W - 40 * u, 430 * u), lh = 13 * u, h = 44 * u + L.size() * lh;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;
     G.roundRect(x, y, w, h, 8 * u, 0xF2202329);
@@ -1095,7 +1215,7 @@ static void drawDetails() {
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
 enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
-       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_COUNT };
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_SHADER_SIS, OPT_MOLDURA, OPT_ONLINE, OPT_FUSO, OPT_CONQUISTAS, OPT_SYNC, OPT_DESEMPENHO, OPT_IDIOMA, OPT_COUNT };
 static bool sysOpen = false;
 
 // Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
@@ -1103,12 +1223,12 @@ static bool sysOpen = false;
 struct Secao { const char *nome; std::vector<int> opts; };
 static const std::vector<Secao> SECOES = {
     {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
-    {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO}},
+    {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_SHADER_SIS, OPT_MOLDURA, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_ONLINE, OPT_CONQUISTAS}},
     {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_PROTECAO}},
     {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH, OPT_MUSICA, OPT_SONS}},
-    {"TELA E ENERGIA", {OPT_ENERGIA, OPT_DESLIGAR, OPT_RELOGIO}},
-    {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR}},
-    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_SUSPENDER, OPT_REBOOT, OPT_OFF}},
+    {"TELA E ENERGIA", {OPT_ENERGIA, OPT_DESLIGAR, OPT_RELOGIO, OPT_FUSO}},
+    {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR, OPT_SYNC}},
+    {"SISTEMA", {OPT_IDIOMA, OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_DESEMPENHO, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_SUSPENDER, OPT_REBOOT, OPT_OFF}},
 };
 static std::vector<int> painelLinhas;   // -(secao + 1) = titulo da secao; >= 0 = opcao
 static std::vector<int> painelOpts;     // so as opcoes, na ordem da tela
@@ -1145,7 +1265,6 @@ static std::vector<std::string> textLines;
 static int cpuPct = 0, memPct = 0, diskPct = 0;
 static long long cpuTotal = 0, cpuIdle = 0;
 static Uint32 barsAt = 0;
-static std::string glName;                    // placa de video, lida uma vez
 
 // Motor grafico: os desenhos que o SDL tem neste sistema (lidos na hora, so aparece o que existe)
 static std::string engineNow;                 // o que esta desenhando agora
@@ -1213,6 +1332,23 @@ static std::string optLabel(int i) {
         return "Emulador do " + g->sys->name + ":   ‹ " + emuNome(g->sys) + " ›";
     }
     case OPT_RELOGIO: return std::string("Relógio:   ‹ ") + (prefs["relogio"] == "12" ? "12 h (AM/PM)" : "24 h") + " ›";
+    case OPT_FUSO: return std::string("Fuso horário:   ‹ ") + FUSOS[fusoIdx()].nome + " ›";
+    case OPT_IDIOMA: return std::string("Idioma / Language:   ‹ ") + (prefs["idioma"] == "en" ? "English" : "Português") + " ›";
+    case OPT_CONQUISTAS:
+        return isFile(CONQ_CFG) ? "Conquistas (RetroAchievements):   " + prefs["conq_user"] + "   (A desliga)"
+                                : std::string("Conquistas (RetroAchievements):   Desligadas   (A entra)");
+    case OPT_SYNC: return syncLigado() ? "Saves sincronizados:   ‹ Ligado ›   http://" + ipAddr() + ":8384"
+                                       : std::string("Saves sincronizados:   ‹ Desligado ›");
+    case OPT_DESEMPENHO: return std::string("Desempenho deste PC:   ‹ ") + DESEMPENHO[desempenhoIdx()] + " ›";
+    case OPT_SHADER_SIS: {
+        const Game *g = current();
+        if (!g) return "Filtro por console:   escolha um jogo no carrossel";
+        return "Filtro do " + g->sys->name + ":   ‹ " + SHADERS[shaderSis(g->sys->id)].nome + " ›";
+    }
+    case OPT_MOLDURA: return std::string("Moldura em volta do jogo:   ‹ ") + (prefLigada("moldura", false) ? "Ligada" : "Desligada") + " ›";
+    case OPT_ONLINE:
+        if (onlineIdx() == 2) return "Jogar online:   ‹ Entrar em " + (prefs["online_ip"].empty() ? std::string("(aperte A)") : prefs["online_ip"]) + " ›";
+        return std::string("Jogar online:   ‹ ") + ONLINE[onlineIdx()] + " ›";
     case OPT_ENVIAR: return "Enviar jogos do PC:   http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
     case OPT_PADRAO: return "Voltar tudo ao padrão";
     case OPT_MUSICA: {
@@ -1314,6 +1450,20 @@ static const char *optAjuda(int o) {
     case OPT_FPS: return "Mostra os quadros por segundo no canto do jogo. Útil para ver se o computador está dando conta.";
     case OPT_NUCLEO: return "Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.";
     case OPT_RELOGIO: return "Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).";
+    case OPT_FUSO: return "Fuso do relógio. Brasília de fábrica; troque se você mora em outro fuso.";
+    case OPT_IDIOMA: return "Escolhe o idioma do menu e do painel. Os nomes das pastas (Jogos novos, bios, roms) ficam iguais.";
+    case OPT_CONQUISTAS: return "Conquistas dos jogos clássicos com a sua conta do retroachievements.org (crie no site; a senha você digita aqui, e o RetroArch troca por um código depois do primeiro jogo). Precisa de internet.";
+    case OPT_SYNC: return "Ligado: os saves ficam iguais em outros aparelhos com Syncthing (PC, celular, outro ScrapCade). Para parear, abra o endereço no navegador de um aparelho da mesma rede e compartilhe a pasta \"ScrapCade saves\".";
+    case OPT_DESEMPENHO: {
+        static std::string t;
+        std::string conta;
+        int m = medirDesempenho(&conta);
+        t = std::string("Medido no primeiro uso: ") + conta + " = " + DESEMPENHO[m] + ". Fraco usa os emuladores mais leves (Snes9x 2010, FCEUmm, PicoDrive, gpSP) e desliga o \"menos atraso\". A mede de novo.";
+        return t.c_str();
+    }
+    case OPT_SHADER_SIS: return "Filtro só para o console do jogo selecionado (vale para todos os jogos dele). \"Igual aos outros\" usa o Filtro de imagem de cima. Os outros filtros do pacote ficam no menu do jogo (Select + X).";
+    case OPT_MOLDURA: return "Ligada: uma moldura preenche as bordas pretas nos consoles de mesa (imagem 4:3). Nos portáteis a imagem fica como está.";
+    case OPT_ONLINE: return "Hospedar: o próximo jogo abre esperando um amigo (porta 55435 liberada no roteador). Entrar: o próximo jogo conecta no IP do amigo. Os dois precisam do mesmo jogo e do mesmo emulador.";
     case OPT_ENVIAR: return "No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.";
     case OPT_MUSICA: return "Toca as músicas que você colocar na pasta music da SCRAP-DADOS (.ogg, .mp3, .flac ou .wav), em ordem sorteada, só no menu. O ScrapCade não traz músicas.";
     case OPT_SONS: return "Um som curto ao andar pelo carrossel, ao escolher e ao voltar.";
@@ -1358,7 +1508,7 @@ static const char *optAjuda(int o) {
     case OPT_HELP: return "Mostra os atalhos que valem em todo jogo: Select + Start sai, Select + X abre o menu do emulador, salvar e carregar.";
     case OPT_BIOS: return "Confere as BIOS de cada console (PS1, PS2, Saturn, DS...). Verde: certa. Vermelho: falta ou é o arquivo errado.";
     case OPT_ATUALIZAR: return "Procura a versão nova do ScrapCade na internet, baixa e confere. Jogos e saves não são mexidos, e se a nova não ligar ele volta sozinho para a anterior.";
-    case OPT_INSTALL: return "Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. ATENÇÃO: apaga tudo o que estiver no disco escolhido.";
+    case OPT_INSTALL: return "Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. Na tela seguinte: apagar o disco inteiro ou instalar ao lado do Windows.";
     case OPT_INFO: return "Processador, placa de vídeo, memória, versão do ScrapCade e do kernel. Útil para pedir ajuda.";
     case OPT_REBOOT: return "Reinicia o computador.";
     case OPT_OFF: return "Desliga o computador. Os saves já ficam guardados.";
@@ -1366,8 +1516,50 @@ static const char *optAjuda(int o) {
     return "";
 }
 
+// ---- idioma: frases de /usr/share/scrapcade/en.txt; troca a frase inteira ou os pedacos (das maiores para as menores)
+namespace Idioma {
+static std::vector<std::pair<std::string, std::string>> frases;
+static std::unordered_map<std::string, std::string> feito;
+static bool letra(unsigned char c) { return isalnum(c) || c >= 0x80; }
+static std::string traduz(const std::string &s) {
+    if (s.empty() || frases.empty()) return s;
+    auto it = feito.find(s);
+    if (it != feito.end()) return it->second;
+    std::string r = s;
+    for (auto &f : frases) {
+        if (r == f.first) { r = f.second; break; }
+        for (size_t p = r.find(f.first); p != std::string::npos; p = r.find(f.first, p)) {
+            size_t q = p + f.first.size();
+            bool ini = p == 0 || !letra((unsigned char)r[p - 1]) || !letra((unsigned char)f.first[0]);
+            bool fim = q >= r.size() || !letra((unsigned char)r[q]) || !letra((unsigned char)f.first.back());
+            if (ini && fim) { r.replace(p, f.first.size(), f.second); p += f.second.size(); }
+            else p = q;
+        }
+    }
+    if (feito.size() > 4000) feito.clear();
+    feito[s] = r;
+    return r;
+}
+static void carregar(bool ingles) {
+    frases.clear();
+    feito.clear();
+    if (ingles) {
+        std::ifstream in(DATA + "/en.txt");
+        for (std::string l; std::getline(in, l);) {
+            size_t t = l.find('\t');
+            if (l.empty() || l[0] == '#' || t == std::string::npos) continue;
+            frases.push_back({l.substr(0, t), l.substr(t + 1)});
+        }
+        std::stable_sort(frases.begin(), frases.end(), [](auto &a, auto &b) { return a.first.size() > b.first.size(); });
+    }
+    T.traduz = frases.empty() ? std::function<std::string(const std::string &)>() : traduz;
+    T.clear();
+}
+}
+
 // Texto corrido quebrado em linhas que cabem na largura
-static float drawParagrafo(const std::string &t, float x, float y, float w, float units, uint32_t col, float lh, float yMax) {
+static float drawParagrafo(const std::string &t0, float x, float y, float w, float units, uint32_t col, float lh, float yMax) {
+    std::string t = T.tr(t0);
     std::stringstream ss(t);
     std::string pal, linha;
     auto sai = [&] { if (!linha.empty() && y + lh / 2 < yMax) T.draw(linha, x, y + lh / 2, units, false, col); y += lh; linha.clear(); };
@@ -2230,7 +2422,9 @@ static void drawNavegador() {
 // Baixados do release oficial de cada autor no GitHub e conferidos pelo SHA-256 antes de entrar.
 // sis: pasta do console (a capa, feita da tela do proprio jogo, vem do sistema e vai para <sis>/images)
 // dentro: quando o autor publica um .zip, o arquivo do jogo que sai de dentro dele (o SHA-256 e o do .zip)
-struct Gratis { const char *nome, *console, *licenca, *autor, *url, *arquivo, *sha, *sis, *dentro; };
+// "dentro": o arquivo dentro do .zip; com "para", o que esta em "dentro" (arquivo ou pasta) vai para roms/<sis>/<para>
+// e o jogo vira um atalho (.quake, .cavestory) com o caminho "abre" dentro.
+struct Gratis { const char *nome, *console, *licenca, *autor, *url, *arquivo, *sha, *sis, *dentro, *para, *abre; };
 static const Gratis GRATIS[] = {
     {"µCity", "Game Boy Color", "GPLv3", "AntonioND", "https://github.com/AntonioND/ucity/releases/download/v1.3/ucity.gbc",
      "µCity.gbc", "9422ee2ca7b7ea1d46b58b2a429fff3f354dfd3e732dee1e7ae6220f148ce6e0", "gbc", ""},
@@ -2245,6 +2439,12 @@ static const Gratis GRATIS[] = {
     {"Freedoom: Phase 2", "Doom", "BSD", "Freedoom", "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
      "Freedoom - Phase 2.wad", "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59", "doom",
      "freedoom-0.13.0/freedoom2.wad"},
+    {"Cave Story", "Cave Story", "freeware", "Studio Pixel", "https://buildbot.libretro.com/assets/cores/Cave%20Story/Cave%20Story%20%28En%29.zip",
+     "Cave Story.cavestory", "b8e1b4ed667a6b075811abc52e468ef3c534e7e24e2ef0bc44d8ff95999c83fd", "cavestory",
+     "Cave Story (en)", "Cave Story (en)", "Cave Story (en)/Doukutsu.exe"},
+    {"Quake (shareware)", "Quake", "shareware", "id Software", "https://buildbot.libretro.com/assets/cores/Quake/Quake%20%28Shareware%29.zip",
+     "Quake (shareware).quake", "54b818ad098f7242805a5585cbbfc897124f606e482ce7654707a04a42d6a701", "quake",
+     "Quake/PAK0.PAK", "id1/pak0.pak", "id1/pak0.pak"},
 };
 static const int NGRATIS = int(sizeof(GRATIS) / sizeof(GRATIS[0]));
 static bool gratisOn = false;
@@ -2279,7 +2479,14 @@ static void gratisBaixar(int i) {
         std::string baixa = zip ? tmp + "/gratis.zip" : f;   // o SHA-256 confere o que veio do autor
         std::string r = Rede::run("curl -fsSL -m 600 -o '" + baixa + "' '" + g.url + "' && sha256sum '" + baixa + "'");
         bool ok = r.rfind(g.sha, 0) == 0;
-        if (ok && zip) {
+        if (ok && zip && g.para && *g.para) {   // pasta (ou arquivo) que fica em roms/<sis>, e o atalho com o caminho
+            std::string x = tmp + "/gratis", dest = ROMS + "/" + g.sis + "/" + g.para;
+            Rede::run("rm -rf '" + x + "' && mkdir -p '" + x + "' && unzip -q -o '" + baixa + "' -d '" + x + "'");
+            mkdirs(dest.substr(0, dest.rfind('/')));
+            Rede::run("rm -rf '" + dest + "' && mv '" + x + "/" + g.dentro + "' '" + dest + "'; rm -rf '" + x + "'");
+            std::ofstream(f) << g.abre << "\n";
+            ok = isFile(ROMS + "/" + g.sis + "/" + g.abre);
+        } else if (ok && zip) {
             Rede::run("unzip -p '" + baixa + "' '" + g.dentro + "' > '" + f + "'");
             ok = sizeOfFile(f) > 0;
         }
@@ -2515,10 +2722,11 @@ static void drawPortMaster() {
 // ------------------------------------------------------------------ instalar no disco (tos-instalar)
 
 static int instStage = 0;   // 0 fechado, 1 escolher o disco, 2 confirmar, 3 instalando, 4 terminou
-struct Disk { std::string dev, gb, model; };
+struct Disk { std::string dev, gb, model; int livre = 0; bool windows = false; };
 static std::vector<Disk> disks;
 static int diskSel = 0;
 static bool copyGames = true;
+static bool instLado = false;   // ao lado do Windows (so no espaco livre)
 static int instPct = 0;
 static std::string instMsg;
 
@@ -2531,7 +2739,14 @@ static void openInstall() {
         while (!l.empty() && (l.back() == '\n' || l.back() == '\r')) l.pop_back();
         size_t a = l.find('|'), b = l.find('|', a + 1);
         if (a == std::string::npos || b == std::string::npos) continue;
-        disks.push_back({l.substr(0, a), l.substr(a + 1, b - a - 1), l.substr(b + 1)});
+        Disk d{l.substr(0, a), l.substr(a + 1, b - a - 1), l.substr(b + 1)};
+        size_t c = l.find('|', b + 1), e = c == std::string::npos ? c : l.find('|', c + 1);
+        if (e != std::string::npos) {
+            d.model = l.substr(b + 1, c - b - 1);
+            d.livre = atoi(l.substr(c + 1, e - c - 1).c_str());
+            d.windows = l.substr(e + 1) == "1";
+        }
+        disks.push_back(d);
     }
     if (f) pclose(f);
     diskSel = 0;
@@ -2543,7 +2758,7 @@ static void startInstall() {
     remove("/tmp/tos-instalar.txt");
     instPct = 0;
     instMsg = "Começando";
-    std::string cmd = "/usr/bin/tos-instalar '" + dev + "' " + (copyGames ? "jogos" : "") +
+    std::string cmd = "/usr/bin/tos-instalar '" + dev + "' " + (instLado ? "lado " : "") + (copyGames ? "jogos" : "") +
                       " >> /userdata/system/logs/instalar.log 2>&1";
     std::thread([cmd] { if (system(cmd.c_str()) != 0) fprintf(stderr, "scrapcade: tos-instalar terminou com erro\n"); }).detach();
     instStage = 3;
@@ -2572,8 +2787,19 @@ static void drawInstall() {
         add("O pen drive de onde o ScrapCade está rodando não aparece na lista.", 0xFF5E6269);
     } else if (instStage == 2) {
         const Disk &d = disks[diskSel];
-        add("ATENÇÃO: isso APAGA TUDO o que está no disco:", 0xFFD0362B);
-        add("    " + d.model + "   " + d.gb + " GB   (" + d.dev + ")", 0xFFD0362B);
+        bool podeLado = d.windows && d.livre >= 8;
+        if (!podeLado) instLado = false;
+        if (d.windows)
+            add(std::string("Como instalar:   ‹ ") + (instLado ? "Ao lado do Windows" : "Apagar o disco inteiro") + " ›   (cima/baixo)");
+        if (instLado) {
+            add("O Windows e os arquivos dele ficam como estão: o ScrapCade usa só os " + std::to_string(d.livre) + " GB livres.", 0xFF1E9C4A);
+            add("Ao ligar, um menu de 3 segundos deixa escolher ScrapCade ou Windows (fica no último usado).", 0xFF1E9C4A);
+        } else {
+            add("ATENÇÃO: isso APAGA TUDO o que está no disco:", 0xFFD0362B);
+            add("    " + d.model + "   " + d.gb + " GB   (" + d.dev + ")", 0xFFD0362B);
+            if (d.windows && !podeLado)
+                add("Para ficar ao lado do Windows, libere 8 GB ou mais nele: Gerenciamento de disco > Diminuir volume.", 0xFF5E6269);
+        }
         add("");
         add(std::string("Levar também os jogos, saves e BIOS deste pen drive:   ‹ ") + (copyGames ? "Sim" : "Não") + " ›");
         add("");
@@ -2653,7 +2879,7 @@ static void drawPerguntaHD() {
                        "Dá para instalar no HD ou SSD deste computador e ligar sem o pen drive",
                        "(os jogos podem ir junto). Você escolhe o disco na próxima tela.",
                        "",
-                       "Atenção: o disco escolhido é apagado.",
+                       "Atenção: o disco escolhido é apagado (ou use o espaço livre ao lado do Windows).",
                        "Depois, se quiser: Sistema > Instalar no disco do computador."};
     uint32_t C[] = {0xFF2B2E33, 0xFF2B2E33, 0xFF2B2E33, 0xFF2B2E33, 0xFFD0362B, 0xFF5E6269};
     float h = 22 * u + 16 * u + 6 * lh + 26 * u;
@@ -2702,6 +2928,47 @@ static void optAction(int dir) {
     case OPT_FPS: prefs["fps"] = prefLigada("fps", false) ? "0" : "1"; gravarJogoCfg(); break;
     case OPT_NUCLEO: if (current()) trocarNucleo(current()); return;
     case OPT_RELOGIO: prefs["relogio"] = prefs["relogio"] == "12" ? "24" : "12"; break;
+    case OPT_FUSO: prefs["fuso"] = std::to_string((fusoIdx() + d + NFUSOS) % NFUSOS); aplicarFuso(); break;
+    case OPT_IDIOMA: prefs["idioma"] = prefs["idioma"] == "en" ? "pt" : "en"; Idioma::carregar(prefs["idioma"] == "en"); break;
+    case OPT_CONQUISTAS:
+        if (dir != 0) return;
+        if (isFile(CONQ_CFG)) { gravarConquistas("", ""); prefs.erase("conq_user"); toast("Conquistas desligadas.", 2500); break; }
+        abrirTecladoFwd("RetroAchievements: seu usuário", false, [](bool ok) {
+            std::string u = tkTextoFwd();
+            if (!ok || u.empty()) return;
+            abrirTecladoFwd("Senha do RetroAchievements", true, [u](bool ok2) {
+                if (!ok2 || tkTextoFwd().empty()) return;
+                gravarConquistas(u, tkTextoFwd());
+                prefs["conq_user"] = u;
+                savePrefs();
+                toast("Conquistas ligadas: valem a partir do próximo jogo.", 3500);
+            });
+        });
+        return;
+    case OPT_SYNC: ligarSync(!syncLigado()); break;
+    case OPT_DESEMPENHO:
+        if (dir == 0) aplicarDesempenho(medirDesempenho());
+        else aplicarDesempenho((desempenhoIdx() + d + 3) % 3);
+        toast(std::string("Desempenho: ") + DESEMPENHO[desempenhoIdx()], 2500);
+        break;
+    case OPT_SHADER_SIS: {
+        const Game *g = current();
+        if (!g) return;
+        prefs["shader|" + g->sys->id] = std::to_string((shaderSis(g->sys->id) + d + NSHADERS) % NSHADERS);
+        gravarShaderSis(g->sys->id);
+        break;
+    }
+    case OPT_MOLDURA: prefs["moldura"] = prefLigada("moldura", false) ? "0" : "1"; gravarMoldura(prefs["moldura"] == "1"); break;
+    case OPT_ONLINE:
+        if (dir == 0 && onlineIdx() == 2) {   // A: escrever o IP do amigo
+            abrirTecladoFwd("IP do amigo (ex.: 192.168.0.20)", false, [](bool ok) {
+                if (ok && !tkTextoFwd().empty()) { prefs["online_ip"] = tkTextoFwd(); gravarOnline(); savePrefs(); }
+            });
+            return;
+        }
+        prefs["online"] = std::to_string((onlineIdx() + d + 3) % 3);
+        gravarOnline();
+        break;
     case OPT_PROTECAO: prefs["protecao"] = std::to_string((protecaoIdx() + d + 4) % 4); break;
     case OPT_MUSICA:
         prefs["musica"] = prefs["musica"] == "1" ? "0" : "1";
@@ -3026,10 +3293,11 @@ static bool installInput(int b) {
     if (instStage == 1) {
         if (b == B_UP && !disks.empty()) diskSel = (diskSel + int(disks.size()) - 1) % int(disks.size());
         if (b == B_DOWN && !disks.empty()) diskSel = (diskSel + 1) % int(disks.size());
-        if (b == B_A && !disks.empty()) instStage = 2;
+        if (b == B_A && !disks.empty()) { instStage = 2; instLado = disks[diskSel].windows && disks[diskSel].livre >= 8; }
         if (b == B_B || b == B_SELECT) { instStage = 0; sysOpen = true; }
     } else if (instStage == 2) {
         if (b == B_LEFT || b == B_RIGHT) copyGames = !copyGames;
+        if ((b == B_UP || b == B_DOWN) && disks[diskSel].windows && disks[diskSel].livre >= 8) instLado = !instLado;
         if (b == B_A) startInstall();
         if (b == B_B) instStage = 1;
     } else if (instStage == 4) {
@@ -3060,6 +3328,59 @@ static bool energiaInput(int b) {
     return true;
 }
 
+// ---- colecoes: lista com as colecoes existentes e "Nova colecao"; A poe ou tira o jogo
+static bool colOn = false;
+static int colSel = 0;
+static void abrirColecoes() { colOn = true; colSel = 0; }
+static void colecaoAlterna(const std::string &c, const Game &g) {
+    std::string k = "col|" + c + "|" + g.key();
+    bool tinha = prefs.erase(k) > 0;
+    if (!tinha) prefs[k] = "1";
+    savePrefs();
+    std::string f = filter;
+    buildFilters();
+    if (f.rfind(F_COL, 0) == 0 && std::find(filters.begin(), filters.end(), f) == filters.end()) filter = F_ALL;
+    applyFilter();
+    toast(tinha ? "Tirado de " + c : "Colocado em " + c, 2500);
+}
+static bool colecaoInput(Btn b) {
+    if (!colOn) return false;
+    auto cs = colecoes();
+    int n = int(cs.size()) + 1;
+    const Game *g = current();
+    if (b == B_UP) colSel = (colSel + n - 1) % n;
+    else if (b == B_DOWN) colSel = (colSel + 1) % n;
+    else if (b == B_B || b == B_SELECT) colOn = false;
+    else if (b == B_A && g) {
+        if (colSel < int(cs.size())) colecaoAlterna(cs[colSel], *g);
+        else {
+            Game copia = *g;
+            abrirTecladoFwd("Nome da coleção nova", false, [copia](bool ok) {
+                std::string nome = tkTextoFwd();
+                for (auto &c : nome) if (c == '|') c = '-';
+                if (ok && !nome.empty()) colecaoAlterna(nome, copia);
+            });
+        }
+    }
+    return true;
+}
+static void drawColecoes() {
+    if (!colOn) return;
+    const Game *g = current();
+    auto cs = colecoes();
+    float u = G.u, w = std::min(G.W - 40 * u, 360 * u), lh = 16 * u, h = 58 * u + (cs.size() + 1) * lh;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    G.roundRect(x, y, w, h, 8 * u, 0xF2202329);
+    T.draw("Coleções", x + 14 * u, y + 16 * u, 13, true, 0xFFFFFFFF, 0, w - 28 * u);
+    for (int i = 0; i <= int(cs.size()); i++) {
+        float ly = y + 38 * u + i * lh;
+        if (i == colSel) G.roundRect(x + 8 * u, ly - lh * 0.55f, w - 16 * u, lh, 4 * u, 0x40FFFFFF);
+        std::string t = i < int(cs.size()) ? ((g && naColecao(cs[i], *g)) ? "✓  " : "     ") + cs[i] : "+  Nova coleção";
+        T.draw(t, x + 16 * u, ly, 10, false, 0xFFDDE1E8, 0, w - 32 * u);
+    }
+    T.draw("A põe ou tira o jogo     B fecha", x + w - 14 * u, y + h - 10 * u, 8, false, 0x99FFFFFF, 2);
+}
+
 static bool panelInput(Btn b) {
     if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
     if (energiaInput(b)) return true;
@@ -3073,6 +3394,8 @@ static bool panelInput(Btn b) {
     if (hdInput(b)) return true;
     if (navInput(b)) return true;
     if (gratisInput(b)) return true;
+    if (colecaoInput(b)) return true;
+    if (details && !sysOpen && b == B_A && current()) { abrirColecoes(); return true; }
     if (installInput(b)) return true;
     if (!textTitle.empty()) {
         if (b == B_B || b == B_A || b == B_SELECT) { textTitle.clear(); sysOpen = true; }
@@ -3237,6 +3560,9 @@ static void abrirTeclado(const std::string &titulo, bool oculto, std::function<v
     tkC = 0;
     tkFim = fim;
 }
+
+static void abrirTecladoFwd(const std::string &titulo, bool oculto, std::function<void(bool)> fim) { abrirTeclado(titulo, oculto, fim); }
+static std::string tkTextoFwd() { return tkTexto; }
 
 static void fecharTeclado(bool ok) {
     tkOn = false;
@@ -3659,6 +3985,7 @@ static void render() {
     drawPortMaster();
     drawNavegador();
     drawGratis();
+    drawColecoes();
     drawConfirmacao();
     drawPerguntaHD();
     drawControle();
@@ -3707,7 +4034,12 @@ static std::string coreOf(const std::string &id) {
         {"nes", {"mesen", "fceumm"}}, {"snes", {"snes9x", "snes9x2010"}}, {"megadrive", {"genesis_plus_gx", "picodrive"}},
         {"gb", {"gambatte"}}, {"gbc", {"gambatte"}}, {"gba", {"mgba", "gpsp"}}, {"psx", {"pcsx_rearmed"}},
         {"n64", {"mupen64plus_next"}}, {"arcade", {"fbneo"}}, {"neogeo", {"fbneo"}}, {"psp", {"ppsspp"}},
-        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}, {"dos", {"dosbox_pure"}}};
+        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}, {"dos", {"dosbox_pure"}},
+        {"mastersystem", {"genesis_plus_gx", "picodrive"}}, {"gamegear", {"genesis_plus_gx"}}, {"segacd", {"genesis_plus_gx", "picodrive"}},
+        {"sega32x", {"picodrive"}}, {"pcengine", {"mednafen_pce_fast"}}, {"atari2600", {"stella2014"}}, {"atari7800", {"prosystem"}},
+        {"lynx", {"handy"}}, {"ngp", {"mednafen_ngp"}}, {"wswan", {"mednafen_wswan"}}, {"virtualboy", {"mednafen_vb"}},
+        {"ps2", {"pcsx2"}}, {"gamecube", {"dolphin"}}, {"wii", {"dolphin"}}, {"3ds", {"citra"}},
+        {"quake", {"tyrquake"}}, {"cavestory", {"nxengine"}}};
     auto it = m.find(id);
     if (it == m.end()) return "";
     for (auto &c : it->second)
@@ -3768,7 +4100,7 @@ static void play() {
         T.draw(g->sys->name + "  •  " + emu, G.W / 2.0f, G.H * 0.42f + 22 * u, 10, false, 0xFFB8BEC8, 1);
         T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
                accent(g->sys->color), 1);
-        T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
+        T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar     Select + Y: print", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
                false, 0xFFDDE1E8, 1);
         SDL_RenderPresent(G.r);
         SDL_PumpEvents();
@@ -3923,6 +4255,7 @@ int main() {
     T.bold = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf";
 
     loadPrefs();
+    Idioma::carregar(prefs["idioma"] == "en");
     gravarJogoCfg();
     montarPainel();
     prepararSons();
@@ -3938,6 +4271,7 @@ int main() {
         if (GetStr gs = (GetStr)SDL_GL_GetProcAddress("glGetString"))
             if (const unsigned char *r = gs(0x1F01)) glName = (const char *)r;   // GL_RENDERER
     }
+    if (prefs["desempenho"].empty()) aplicarDesempenho(medirDesempenho());   // primeiro uso: ajusta ao PC
     mkdirs(ROMS);
     setGames(scanGames());
     for (size_t i = 0; i < view.size(); i++)   // voltando de um jogo: fica nele

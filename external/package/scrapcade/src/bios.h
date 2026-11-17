@@ -42,6 +42,16 @@ static const std::vector<Need> &list() {
          {{"gb_bios.bin", "32fbbd84168d3482956eb3c5051637f5", "Nintendo"}}, {}},
         {"Game Boy Color", false, "abre direto, sem a tela da Nintendo",
          {{"gbc_bios.bin", "dbfce9db9deaa2567f6a84fde55f9680", "Nintendo"}}, {}},
+        {"Sega CD", true, "os jogos de Sega CD não abrem",
+         {{"bios_CD_U.bin", "2efd74e3232ff260e371b99f84024f7f", "EUA"},
+          {"bios_CD_E.bin", "e66fa1dc5820d254611fdcdba0662372", "Europa"},
+          {"bios_CD_J.bin", "278a9397d192149e84e820ac621a8edd", "Japão"}}, {}},
+        {"PC Engine CD", true, "os jogos de CD do PC Engine não abrem (os cartuchos abrem)",
+         {{"syscard3.pce", "38179df8f4ac870017db21ebcbf53114", "System Card 3.0"}}, {}},
+        {"Atari Lynx", true, "os jogos de Lynx não abrem",
+         {{"lynxboot.img", "fcd403db69f54290b51035d82f835e7b", "Atari"}}, {}},
+        {"Atari 7800", false, "abre direto, sem a tela da Atari",
+         {{"7800 BIOS (U).rom", "0763f1ffb006ddbe32e52d497ee848ae", "Atari"}}, {}},
     };
     return L;
 }

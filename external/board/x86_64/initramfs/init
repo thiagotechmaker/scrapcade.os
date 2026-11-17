@@ -67,6 +67,8 @@ if ! grep -q "loglevel=7" /proc/cmdline && tela; then
 fi
 
 achou=""
+# com a logo animada na tela, o boot nao escreve nada; os avisos de andamento so aparecem no modo de mensagens (loglevel=7)
+fala() { [ -z "$ANIM" ] && echo "$@"; return 0; }
 # O GRUB diz de qual particao ele mesmo veio (tos.uuid=): usa essa, para o pen drive escolhido na BIOS/UEFI
 # nao ligar a instalacao do HD. Sem tos.uuid (menu syslinux, que so existe nos pen drives): prefere USB.
 UUID=""
@@ -90,11 +92,12 @@ for t in $(seq 1 120); do      # ate 60 s: pen drive USB e leitor de cartao pode
     for d in $lista; do case $d in /dev/sr*) tenta $d && { achou=$d; break 2; } ;; esac; done
     for d in $lista; do e_usb $d || { tenta $d && { achou=$d; break 2; }; }; done
   fi
-  [ $t = 6 ] && echo "ScrapCade OS: procurando o sistema no pen drive..."
-  [ $((t % 20)) = 0 ] && echo "  discos encontrados ate agora:${lista:- nenhum}"
+  [ $t = 6 ] && fala "ScrapCade OS: procurando o sistema no pen drive..."
+  [ $((t % 20)) = 0 ] && fala "  discos encontrados ate agora:${lista:- nenhum}"
   sleep 0.5
 done
 if [ -z "$achou" ]; then
+  [ -n "$ANIM" ] && { kill $ANIM 2>/dev/null; ANIM=""; printf '\033[2J\033[H' > /dev/tty1 2>/dev/null; }
   echo
   echo "ScrapCade OS: nao achei o sistema (boot/tos.squashfs) em nenhum disco."
   echo "  Discos que apareceram:${lista:- nenhum}"
@@ -119,7 +122,7 @@ case "$achou" in /dev/sr*) ;; *)
     mem=$(awk '/^MemTotal/ {print $2}' /proc/meminfo)
     tam=$(cat /sys/class/block/$disco/size 2>/dev/null)
     if [ "${mem:-0}" -ge 1500000 ] && [ "${tam:-0}" -ge 4194304 ]; then   # 1,5 GB de memoria, pen drive de 2 GB
-      echo "ScrapCade: primeiro boot pelo .iso: copiando o sistema para a memoria (o pen drive vai ser arrumado)..."
+      fala "ScrapCade: primeiro boot pelo .iso: copiando o sistema para a memoria (o pen drive vai ser arrumado)..."
       mkdir -p /copia
       mount -t tmpfs -o size=90% tmpfs /copia
       if cp -a /boot/. /copia/ 2>/dev/null; then
@@ -139,7 +142,7 @@ if [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boo
   mount -o remount,rw /boot 2>/dev/null
   n=$(cat /boot/boot/tos-testando 2>/dev/null); n=$((${n:-0} + 1))
   if [ "$n" -ge 3 ]; then
-    echo "ScrapCade: a versao nova nao ligou 3 vezes; voltando para a anterior."
+    fala "ScrapCade: a versao nova nao ligou 3 vezes; voltando para a anterior."
     cd /boot/boot
     mv tos.squashfs tos-com-problema.squashfs
     mv tos-anterior.squashfs tos.squashfs

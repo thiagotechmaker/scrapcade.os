@@ -1,11 +1,19 @@
 #!/bin/sh
-# Navegador do ScrapCade (NetSurf). O que for baixado vai para "Jogos novos": o ScrapCade leva cada jogo
-# para o console certo, com capa e dados. O ScrapCade nao traz endereco de jogos: cada um escolhe de onde baixar.
+# Navegador do ScrapCade: no PC de 64 bits, o MiniBrowser do WebKitGTK (sites atuais); no de 32 bits, o NetSurf (leve).
+# O que for baixado vai para "Jogos novos": o ScrapCade leva cada jogo para o console certo, com capa e dados.
+# O ScrapCade nao traz endereco de jogos: cada um escolhe de onde baixar.
+INICIO=file:///usr/share/tos/inicio.html
+# pasta de downloads (o WebKitGTK usa a do XDG)
+mkdir -p "$HOME/.config"
+echo 'XDG_DOWNLOAD_DIR="/userdata/Jogos novos"' > "$HOME/.config/user-dirs.dirs"
+for m in /usr/bin/MiniBrowser /usr/libexec/webkit2gtk-4.1/MiniBrowser /usr/libexec/webkitgtk-6.0/MiniBrowser; do
+  [ -x "$m" ] && exec "$m" "${@:-$INICIO}"
+done
 C="$HOME/.config/netsurf"
 mkdir -p "$C"
 touch "$C/Choices"
 grep -q '^downloads_directory:' "$C/Choices" || echo 'downloads_directory:/userdata/Jogos novos' >> "$C/Choices"
-grep -q '^homepage_url:' "$C/Choices" || echo 'homepage_url:file:///usr/share/tos/inicio.html' >> "$C/Choices"
+grep -q '^homepage_url:' "$C/Choices" || echo "homepage_url:$INICIO" >> "$C/Choices"
 for n in netsurf-gtk3 netsurf-gtk netsurf; do
   command -v $n >/dev/null && exec $n "$@"
 done

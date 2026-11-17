@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_MAME2003_PLUS
+	bool "libretro-mame2003-plus"
+	help
+	  Nucleo libretro: MAME 2003-Plus (fliperama).

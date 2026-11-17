@@ -1,0 +1,33 @@
+#!/bin/sh
+# Saves sincronizados (painel Sistema > REDE): o Syncthing compartilha a pasta de saves com outros aparelhos.
+# Pareamento pela pagina do Syncthing: http://<ip do ScrapCade>:8384 (so na rede de casa).
+H=/userdata/system/syncthing
+LIGA=/userdata/system/configs/syncthing
+PID=/var/run/syncthing.pid
+LOG=/userdata/system/logs/syncthing.log
+case "$1" in
+  start)
+    [ -f "$LIGA" ] && [ -x /usr/bin/syncthing ] || exit 0
+    mkdir -p "$H" /userdata/saves "${LOG%/*}"
+    [ -f "$H/config.xml" ] || HOME=/userdata/system syncthing generate --home="$H" --no-default-folder >> "$LOG" 2>&1
+    start-stop-daemon -S -q -b -m -p "$PID" -x /usr/bin/syncthing -- serve --home="$H" --no-browser \
+      --no-upgrade --gui-address=0.0.0.0:8384 --logfile="$LOG"
+    # a pasta de saves entra uma vez, com um nome que aparece igual nos outros aparelhos
+    (
+      for i in $(seq 1 30); do
+        syncthing cli --home="$H" config folders list >/dev/null 2>&1 && break
+        sleep 1
+      done
+      syncthing cli --home="$H" config folders list 2>/dev/null | grep -q '^scrapcade-saves$' || \
+        syncthing cli --home="$H" config folders add --id scrapcade-saves --label "ScrapCade saves" --path /userdata/saves >> "$LOG" 2>&1
+    ) &
+    ;;
+  stop)
+    start-stop-daemon -K -q -p "$PID" 2>/dev/null
+    rm -f "$PID"
+    ;;
+  restart)
+    "$0" stop; sleep 1; "$0" start
+    ;;
+esac
+exit 0

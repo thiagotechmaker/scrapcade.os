@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_BEETLE_PCE_FAST
+	bool "libretro-beetle-pce-fast"
+	help
+	  Nucleo libretro: PC Engine / TurboGrafx-16 e PC Engine CD.

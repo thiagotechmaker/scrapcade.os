@@ -2,6 +2,7 @@
 # ScrapCade: instala no disco do computador (HD, SSD ou NVMe), para ligar sem o pen drive.
 #   tos-instalar listar            -> uma linha por disco: dispositivo|tamanho em GB|modelo
 #   tos-instalar <disco> [jogos]   -> APAGA o disco e instala; "jogos" copia tambem jogos, saves e BIOS
+#   tos-instalar <disco> lado [jogos] -> ao lado do Windows: so no maior espaco livre do disco (o Windows fica intacto)
 # O progresso fica em /tmp/tos-instalar.txt ("porcentagem mensagem"); o ScrapCade mostra na tela.
 P=/tmp/tos-instalar.txt
 p() { echo "$1 $2" > $P; echo "tos-instalar: $1% $2"; }
@@ -22,13 +23,19 @@ if [ "$1" = listar ]; then
     [ "$gb" -ge 4 ] || continue                       # menos de 4 GB: nao cabe
     modelo=$(cat $s/device/model 2>/dev/null | sed 's/ *$//')
     [ -z "$modelo" ] && modelo=$(cat $s/device/name 2>/dev/null)
-    echo "/dev/$n|$gb|${modelo:-disco}"
+    # espaco livre (o maior pedaco nao particionado) e se ha Windows (particao NTFS)
+    livre=$(sfdisk -F "/dev/$n" 2>/dev/null | awk 'NR>3 && $3 ~ /^[0-9]+$/ {if ($3 > m) m = $3} END {print int(m / 2097152)}')
+    win=0
+    for pp in /dev/$n*; do [ "$pp" != "/dev/$n" ] && blkid "$pp" 2>/dev/null | grep -q 'TYPE="ntfs"' && win=1; done
+    echo "/dev/$n|$gb|${modelo:-disco}|${livre:-0}|$win"
   done
   exit 0
 fi
 
 D=$1
 JOGOS=$2
+LADO=""
+[ "$JOGOS" = lado ] && { LADO=1; JOGOS=$3; }
 [ -b "$D" ] || { p 0 "ERRO: disco $D nao encontrado"; exit 1; }
 # "converter": o proprio pen drive de onde o .iso ligou (o sistema ja foi copiado para a memoria pelo initrd)
 if [ "$JOGOS" = converter ]; then
@@ -38,6 +45,94 @@ else
   [ "${D##*/}" = "$(boot_disco)" ] && { p 0 "ERRO: esse e o disco onde o ScrapCade OS esta rodando"; exit 1; }
 fi
 case "$D" in *nvme*|*mmcblk*) P1=${D}p1; P2=${D}p2 ;; *) P1=${D}1; P2=${D}2 ;; esac
+pdev() { case "$D" in *nvme*|*mmcblk*) echo "${D}p$1" ;; *) echo "${D}$1" ;; esac; }
+
+if [ -n "$LADO" ]; then
+  # ---- ao lado do Windows: duas particoes novas no maior espaco livre; as que ja existem nao sao tocadas
+  p 5 "Procurando espaco livre"
+  for m in $(grep "^$D" /proc/mounts | cut -d' ' -f2); do umount -l "$m"; done
+  TAB=$(sfdisk -d "$D" 2>/dev/null | sed -n 's/^label: //p')
+  set -- $(sfdisk -F "$D" 2>/dev/null | awk 'NR>3 && $3 ~ /^[0-9]+$/ {if ($3 > m) {m = $3; s = $1}} END {print s+0, m+0}')
+  INI=$1; TAM=$2
+  [ "$TAM" -ge 16777216 ] || { p 0 "ERRO: falta espaco livre (minimo 8 GB). No Windows: Gerenciamento de disco > Diminuir volume"; exit 1; }
+  INI=$(( (INI + 2047) / 2048 * 2048 )); TAM=$(( TAM - 2048 ))
+  B=2097152   # 1 GB de sistema; o resto vira SCRAP-DADOS
+  if [ "$TAB" = gpt ]; then
+    T=0FC63DAF-8483-4772-8E79-3D69D8477DE4   # tipo Linux: o Windows nao poe letra nem mexe
+  elif [ "$TAB" = dos ]; then
+    n=$(sfdisk -d "$D" | grep -c '^/dev/')
+    [ "$n" -le 2 ] || { p 0 "ERRO: o disco ja tem $n particoes principais (o limite do MBR e 4)"; exit 1; }
+    T=83
+  else
+    p 0 "ERRO: tabela de particoes desconhecida"; exit 1
+  fi
+  ANTES=$(sfdisk -d "$D" | grep '^/dev/' | cut -d' ' -f1)
+  printf 'start=%s, size=%s, type=%s
+start=%s, size=%s, type=%s
+' "$INI" "$B" "$T" $((INI + B)) $((TAM - B)) "$T" | \
+    sfdisk --append --no-reread "$D" >/dev/null 2>&1 || { p 0 "ERRO: nao consegui criar as particoes no espaco livre"; exit 1; }
+  partx -a "$D" 2>/dev/null; partx -u "$D" 2>/dev/null; sleep 2
+  P1=$(sfdisk -d "$D" | sed -n "s|^\(/dev/[^ ]*\) : start= *$INI,.*|\1|p")
+  P2=$(sfdisk -d "$D" | sed -n "s|^\(/dev/[^ ]*\) : start= *$((INI + B)),.*|\1|p")
+  [ -b "$P1" ] && [ -b "$P2" ] || { p 0 "ERRO: as particoes novas nao apareceram"; exit 1; }
+  for x in $ANTES; do [ "$x" = "$P1" ] || [ "$x" = "$P2" ] && { p 0 "ERRO: particao ja existia"; exit 1; }; done
+
+  p 15 "Formatando as particoes novas"
+  mkfs.vfat -F 32 -n SCRAPCADE "$P1" >/dev/null 2>&1 || { p 0 "ERRO: nao formatou a particao SCRAPCADE"; exit 1; }
+  mkfs.exfat -L SCRAP-DADOS "$P2" >/dev/null 2>&1 || { p 0 "ERRO: nao formatou a particao SCRAP-DADOS"; exit 1; }
+
+  p 25 "Copiando o sistema"
+  mkdir -p /mnt/tos-boot /mnt/tos-dados /mnt/tos-esp
+  mount "$P1" /mnt/tos-boot || { p 0 "ERRO: nao montou a particao SCRAPCADE"; exit 1; }
+  cp -r /boot/EFI /boot/boot /mnt/tos-boot/ || { umount /mnt/tos-boot; p 0 "ERRO: copia do sistema falhou"; exit 1; }
+  echo "instalado ao lado do Windows em $(date +%d/%m/%Y)" > /mnt/tos-boot/boot/tos-instalado
+  echo 1 > /mnt/tos-boot/boot/tos-dualboot
+  mkdir -p /mnt/tos-boot/boot/grub   # grubenv: o GRUB grava aqui o ultimo sistema usado (1024 bytes)
+  { printf '# GRUB Environment Block\n'; head -c 999 /dev/zero | tr '\0' '#'; } > /mnt/tos-boot/boot/grub/grubenv
+
+  if [ "$TAB" = gpt ] && [ -d /sys/firmware/efi ]; then
+    p 45 "Colocando o ScrapCade no menu de boot (UEFI)"
+    ESP=$(sfdisk -d "$D" | grep -i 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B' | head -1 | cut -d' ' -f1)
+    [ -b "$ESP" ] && mount "$ESP" /mnt/tos-esp || { umount /mnt/tos-boot; p 0 "ERRO: nao achei a particao EFI do Windows"; exit 1; }
+    efi=$(cd /mnt/tos-boot/EFI/BOOT && ls boot*.efi | head -1)
+    mkdir -p /mnt/tos-esp/EFI/ScrapCade
+    cp "/mnt/tos-boot/EFI/BOOT/$efi" "/mnt/tos-esp/EFI/ScrapCade/$efi"
+    # o GRUB procura a configuracao em EFI/BOOT da particao de onde veio: um grub.cfg pequeno que so pula para a nossa
+    [ -f /mnt/tos-esp/EFI/BOOT/grub.cfg ] && ! grep -q tos-live /mnt/tos-esp/EFI/BOOT/grub.cfg && \
+      cp /mnt/tos-esp/EFI/BOOT/grub.cfg /mnt/tos-esp/EFI/BOOT/grub.cfg.antes-scrapcade
+    mkdir -p /mnt/tos-esp/EFI/BOOT
+    printf 'search --no-floppy --set=root --file /boot/tos-live\nset prefix=($root)/EFI/BOOT\nconfigfile ($root)/EFI/BOOT/grub.cfg\n' \
+      > /mnt/tos-esp/EFI/BOOT/grub.cfg
+    umount /mnt/tos-esp
+    mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null
+    n=$(echo "$ESP" | sed 's/.*[^0-9]//')
+    efibootmgr -c -d "$D" -p "$n" -L "ScrapCade OS" -l "\\EFI\\ScrapCade\\$efi" >/dev/null 2>&1 || \
+      { umount /mnt/tos-boot; p 0 "ERRO: a placa-mae nao aceitou a entrada de boot"; exit 1; }
+  elif [ "$TAB" = dos ]; then
+    p 45 "Colocando o menu de boot (BIOS)"
+    # guarda o comeco do disco do jeito que estava (para voltar so o Windows: dd de volta)
+    dd if="$D" of=/mnt/tos-boot/boot/mbr-antes-scrapcade.bin bs=512 count=2048 2>/dev/null
+    PRIM=$(sfdisk -d "$D" | sed -n 's/.*start= *\([0-9]*\),.*/\1/p' | sort -n | head -1)
+    [ "${PRIM:-0}" -ge 2048 ] || { umount /mnt/tos-boot; p 0 "ERRO: o disco nao tem espaco antes da primeira particao para o GRUB"; exit 1; }
+    dd if=/usr/share/tos/grub-bios/boot.img of="$D" bs=440 count=1 conv=notrunc 2>/dev/null
+    dd if=/usr/share/tos/grub-bios/core.img of="$D" bs=512 seek=1 conv=notrunc 2>/dev/null
+  else
+    umount /mnt/tos-boot; p 0 "ERRO: disco GPT ligado pela BIOS antiga: use o modo UEFI"; exit 1
+  fi
+  sync
+  if [ "$JOGOS" = jogos ] && ! grep -q " /userdata tmpfs" /proc/mounts && mount "$P2" /mnt/tos-dados; then
+    p 60 "Copiando jogos, saves e BIOS"
+    for d in roms bios saves themes "Jogos novos" screenshots system; do
+      [ -e "/userdata/$d" ] && cp -r "/userdata/$d" /mnt/tos-dados/ 2>/dev/null
+    done
+    rm -rf /mnt/tos-dados/system/logs
+    sync; umount /mnt/tos-dados
+  fi
+  umount /mnt/tos-boot
+  sync
+  p 100 "Pronto! Ao ligar, escolha ScrapCade ou Windows (fica no ultimo usado)."
+  exit 0
+fi
 
 p 5 "Preparando o disco"
 for m in $(grep "^$D" /proc/mounts | cut -d' ' -f2); do umount -l "$m"; done

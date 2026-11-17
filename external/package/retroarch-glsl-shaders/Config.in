@@ -1,0 +1,4 @@
+config BR2_PACKAGE_RETROARCH_GLSL_SHADERS
+	bool "retroarch-glsl-shaders"
+	help
+	  Pacote completo de filtros GLSL do RetroArch (escolhidos por console no painel).

@@ -1,6 +1,7 @@
 // ScrapCade - funcoes de desenho sobre o SDL2.
 // Cores no formato 0xAARRGGBB, como no ScrapCade do iChroma. Licenca: GPLv3.
 #pragma once
+#include <functional>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -133,6 +134,8 @@ struct Text {
     struct T { SDL_Texture *t; int w, h; };
     std::unordered_map<std::string, T> cache;
     float escala = 1;   // "Tamanho do texto" do painel Sistema (Normal 1, Grande 1,15, Maior 1,3)
+    std::function<std::string(const std::string &)> traduz;   // idioma do menu (vazio = portugues)
+    std::string tr(const std::string &s) const { return traduz ? traduz(s) : s; }
 
     TTF_Font *font(int px, bool b) {
         int key = px * 2 + (b ? 1 : 0);
@@ -147,7 +150,15 @@ struct Text {
     // tamanho em unidades de tela, como no iChroma (text(8.5f, ...))
     int px(float units) const { return std::max(6, int(units * g->u * escala + 0.5f)); }
 
-    int width(const std::string &s, float units, bool b) {
+    int width(const std::string &s0, float units, bool b) {
+        std::string s = tr(s0);
+        TTF_Font *f = font(px(units), b);
+        int w = 0, h = 0;
+        if (f && !s.empty()) TTF_SizeUTF8(f, s.c_str(), &w, &h);
+        return w;
+    }
+
+    int larg(const std::string &s, float units, bool b) {   // largura sem traduzir (texto ja traduzido)
         TTF_Font *f = font(px(units), b);
         int w = 0, h = 0;
         if (f && !s.empty()) TTF_SizeUTF8(f, s.c_str(), &w, &h);
@@ -183,16 +194,19 @@ struct Text {
     // align: 0 esquerda, 1 centro, 2 direita; cy = meio vertical da linha
     void draw(const std::string &s, float x, float cy, float units, bool b, uint32_t c, int align = 0,
               float maxw = 0) {
+        desenha(tr(s), x, cy, units, b, c, align, maxw);
+    }
+    void desenha(const std::string &s, float x, float cy, float units, bool b, uint32_t c, int align, float maxw) {
         T t = get(s, units, b, c);
         if (!t.t) return;
         float w = float(t.w), h = float(t.h);
         if (maxw > 0 && w > maxw) {   // corta com reticencias
             std::string cut = s;
-            while (cut.size() > 1 && width(cut + "...", units, b) > maxw) {
+            while (cut.size() > 1 && larg(cut + "...", units, b) > maxw) {
                 cut.pop_back();
                 while (!cut.empty() && (cut.back() & 0xC0) == 0x80) cut.pop_back();
             }
-            draw(cut + "...", x, cy, units, b, c, align, 0);
+            desenha(cut + "...", x, cy, units, b, c, align, 0);
             return;
         }
         float dx = align == 1 ? x - w / 2 : (align == 2 ? x - w : x);

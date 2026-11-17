@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_NXENGINE
+	bool "libretro-nxengine"
+	help
+	  Nucleo libretro: NXEngine (Cave Story).

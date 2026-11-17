@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_BEETLE_VB
+	bool "libretro-beetle-vb"
+	help
+	  Nucleo libretro: Virtual Boy.

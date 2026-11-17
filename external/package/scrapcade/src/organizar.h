@@ -132,7 +132,19 @@ static std::string folder(const std::string &file) {
         {"nes", {".nes", ".fds"}},
         {"snes", {".smc", ".sfc"}},
         {"n64", {".z64", ".n64", ".v64"}},
-        {"megadrive", {".md", ".gen", ".smd", ".sms", ".gg"}},
+        {"megadrive", {".md", ".gen", ".smd"}},
+        {"mastersystem", {".sms"}},
+        {"gamegear", {".gg"}},
+        {"sega32x", {".32x"}},
+        {"pcengine", {".pce"}},
+        {"atari2600", {".a26"}},
+        {"atari7800", {".a78"}},
+        {"lynx", {".lnx"}},
+        {"ngp", {".ngp", ".ngc"}},
+        {"wswan", {".ws", ".wsc"}},
+        {"virtualboy", {".vb", ".vboy"}},
+        {"quake", {".quake"}},
+        {"cavestory", {".cavestory"}},
         {"psx", {".cue", ".pbp", ".m3u", ".chd"}},
         {"nds", {".nds"}},
         {"3ds", {".3ds", ".cci", ".cxi", ".3dsx"}},
@@ -201,7 +213,14 @@ static std::string cueKind(const std::string &cue) {
     size_t n = fread(b, 1, sizeof b, f);
     fclose(f);
     std::string h(b, n);
-    return h.find("SEGA SEGASATURN") != std::string::npos ? "saturn" : "psx";
+    if (h.find("SEGA SEGASATURN") != std::string::npos) return "saturn";
+    if (h.find("SEGADISCSYSTEM") != std::string::npos) return "segacd";
+    // PC Engine CD: a primeira faixa e de audio (o aviso "nao toque este disco no CD player"); no PlayStation e de dados
+    std::ifstream in(cue);
+    std::string l;
+    while (std::getline(in, l))
+        if (l.find("TRACK") != std::string::npos) return l.find("AUDIO") != std::string::npos ? "pcengine" : "psx";
+    return "psx";
 }
 
 // Algum .cue (na mesma pasta ou ja em ROMS/psx) cita esse arquivo: e faixa de CD.

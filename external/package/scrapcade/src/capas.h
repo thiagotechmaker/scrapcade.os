@@ -102,6 +102,17 @@ static std::string system(const Game &g) {
     if (id == "nds") return "Nintendo - Nintendo DS";
     if (id == "3ds") return "Nintendo - Nintendo 3DS";
     if (id == "dos") return "DOS";
+    if (id == "mastersystem") return "Sega - Master System - Mark III";
+    if (id == "gamegear") return "Sega - Game Gear";
+    if (id == "segacd") return "Sega - Mega-CD - Sega CD";
+    if (id == "sega32x") return "Sega - 32X";
+    if (id == "pcengine") return "NEC - PC Engine - TurboGrafx 16";
+    if (id == "atari2600") return "Atari - 2600";
+    if (id == "atari7800") return "Atari - 7800";
+    if (id == "lynx") return "Atari - Lynx";
+    if (id == "ngp") return endsWith(g.file, ".ngc") ? "SNK - Neo Geo Pocket Color" : "SNK - Neo Geo Pocket";
+    if (id == "wswan") return endsWith(g.file, ".wsc") ? "Bandai - WonderSwan Color" : "Bandai - WonderSwan";
+    if (id == "virtualboy") return "Nintendo - Virtual Boy";
     std::string ix = Meta::indexId(g);
     if (ix == "gb") return "Nintendo - Game Boy";
     if (ix == "gbc") return "Nintendo - Game Boy Color";

@@ -6,6 +6,31 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 
 ## [Unreleased]
 
+## [0.21.0-beta] - 2026-11-17
+
+Esta versão junta o que estava planejado para a v0.21 e a v0.22.
+
+### Adicionado
+- Consoles novos: Master System, Game Gear, Sega CD e 32X como consoles próprios; PC Engine/TurboGrafx (cartucho e CD); Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan e Virtual Boy. Os jogos de cada um vão sozinhos para a pasta certa (o CD de Sega CD e de PC Engine é reconhecido pelo disco).
+- MAME 2003-Plus no fliperama, como segunda opção ao lado do FBNeo.
+- PlayStation 2 (LRPS2), GameCube e Wii (Dolphin) e Nintendo 3DS (Citra), só na versão de 64 bits.
+- Cave Story (NXEngine) e Quake shareware (TyrQuake) nos Jogos grátis.
+- Pacote completo de filtros do RetroArch (glsl-shaders) e "Filtro do console" no painel, com os mais usados (CRT Easymode, CRT Geom, CRT Lottes, CRT Royale, LCD de portátil, xBR, ScaleFX...); os outros ficam no menu do jogo.
+- Molduras opcionais nos consoles de mesa, para telas 16:9, 16:10 e 5:4.
+- Coleções: nos detalhes do jogo (Y), A coloca ou tira o jogo de uma coleção, que aparece nos filtros LB/RB.
+- Jogar online (netplay): hospedar ou entrar no IP de um amigo.
+- Print do jogo com Select + Y (F8 no teclado), na pasta `screenshots`.
+- Conquistas do RetroAchievements com a conta do usuário.
+- Saves sincronizados com o Syncthing (pareamento pela página do Syncthing, porta 8384).
+- Instalar ao lado do Windows: usa só o espaço livre do disco; ao ligar, um menu de 3 segundos escolhe ScrapCade ou Windows e fica no último usado.
+- Navegador moderno no modo desktop (MiniBrowser do WebKitGTK, com HTTPS) na versão de 64 bits; a de 32 bits continua com o NetSurf.
+- Menu e painel em inglês (Sistema > Idioma / Language).
+- Fuso horário no painel (Brasília de fábrica).
+- Desempenho automático: no primeiro uso o sistema mede o PC e, nos fracos, escolhe os emuladores mais leves.
+
+### Alterado
+- O boot não escreve mais nada na tela: os avisos do initrd só aparecem em "Iniciar mostrando as mensagens".
+
 ## [0.20.0-beta] - 2026-11-15
 
 ### Adicionado

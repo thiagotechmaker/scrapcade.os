@@ -19,7 +19,7 @@ for tentativa in 1 2; do   # o QEMU as vezes sai sozinho no inicio: uma segunda 
     opt 2; k ret; sleep 4; shot x_nav_raiz
     k ret; sleep 3; k ret; sleep 3; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
     k esc; sleep 1; k esc; sleep 1; k esc; sleep 1; k esc; sleep 20; shot x_carrossel_pen
-    opt 17; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k ret; sleep 8; shot x_tema_proprio
+    opt 21; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k ret; sleep 8; shot x_tema_proprio
     opt 0; k ret; sleep 3; k right; k ret; sleep 3; k m a r i a; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
     opt 0; k ret; sleep 3; shot x_perfis_dois
     k delete; sleep 2; shot x_perfil_confirma; k ret; sleep 4; shot x_perfil_apagado
@@ -64,7 +64,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
     sleep 150; shot x_ota_avisou                     # de fabrica so avisa que ha versao nova (nao baixa sozinho)
-    opt 35; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
+    opt 42; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
     k ret; sleep 90; shot x_ota_baixou               # A: baixa, confere e troca (a de agora fica como anterior)
     rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
     k ret; sleep 200; shot x_ota_reiniciou           # A: reinicia na versao nova
@@ -152,8 +152,8 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
     opt 12; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
     opt 5; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
-    opt 30; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
-    opt 42; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
+    opt 34; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
+    opt 50; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
     echo system_powerdown; sleep 5; shot x_menu_energia; k esc; sleep 2   # botao de energia: menu
     echo quit ) | timeout 400 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q15.log 2>&1
   [ -f teste/z_x_padrao_confirma.ppm ] && break

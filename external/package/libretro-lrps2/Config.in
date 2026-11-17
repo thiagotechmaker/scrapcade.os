@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LIBRETRO_LRPS2
+	bool "libretro-lrps2"
+	depends on BR2_x86_64
+	help
+	  Nucleo libretro: PlayStation 2 (LRPS2). So na versao de 64 bits.

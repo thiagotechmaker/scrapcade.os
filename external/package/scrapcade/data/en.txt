@@ -1,0 +1,471 @@
+# ScrapCade: textos do menu em ingles. Uma frase por linha: portugues<TAB>ingles.
+Máximo	Maximum
+Portátil	Handheld
+nome	name
+Nome	Name
+Últimos jogados	Last played
+desligar	shut down
+Desligar	Shut down
+Cancelar	Cancel
+Nenhum	None
+Liso	Smooth
+TV de tubo	CRT TV
+nenhum	none
+liso	smooth
+CRT Geom (tela curva)	CRT Geom (curved screen)
+Linhas de varredura	Scanlines
+LCD de portátil	Handheld LCD
+Nítido (sharp bilinear)	Sharp (sharp bilinear)
+Manaus e Cuiabá (UTC-4)	Manaus and Cuiabá (UTC-4)
+Nova York	New York
+Desligado	Off
+Médio	Medium
+, vídeo sem aceleração	, no video acceleration
+Tela cheia	Full screen
+Todos	All
+sem rede	no network
+sáb	Sat
+escolher	choose
+jogar	play
+favorito	favorite
+detalhes	details
+filtrar	filter
+sistema	system
+Nenhum jogo ainda.	No games yet.
+No navegador do PC ou do celular, na mesma rede, abra:	In the browser of a PC or phone on the same network, open:
+e arraste os jogos. Eles vão sozinhos para o console certo, com capa e dados.	and drag the games there. They go to the right console by themselves, with cover and info.
+Gênero:	Genre:
+Ano, empresa e gênero: sem dados para este jogo	Year, company and genre: no info for this game
+Procurando os dados do jogo...	Looking up the game info...
+Versão:	Version:
+Pasta:	Folder:
+Ainda não jogado	Not played yet
+Favorito:	Favorite:
+sim	yes
+não	no
+(o botão X marca e desmarca)	(the X button marks and unmarks)
+Coleções:	Collections:
+(A escolhe)	(A chooses)
+JOGOS	GAMES
+APARÊNCIA	LOOK
+CONTROLE E SOM	CONTROLLER AND SOUND
+TELA E ENERGIA	SCREEN AND POWER
+REDE	NETWORK
+SISTEMA	SYSTEM
+CPU (sem placa de vídeo)	CPU (no graphics card)
+Ordenar jogos:	Sort games:
+Capas e dados dos jogos:   baixar de novo	Game covers and info:   download again
+Voltar de onde parou:	Resume where you left off:
+Ligado	On
+Filtro de imagem:	Image filter:
+Proporção da imagem:	Aspect ratio:
+Mostrar FPS no jogo:	Show FPS in game:
+Sim	Yes
+Não	No
+Emulador do console:   (escolha um jogo)	Console emulator:   (pick a game)
+Emulador do	Emulator for
+Relógio:	Clock:
+Fuso horário:	Time zone:
+(A desliga)	(A turns off)
+Conquistas (RetroAchievements):   Desligadas   (A entra)	Achievements (RetroAchievements):   Off   (A signs in)
+Conquistas (RetroAchievements):	Achievements (RetroAchievements):
+Saves sincronizados:	Synced saves:
+Filtro por console:   escolha um jogo no carrossel	Filter per console:   pick a game in the carousel
+Filtro do	Filter for
+Moldura em volta do jogo:	Bezel around the game:
+Jogar online:	Play online:
+Entrar em	Join
+(aperte A)	(press A)
+Voltar tudo ao padrão	Reset everything to default
+Música do menu:	Menu music:
+música)	song)
+músicas)	songs)
+(pasta music vazia)	(music folder empty)
+Sons do menu:	Menu sounds:
+Suspender (continua de onde parou)	Sleep (resumes where you left off)
+Proteção de tela:	Screen saver:
+Desligar sozinho:	Auto shutdown:
+Perfil:	Profile:
+(A troca)	(A switches)
+Trazer jogos do pen drive	Bring games from a USB stick
+Gerenciador de arquivos	File manager
+Jogos grátis (homebrew livres)	Free games (free homebrew)
+Cópia dos saves no pen drive	Back up saves to a USB stick
+Atualizar sozinho:	Update automatically:
+Tamanho do texto:	Text size:
+(A: imagem)	(A: image)
+Animações:	Animations:
+Rápidas	Fast
+Capas dos jogos:	Game covers:
+Fundo do jogo:	Game background:
+Motor gráfico:	Graphics engine:
+A aplica	A applies
+Volume:   (sem placa de som)	Volume:   (no sound card)
+A testa	A tests
+Rede e Wi-Fi	Network and Wi-Fi
+Bluetooth (controles sem fio)	Bluetooth (wireless controllers)
+Pasta na rede do Windows:	Windows network folder:
+Configurar controle	Set up a controller
+Como jogar (botões)	How to play (buttons)
+Atualizar o ScrapCade OS	Update ScrapCade OS
+Instalar no disco do computador	Install on the computer's disk
+Informações do sistema	System information
+Ordem dos jogos no carrossel: pelo nome, pelo ano (os sem ano ficam no fim), pelos mais jogados ou pelos últimos que você abriu.	Order of the games in the carousel: by name, by year (games without a year go last), by most played or by the ones you opened last.
+Mostrar: os consoles sem jogo também aparecem nos filtros LB/RB. Esconder: só os consoles que têm jogo.	Show: consoles with no games also appear in the LB/RB filters. Hide: only consoles that have games.
+Procura de novo, na internet, as capas e os dados dos jogos que ficaram sem. Bom depois de ligar a rede ou de arrumar o nome de um jogo.	Looks up again, on the internet, the covers and info for games that are missing them. Useful after connecting to the network or fixing a game's name.
+Esvazia a lista "Continuar jogando" (os últimos jogos abertos). Favoritos e saves não são mexidos.	Empties the "Continue playing" list (the last games opened). Favorites and saves are not touched.
+Ligado: ao sair de um jogo o ponto é guardado, e na próxima vez ele continua dali. Desligado: o jogo sempre começa do início (os saves do próprio jogo continuam valendo).	On: when you leave a game the spot is saved, and next time it continues from there. Off: the game always starts from the beginning (the game's own saves still work).
+Nenhum: pixels como o console mostrava. Liso: suaviza a imagem. TV de tubo: linhas de varredura leves, como numa TV antiga.	None: pixels as the console showed them. Smooth: softens the image. CRT TV: light scanlines, like an old TV.
+Original: a proporção que o console usava. 4:3: como numa TV antiga. Tela cheia: estica até as bordas. Escala inteira: pixels sempre do mesmo tamanho, sem borrar.	Original: the console's own aspect ratio. 4:3: like an old TV. Full screen: stretches to the edges. Integer scale: pixels always the same size, no blur.
+Ligado: o emulador adianta um quadro para o botão responder mais rápido, como no console de verdade. Gasta mais processador: desligue se o jogo engasgar.	On: the emulator runs one frame ahead so buttons respond faster, like on the real console. Uses more CPU: turn it off if the game stutters.
+Mostra os quadros por segundo no canto do jogo. Útil para ver se o computador está dando conta.	Shows frames per second in the corner of the game. Useful to see if the computer is keeping up.
+Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.	Changes the emulator for the selected game's console, when there is more than one (for example Snes9x or bsnes for the Super Nintendo). Applies to every game on that console.
+Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).	Time format in the top bar: 24 h (14:30) or 12 h with AM and PM (02:30 PM).
+Fuso do relógio. Brasília de fábrica; troque se você mora em outro fuso.	The clock's time zone. Brasília by default; change it if you live in another time zone.
+Conquistas dos jogos clássicos com a sua conta do retroachievements.org (crie no site; a senha você digita aqui, e o RetroArch troca por um código depois do primeiro jogo). Precisa de internet.	Achievements for classic games with your retroachievements.org account (create it on the website; you type the password here, and RetroArch swaps it for a token after the first game). Needs internet.
+Ligado: os saves ficam iguais em outros aparelhos com Syncthing (PC, celular, outro ScrapCade). Para parear, abra o endereço no navegador de um aparelho da mesma rede e compartilhe a pasta "ScrapCade saves".	On: saves stay the same on other devices with Syncthing (PC, phone, another ScrapCade). To pair, open the address in a browser on a device on the same network and share the "ScrapCade saves" folder.
+. Fraco usa os emuladores mais leves (Snes9x 2010, FCEUmm, PicoDrive, gpSP) e desliga o "menos atraso". A mede de novo.	. Weak uses the lightest emulators (Snes9x 2010, FCEUmm, PicoDrive, gpSP) and turns off "less input lag". A measures again.
+Filtro só para o console do jogo selecionado (vale para todos os jogos dele). "Igual aos outros" usa o Filtro de imagem de cima. Os outros filtros do pacote ficam no menu do jogo (Select + X).	A filter just for the selected game's console (applies to all its games). "Same as the others" uses the Image filter above. The other filters in the pack are in the game menu (Select + X).
+Ligada: uma moldura preenche as bordas pretas nos consoles de mesa (imagem 4:3). Nos portáteis a imagem fica como está.	On: a bezel fills the black borders on home consoles (4:3 image). On handhelds the image stays as it is.
+Hospedar: o próximo jogo abre esperando um amigo (porta 55435 liberada no roteador). Entrar: o próximo jogo conecta no IP do amigo. Os dois precisam do mesmo jogo e do mesmo emulador.	Host: the next game opens waiting for a friend (port 55435 open on the router). Join: the next game connects to your friend's IP. Both need the same game and the same emulator.
+No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.	On a PC or phone on the same network, open this address in the browser and drag the games there. They go to the right console by themselves.
+Toca as músicas que você colocar na pasta music da SCRAP-DADOS (.ogg, .mp3, .flac ou .wav), em ordem sorteada, só no menu. O ScrapCade não traz músicas.	Plays the songs you put in the music folder of SCRAP-DADOS (.ogg, .mp3, .flac or .wav), shuffled, only in the menu. ScrapCade does not come with music.
+Um som curto ao andar pelo carrossel, ao escolher e ao voltar.	A short sound when moving through the carousel, choosing and going back.
+Desliga a tela e quase tudo, como um console em descanso. Ao apertar o botão de energia (ou abrir a tampa) volta exatamente onde estava. O botão de energia também abre este menu.	Turns off the screen and almost everything, like a console in rest mode. Pressing the power button (or opening the lid) brings it back exactly where it was. The power button also opens this menu.
+Parado no menu por esse tempo, a tela escurece e a logo com a hora muda de lugar devagar (a imagem não marca a TV). Qualquer botão volta, sem fazer nada.	After this long idle in the menu, the screen dims and the logo with the time moves around slowly (so the image doesn't burn into the TV). Any button brings it back without doing anything.
+Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.	After this long idle in the menu, the computer shuts down by itself (it warns 1 minute before; any button cancels). It never shuts down during a game.
+Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.	Resets the theme, filters, game and menu options to the factory defaults. Favorites, saves, profiles and games stay as they are.
+Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.	Fan-made games with a free license (you can download, play and share them). With A, ScrapCade downloads from the author's official site, checks the file and puts it on the right console.
+Solta o pen drive com segurança antes de tirar (grava o que ainda faltava). Para usar de novo, tire e coloque.	Safely ejects the USB stick before you pull it out (writes anything still pending). To use it again, unplug it and plug it back in.
+Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.	Copies saves, profiles and settings to a ScrapCade-saves folder on the USB stick, with the date. If the system's USB stick breaks, your saves are safe.
+Ligado: quando sai versão nova, o ScrapCade OS baixa sozinho enquanto você joga e só avisa para reiniciar. Desligado: só avisa, e você atualiza em Atualizar o ScrapCade OS.	On: when a new version comes out, ScrapCade OS downloads it by itself while you play and only asks you to restart. Off: it only lets you know, and you update in Update ScrapCade OS.
+Copiar, mover, renomear e apagar jogos, saves, BIOS e o que mais estiver na SCRAP-DADOS, e copiar do pen drive. Apagar manda para a pasta Lixeira, de onde da para trazer de volta.	Copy, move, rename and delete games, saves, BIOS and anything else on SCRAP-DADOS, and copy from a USB stick. Deleting sends things to the Trash folder, where you can bring them back from.
+Deixa as letras do ScrapCade maiores: bom para TV longe do sofá ou para quem enxerga pouco. Vale para o menu, o painel e os nomes dos jogos.	Makes ScrapCade's letters bigger: good for a TV far from the couch or for low vision. Applies to the menu, the panel and game names.
+Troca quem está jogando. Cada perfil tem os seus favoritos, saves, tema e preferências. A abre a tela "Quem vai jogar?".	Switches who is playing. Each profile has its own favorites, saves, theme and preferences. A opens the "Who's playing?" screen.
+Abre os arquivos do pen drive aqui mesmo: escolha um jogo (ou uma pasta inteira) e ele vai para "Jogos novos". O ScrapCade leva cada jogo ao console certo, com capa e dados.	Opens the USB stick's files right here: choose a game (or a whole folder) and it goes to "Jogos novos". ScrapCade takes each game to the right console, with cover and info.
+Economia: gasta menos bateria e esquenta menos, mas jogos pesados podem engasgar. Moderado: o meio-termo. Máximo: o processador sempre no talo, para PS2, GameCube e PSP.	Saver: uses less battery and runs cooler, but heavy games may stutter. Balanced: the middle ground. Maximum: the CPU always at full speed, for PS2, GameCube and PSP.
+Muda as cores, o fundo e o jeito das capas. Com A você escolhe uma imagem (do pen drive ou da SCRAP-DADOS) e ela vira o fundo de um tema seu.	Changes the colors, the background and the cover style. With A you choose an image (from a USB stick or SCRAP-DADOS) and it becomes the background of your own theme.
+Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.	Normal: the carousel glides smoothly. Fast: it moves quicker, good for big lists or slower computers.
+Mostrar: desenha a capa de cada jogo. Ocultar: só o nome e a cor do console, mais leve para computadores antigos.	Show: draws each game's cover. Hide: only the name and the console color, lighter for old computers.
+Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.	Show: a blurred scene of the selected game appears behind the carousel. Hide: only the theme background.
+GPU (OpenGL ES): desenha pela placa de vídeo. É o mais suave na maioria dos computadores.	GPU (OpenGL ES): draws with the graphics card. The smoothest on most computers.
+GPU (OpenGL): a placa de vídeo pelo OpenGL de PC. Experimente em placas NVIDIA e AMD antigas, ou se o OpenGL ES falhar.	GPU (OpenGL): the graphics card through desktop OpenGL. Try it on old NVIDIA and AMD cards, or if OpenGL ES fails.
+GPU (OpenGL ES 1): para placas de vídeo bem antigas, que não têm o OpenGL ES 2.	GPU (OpenGL ES 1): for very old graphics cards that don't have OpenGL ES 2.
+GPU (Vulkan): o mais moderno; pode ser o mais rápido em placas Intel e AMD recentes.	GPU (Vulkan): the most modern; can be the fastest on recent Intel and AMD cards.
+CPU: desenha tudo pelo processador, sem a placa de vídeo. Mais lento; use se a tela ficar preta, piscando ou com cores erradas.	CPU: draws everything with the processor, without the graphics card. Slower; use it if the screen goes black, flickers or shows wrong colors.
+: outro jeito de desenhar que este computador oferece.	: another drawing method this computer offers.
+Aperte A para aplicar (o ScrapCade reabre).	Press A to apply (ScrapCade restarts).
+É o que está em uso agora.	It's the one in use now.
+Volume de tudo: menu e jogos. A toca um som de teste para conferir as caixas ou o fone.	Volume for everything: menu and games. A plays a test sound to check the speakers or headphones.
+Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o ScrapCade acha capas e atualizações.	Shows the network cable and the Wi-Fi networks. Choose yours and type the password with the on-screen keyboard. With internet, ScrapCade finds covers and updates.
+Pareia controles sem fio (PS4, PS5, Switch, Xbox) e fones. Coloque o controle em modo de pareamento antes.	Pairs wireless controllers (PS4, PS5, Switch, Xbox) and headphones. Put the controller in pairing mode first.
+Ligada: a pasta dos jogos aparece na rede do Windows (\\ e o endereço IP). Dá para copiar jogos e saves direto pelo Explorador de Arquivos.	On: the games folder shows up on the Windows network (\\ and the IP address). You can copy games and saves straight from File Explorer.
+Acesso pelo terminal de outro computador, para manutenção. Deixe desligado se não usa: é mais seguro.	Access from another computer's terminal, for maintenance. Leave it off if you don't use it: it's safer.
+Ensina ao ScrapCade os botões de um controle que ele não conhece (os genéricos). Aperte cada botão que aparecer na tela.	Teaches ScrapCade the buttons of a controller it doesn't know (generic ones). Press each button shown on screen.
+Abre uma área de trabalho com gerenciador de arquivos, navegador e editor de texto. Para sair, feche a sessão e o ScrapCade volta.	Opens a desktop with a file manager, browser and text editor. To leave, log out and ScrapCade comes back.
+Mostra os atalhos que valem em todo jogo: Select + Start sai, Select + X abre o menu do emulador, salvar e carregar.	Shows the shortcuts that work in every game: Select + Start quits, Select + X opens the emulator menu, save and load.
+Confere as BIOS de cada console (PS1, PS2, Saturn, DS...). Verde: certa. Vermelho: falta ou é o arquivo errado.	Checks each console's BIOS (PS1, PS2, Saturn, DS...). Green: correct. Red: missing or the wrong file.
+Procura a versão nova do ScrapCade na internet, baixa e confere. Jogos e saves não são mexidos, e se a nova não ligar ele volta sozinho para a anterior.	Looks for the new version of ScrapCade on the internet, downloads and checks it. Games and saves are not touched, and if the new one doesn't boot it goes back to the previous one by itself.
+Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. ATENÇÃO: apaga tudo o que estiver no disco escolhido.	Copies ScrapCade to the computer's HD or SSD, so it boots without the USB stick. Next screen: erase the whole disk or install next to Windows.
+Processador, placa de vídeo, memória, versão do ScrapCade e do kernel. Útil para pedir ajuda.	Processor, graphics card, memory, ScrapCade and kernel versions. Useful when asking for help.
+Reinicia o computador.	Restarts the computer.
+Desliga o computador. Os saves já ficam guardados.	Shuts down the computer. Saves are already stored.
+Sistema	System
+Endereço IP	IP address
+Enviar jogos do PC	Send games from a PC
+Uso do sistema	System usage
+Memória	Memory
+Disco	Disk
+Sobre esta opção	About this option
+abrir	open
+fechar	close
+cancelar	cancel
+voltar	back
+núcleos)	cores)
+Vídeo:	Video:
+Memória: %lld MB livres de %lld MB	Memory: %lld MB free of %lld MB
+Disco dos jogos: %.1f GB livres de %.1f GB	Games disk: %.1f GB free of %.1f GB
+Tela:	Screen:
+Rede:	Network:
+ligado há %d min	on for %d min
+Sistema: ScrapCade OS v	System: ScrapCade OS v
+Jogos:	Games:
+Botões: Xelu's Free Controller Prompts (CC0)  •  Logos: es-theme-carbon	Buttons: Xelu's Free Controller Prompts (CC0)  •  Logos: es-theme-carbon
+Capas: libretro-thumbnails  •  Dados dos jogos: libretro-database e FBNeo	Covers: libretro-thumbnails  •  Game info: libretro-database and FBNeo
+No menu:	In the menu:
+Direcional ou analógico: escolher o jogo        A: jogar	D-pad or stick: choose the game        A: play
+X: marcar ou desmarcar favorito        Y: detalhes do jogo	X: mark or unmark favorite        Y: game details
+LB / RB: filtrar (Todos, Favoritos, Mais jogados, cada console)	LB / RB: filter (All, Favorites, Most played, each console)
+Select: este painel Sistema	Select: this System panel
+Durante o jogo:	During a game:
+Select + Start: sair do jogo (salva sozinho e continua de onde parou)	Select + Start: quit the game (saves by itself and resumes where you left off)
+Select + X: menu do emulador     Select + RB / LB: salvar / carregar	Select + X: emulator menu     Select + RB / LB: save / load
+No teclado: setas, Enter (jogar), F (favorito), D (detalhes),	On the keyboard: arrows, Enter (play), F (favorite), D (details),
+Q / E (filtrar), Tab (Sistema), Esc (voltar).	Q / E (filter), Tab (System), Esc (back).
+Pasta na rede ligada: no Windows, abra \\ScrapCade\jogos	Network folder on: in Windows, open \\ScrapCade\jogos
+Pasta na rede desligada.	Network folder off.
+SSH ligado: entre com root e a senha do administrador.	SSH on: log in as root with the administrator password.
+SSH desligado.	SSH off.
+conectado. Nas próximas vezes ele conecta sozinho.	connected. Next time it connects by itself.
+Não conectou em	Couldn't connect to
+. Deixe o controle em modo de pareamento e tente de novo.	. Put the controller in pairing mode and try again.
+procurar de novo	search again
+Nenhum Bluetooth encontrado neste computador.	No Bluetooth found on this computer.
+Um adaptador USB de Bluetooth resolve (são baratos).	A USB Bluetooth adapter solves it (they're cheap).
+Coloque o controle em modo de pareamento:	Put the controller in pairing mode:
+PS4/PS5: Share + PS   •   Switch: botão do pareamento   •   Xbox: botão de conectar	PS4/PS5: Share + PS   •   Switch: pairing button   •   Xbox: connect button
+Nenhum aparelho encontrado. Aperte X para procurar de novo.	No devices found. Press X to search again.
+Sem som:	No sound:
+espaço	space
+. Confira a senha e tente de novo.	. Check the password and try again.
+ligado	on
+sem cabo	no cable
+Sem conexão.	Not connected.
+Conectado. Endereço:	Connected. Address:
+Nenhuma placa de Wi-Fi encontrada (ou ela precisa de um driver que o ScrapCade	No Wi-Fi card found (or it needs a driver that ScrapCade
+ainda não tem). Veja Registros/diagnostico.txt na página de Arquivos.	doesn't have yet). See Registros/diagnostico.txt on the Files page.
+Nenhuma rede Wi-Fi encontrada. Aperte X para procurar de novo.	No Wi-Fi networks found. Press X to search again.
+Senha do Wi-Fi "	Wi-Fi password "
+(o teclado do notebook também funciona: digite e aperte Enter)	(the laptop keyboard works too: type and press Enter)
+A  (o botão de baixo: confirmar)	A  (the bottom button: confirm)
+B  (o botão da direita: voltar)	B  (the right button: back)
+X  (o botão da esquerda)	X  (the left button)
+Y  (o botão de cima)	Y  (the top button)
+Direcional para CIMA	D-pad UP
+Direcional para BAIXO	D-pad DOWN
+Direcional para a ESQUERDA	D-pad LEFT
+Direcional para a DIREITA	D-pad RIGHT
+Analógico esquerdo: empurre para a DIREITA	Left stick: push RIGHT
+Analógico esquerdo: empurre para BAIXO	Left stick: push DOWN
+Analógico direito: empurre para a DIREITA	Right stick: push RIGHT
+Analógico direito: empurre para BAIXO	Right stick: push DOWN
+Controle	Controller
+Não deu para salvar o controle:	Couldn't save the controller:
+Controle configurado: vale no menu e nos jogos.	Controller set up: works in the menu and in games.
+Aperte no controle:	Press on the controller:
+Se o controle não tiver esse botão: Espaço no teclado pula.  Esc cancela.	If the controller doesn't have this button: Space on the keyboard skips.  Esc cancels.
+SCRAP-DADOS (jogos, temas, saves)	SCRAP-DADOS (games, themes, saves)
+Não deu para copiar a imagem.	Couldn't copy the image.
+" criado. Mude o nome ou a cor em themes/	" created. Change the name or color in themes/
+copiado: vai aparecer no console certo em alguns segundos.	copied: it will show up on the right console in a few seconds.
+Não deu para copiar	Couldn't copy
+(falta espaço?).	(out of space?).
+pastas de jogos	game folders
+Arquivos	Files
+Imagem para o tema	Image for the theme
+Trazer jogos	Bring games
+Pasta vazia.	Empty folder.
+pasta	folder
+Nenhum pen drive encontrado: coloque um e abra de novo.	No USB stick found: plug one in and open again.
+Na memória:	In memory:
+Escolha uma imagem: ela vira o fundo de um tema seu.	Choose an image: it becomes the background of your own theme.
+A copia o jogo (ou a pasta) para "Jogos novos"; ele vai sozinho ao console certo.	A copies the game (or the folder) to "Jogos novos"; it goes to the right console by itself.
+copiar a pasta toda	copy the whole folder
+ações	actions
+Apagar de vez:	Delete for good:
+Mandar para a Lixeira:	Send to the Trash:
+O que fazer?	What to do?
+Não deu para baixar: confira a internet (Rede e Wi-Fi).	Couldn't download: check the internet (Network and Wi-Fi).
+O arquivo baixado não confere (SHA-256): nada foi colocado.	The downloaded file doesn't match (SHA-256): nothing was added.
+Jogos de fãs com licença livre: pode baixar, jogar e passar adiante.	Fan games with a free license: you can download, play and share them.
+- já tem	- already have it
+A baixa do site oficial do autor e confere antes de colocar no console.	A downloads from the author's official site and checks it before adding it to the console.
+O arquivo	The file
+Jogos grátis	Free games
+baixar	download
+Coloque um pen drive para guardar a cópia dos saves.	Plug in a USB stick to store the saves backup.
+Copiando os saves para o pen drive...	Copying the saves to the USB stick...
+Saves copiados para o pen drive: ScrapCade-saves/	Saves copied to the USB stick: ScrapCade-saves/
+Não deu para gravar no pen drive (cheio ou protegido?).	Couldn't write to the USB stick (full or write-protected?).
+erro	error
+Começando	Starting
+atualizar	update
+Procurando a versão mais nova...	Looking for the newest version...
+Versão instalada:	Installed version:
+Não deu para procurar: confira a internet (Rede e Wi-Fi).	Couldn't search: check the internet (Network and Wi-Fi).
+A versão nova já foi baixada: reinicie para usar.	The new version is already downloaded: restart to use it.
+A versão de agora fica guardada: se a nova não ligar, o ScrapCade OS volta para ela sozinho.	The current version is kept: if the new one doesn't boot, ScrapCade OS goes back to it by itself.
+A versão nova está sendo baixada em segundo plano.	The new version is downloading in the background.
+Pode continuar jogando: quando terminar, aparece um aviso para reiniciar.	You can keep playing: when it finishes, a notice asks you to restart.
+O ScrapCade já está na versão mais nova.	ScrapCade is already on the newest version.
+Versão nova:	New version:
+Os jogos e os saves não são mexidos. A versão de agora fica guardada:	Games and saves are not touched. The current version is kept:
+se a nova não ligar, o ScrapCade volta para ela sozinho.	if the new one doesn't boot, ScrapCade goes back to it by itself.
+ERRO	ERROR
+Atualizando... não desligue.	Updating... don't turn it off.
+A atualização não terminou.	The update didn't finish.
+Começando o download	Starting the download
+Não deu para baixar o PortMaster.	Couldn't download PortMaster.
+Baixando o PortMaster (só na primeira vez, uns 25 MB)	Downloading PortMaster (first time only, about 25 MB)
+Confira a internet em Rede e Wi-Fi e tente de novo.	Check the internet in Network and Wi-Fi and try again.
+A loja de ports é o PortMaster (licença MIT, github.com/PortsMaster).	The ports store is PortMaster (MIT license, github.com/PortsMaster).
+jogos sim/não	games yes/no
+instalar	install
+Escolha o disco onde o ScrapCade OS vai ficar:	Choose the disk where ScrapCade OS will live:
+Nenhum outro disco encontrado (mínimo 4 GB).	No other disk found (minimum 4 GB).
+O pen drive de onde o ScrapCade está rodando não aparece na lista.	The USB stick ScrapCade is running from doesn't appear in the list.
+Como instalar:	How to install:
+Ao lado do Windows	Next to Windows
+Apagar o disco inteiro	Erase the whole disk
+O Windows e os arquivos dele ficam como estão: o ScrapCade usa só os	Windows and its files stay as they are: ScrapCade only uses the
+GB livres.	GB of free space.
+Ao ligar, um menu de 3 segundos deixa escolher ScrapCade ou Windows (fica no último usado).	At startup, a 3-second menu lets you choose ScrapCade or Windows (it stays on the last one used).
+ATENÇÃO: isso APAGA TUDO o que está no disco:	WARNING: this ERASES EVERYTHING on the disk:
+Para ficar ao lado do Windows, libere 8 GB ou mais nele: Gerenciamento de disco > Diminuir volume.	To install next to Windows, free up 8 GB or more in it: Disk Management > Shrink Volume.
+Levar também os jogos, saves e BIOS deste pen drive:	Also bring the games, saves and BIOS from this USB stick:
+Aperte A para instalar, ou B para cancelar.	Press A to install, or B to cancel.
+Instalando... não desligue o computador.	Installing... don't turn off the computer.
+A instalação não terminou.	The installation didn't finish.
+Desligue, tire o pen drive e ligue de novo: o ScrapCade abre direto do disco.	Shut down, remove the USB stick and turn it on again: ScrapCade opens straight from the disk.
+Detalhes em Registros/instalar.log, na página de Arquivos.	Details in Registros/instalar.log, on the Files page.
+O ScrapCade está rodando do pen drive.	ScrapCade is running from the USB stick.
+Dá para instalar no HD ou SSD deste computador e ligar sem o pen drive	You can install it on this computer's HD or SSD and boot without the USB stick
+(os jogos podem ir junto). Você escolhe o disco na próxima tela.	(the games can come along). You choose the disk on the next screen.
+Atenção: o disco escolhido é apagado.	Warning: the chosen disk is erased (or use the free space next to Windows).
+Depois, se quiser: Sistema > Instalar no disco do computador.	Later, if you want: System > Install on the computer's disk.
+Instalar no computador?	Install on the computer?
+escolher o disco	choose the disk
+agora não	not now
+As capas e os dados que faltavam vão ser procurados de novo (precisa de internet).	Missing covers and info will be looked up again (needs internet).
+RetroAchievements: seu usuário	RetroAchievements: your username
+Senha do RetroAchievements	RetroAchievements password
+Conquistas ligadas: valem a partir do próximo jogo.	Achievements on: they start with the next game.
+Conquistas desligadas.	Achievements off.
+IP do amigo (ex.: 192.168.0.20)	Friend's IP (e.g. 192.168.0.20)
+Coloque músicas (.ogg, .mp3, .flac, .wav) na pasta music da SCRAP-DADOS.	Put songs (.ogg, .mp3, .flac, .wav) in the music folder of SCRAP-DADOS.
+Tema, filtros, opções de jogo e do menu voltam ao padrão. Favoritos, saves, perfis e jogos ficam como estão. O ScrapCade reabre.	Theme, filters, game and menu options go back to default. Favorites, saves, profiles and games stay as they are. ScrapCade restarts.
+Pode tirar o pen drive.	You can remove the USB stick.
+Nenhum pen drive em uso.	No USB stick in use.
+(o mais rápido possível)	(as fast as possible)
+Nenhum controle ligado: ligue um controle USB ou pareie pelo Bluetooth.	No controller connected: plug in a USB controller or pair one over Bluetooth.
+O modo desktop entra numa próxima versão do ScrapCade	Desktop mode comes in a future version of ScrapCade
+. Abra a pasta de destino e aperte X para colar.	. Open the destination folder and press X to paste.
+Nova pasta	New folder
+Não há nada na memória: use Y > Copiar ou Mover.	Nothing in memory: use Y > Copy or Move.
+Não dá para colar no pen drive: ele é só leitura.	Can't paste to the USB stick: it's read-only.
+Apagar de vez	Delete for good
+Apagar (vai para a Lixeira)	Delete (goes to the Trash)
+Use Y para copiar, mover, clonar, renomear ou apagar.	Use Y to copy, move, clone, rename or delete.
+Fica para depois: Sistema > Instalar no disco do computador	Later: System > Install on the computer's disk
+Tirado de	Removed from
+Colocado em	Added to
+Nome da coleção nova	Name of the new collection
+Coleções	Collections
++  Nova coleção	+  New collection
+A põe ou tira o jogo     B fecha	A adds or removes the game     B closes
+Olá,	Hi,
+Novo perfil: escreva o nome	New profile: type the name
+Tudo pronto! Controle:	All set! Controller:
+. Select abre o painel Sistema.	. Select opens the System panel.
+Tudo pronto! Para jogar com controle, ligue um USB ou pareie pelo Bluetooth (Sistema > Controle e som).	All set! To play with a controller, plug in a USB one or pair one over Bluetooth (System > Controller and sound).
+Primeiro uso: conecte a rede (cabo ou Wi-Fi) para baixar capas e atualizações. B pula.	First use: connect to the network (cable or Wi-Fi) to download covers and updates. B skips.
+Senha de	Password for
+Senha errada.	Wrong password.
+Quem vai jogar?	Who's playing?
+Crie o seu perfil: cada pessoa tem os seus favoritos e os seus saves.	Create your profile: each person has their own favorites and saves.
+Cada perfil tem os seus favoritos e os seus saves.	Each profile has its own favorites and saves.
+Novo perfil	New profile
+com senha	with password
+Apagar perfil	Delete profile
+Apagar o perfil	Delete the profile
+Os jogos e os saves continuam guardados.	Games and saves stay stored.
+apagar perfil	delete profile
+Escolha o avatar de	Choose the avatar for
+Avatares seus: imagens na pasta themes/avatares. Foto do perfil: avatar.png na pasta Perfis.	Your own avatars: images in the themes/avatares folder. Profile photo: avatar.png in the Perfis folder.
+A: escolher este  •  depois você pode pôr uma senha (opcional)	A: choose this one  •  then you can set a password (optional)
+Não dá para colar uma pasta dentro dela mesma.	Can't paste a folder inside itself.
+Não deu para colar	Couldn't paste
+Não deu para clonar	Couldn't clone
+Novo nome para	New name for
+Nome inválido (sem / no nome).	Invalid name (no / in the name).
+Já existe um item com esse nome.	An item with that name already exists.
+Renomeado para	Renamed to
+Não deu para renomear.	Couldn't rename.
+Nome da pasta nova	Name of the new folder
+Pasta	Folder
+Não deu para criar a pasta.	Couldn't create the folder.
+apagado de vez.	deleted for good.
+Não deu para apagar	Couldn't delete
+foi para a Lixeira (pasta Lixeira, na SCRAP-DADOS).	went to the Trash (Lixeira folder, on SCRAP-DADOS).
+SSH: crie a senha do administrador (root)	SSH: create the administrator (root) password
+A senha precisa de 4 letras ou mais.	The password needs 4 characters or more.
+Repita a senha	Repeat the password
+As senhas não conferem. Tente de novo.	The passwords don't match. Try again.
+Não consegui gravar a senha.	Couldn't save the password.
+(opcional: deixe vazio e aperte Start)	(optional: leave empty and press Start)
+Este console tem um emulador só.	This console has only one emulator.
+entra numa próxima versão do ScrapCade	comes in a future version of ScrapCade
+Select + Start: sair do jogo (o progresso fica salvo)	Select + Start: quit the game (progress is saved)
+Select + X: menu     Select + RB: salvar     Select + LB: carregar     Select + Y: print	Select + X: menu     Select + RB: save     Select + LB: load     Select + Y: screenshot
+Todos os jogos	All games
+Nenhum jogo para continuar ainda: abra um jogo primeiro.	No game to continue yet: open a game first.
+Continuar jogando: A volta de onde você parou	Continue playing: A resumes where you left off
+arquivos...	files...
+Configuração cancelada.	Setup canceled.
+Versão nova do ScrapCade OS baixada: reinicie para usar (Sistema > Reiniciar)	New ScrapCade OS version downloaded: restart to use it (System > Restart)
+Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade OS	New ScrapCade version available: System > Update ScrapCade OS
+Parado faz tempo: o computador desliga em 1 minuto. Aperte qualquer botão para continuar.	Idle for a while: the computer shuts down in 1 minute. Press any button to continue.
+usa a BIOS livre embutida (PCSX ReARMed)	uses the built-in free BIOS (PCSX ReARMed)
+Japão	Japan
+os jogos de Neo Geo não abrem	Neo Geo games don't open
+BIOS do Neo Geo	Neo Geo BIOS
+os jogos .fds não abrem	.fds games don't open
+usa a BIOS livre embutida (mGBA)	uses the built-in free BIOS (mGBA)
+abre direto, sem a tela da Nintendo	starts directly, without the Nintendo screen
+os jogos de Sega CD não abrem	Sega CD games don't open
+os jogos de CD do PC Engine não abrem (os cartuchos abrem)	PC Engine CD games don't open (cartridges do)
+os jogos de Lynx não abrem	Lynx games don't open
+abre direto, sem a tela da Atari	starts directly, without the Atari screen
+está na pasta, mas não é o arquivo certo	is in the folder, but it's not the right file
+(sem ela,	(without it,
+Coloque as BIOS do seu console na pasta "bios" pela página de Arquivos:	Put your console's BIOS files in the "bios" folder through the Files page:
+Tudo pronto. Outras BIOS vão na pasta "bios", pela página de Arquivos:	All set. Other BIOS files go in the "bios" folder, through the Files page:
+NES, SNES, Mega Drive, N64 e quase todo o fliperama não precisam de BIOS.	NES, SNES, Mega Drive, N64 and almost all arcade games don't need a BIOS.
+Briga de rua	Beat 'em up
+Quebra-cabeça	Puzzle
+Estratégia	Strategy
+Simulação	Simulation
+Música	Music
+Coletânea	Compilation
+Ação	Action
+Fliperama	Arcade
+Jogando	Playing
+Continuar jogando	Continue playing
+Favoritos	Favorites
+Mais jogados	Most played
+JOGANDO	PLAYING
+Igual aos outros	Same as the others
+Hospedar	Host
+Entrar num amigo	Join a friend
+Desligada	Off
+Ligada	On
+Fraco (emuladores leves)	Weak (light emulators)
+Forte	Strong
+Desempenho deste PC:	This PC's performance:
+Desempenho:	Performance:
+Medido no primeiro uso:	Measured on first use:
+núcleos de	cores at
+Escolhe o idioma do menu e do painel. O ScrapCade reabre.	Chooses the language of the menu and panel. ScrapCade restarts.
+Pasta do Windows	Windows folder
+Mostrar	Show
+Esconder	Hide
+Ocultar	Hide
+Normais	Normal
+Economia	Saver
+Moderado	Balanced
+Escala inteira	Integer scale
+Grande	Large
+Maior	Larger
+Ano	Year
+Ligar	Turn on
+Reiniciar	Restart
+Suspender	Sleep
+Jogado 1 vez	Played once
+Jogado	Played
+vezes	times
+Arquivo:	File:
+Empresa:	Company:
+Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. Na tela seguinte: apagar o disco inteiro ou instalar ao lado do Windows.	Copies ScrapCade to the computer's HD or SSD, so it boots without the USB stick. On the next screen: erase the whole disk or install next to Windows.
+Atenção: o disco escolhido é apagado (ou use o espaço livre ao lado do Windows).	Warning: the chosen disk is erased (or use the free space next to Windows).
+Escolhe o idioma do menu e do painel. Os nomes das pastas (Jogos novos, bios, roms) ficam iguais.	Chooses the language of the menu and panel. Folder names (Jogos novos, bios, roms) stay the same.
+(cima/baixo)	(up/down)

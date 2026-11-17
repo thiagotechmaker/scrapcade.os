@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_BEETLE_WSWAN
+	bool "libretro-beetle-wswan"
+	help
+	  Nucleo libretro: WonderSwan e WonderSwan Color.

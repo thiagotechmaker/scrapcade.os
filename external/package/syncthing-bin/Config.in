@@ -1,0 +1,4 @@
+config BR2_PACKAGE_SYNCTHING_BIN
+	bool "syncthing-bin"
+	help
+	  Syncthing: sincroniza os saves entre os aparelhos (binario oficial).
