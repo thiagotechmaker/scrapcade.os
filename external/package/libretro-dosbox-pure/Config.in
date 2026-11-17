@@ -1,0 +1,6 @@
+config BR2_PACKAGE_LIBRETRO_DOSBOX_PURE
+	bool "libretro-dosbox-pure"
+	depends on BR2_INSTALL_LIBSTDCPP
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	help
+	  Nucleo libretro DOSBox Pure: jogos de PC antigos (DOS), direto do .zip, com teclado na tela e controle.
