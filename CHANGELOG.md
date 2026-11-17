@@ -21,6 +21,7 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 - Tela de download do PortMaster no menu, com barra de progresso.
 
 ### Alterado
+- A atualização automática só avisa que há versão nova (baixar sozinho é uma opção do painel), e os sons do menu vêm ligados.
 - Um número de versão só (arquivo `VERSION`, em SemVer) no menu, em Informações, no `.iso` (`scrapcade-os-v<versão>-pc-64bits.iso`) e na tag.
 - O atualizador compara pelo arquivo `BUILD_ID` publicado junto com a versão, e mostra a versão SemVer.
 - Menu do RetroArch com as cores do ScrapCade.
@@ -31,6 +32,9 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 - Instalado no computador, o ScrapCade liga direto na logo; o menu de boot só aparece segurando Esc ou Shift (no pen drive ele continua aparecendo).
 - O boot não pede mais a senha do administrador num terminal: ela é criada no painel, com o teclado na tela, ao ligar o SSH.
 - Som: as saídas de todas as placas começam ligadas e em 80% (em muitos notebooks o alto-falante vinha mudo).
+- Som pelas caixas e pelo fone, não pelo HDMI; áudio Intel pelo driver HDA clássico.
+- Rede com cabo: se a placa não subir sozinha, o sistema liga a placa e pede o endereço ao roteador.
+- Nintendo 64 em placas sem OpenGL 3.3 (Intel antigas): abre com o desenho pelo processador em vez de não abrir.
 - Motor gráfico: a explicação muda conforme a opção escolhida (antes só falava do OpenGL ES e do software).
 - Instalar no computador em PC de 32 bits com UEFI registrava o arquivo de boot de 64 bits.
 - Scripts do sistema salvos no git sem permissão de execução: quem clonasse o repositório gerava uma imagem que não ligava.

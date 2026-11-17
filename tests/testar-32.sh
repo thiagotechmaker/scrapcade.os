@@ -20,7 +20,7 @@ senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao 
 opt() { k tab; sleep 2; for i in $(seq $1); do echo "sendkey down"; sleep 0.25; done; sleep 1; }
 fecha() { k esc; sleep 1; k esc; sleep 1; }
 W=http://127.0.0.1:18081
-Q="qemu-system-i386 -accel tcg -cpu n270 -m 1024 -smp 2 -vga std -display none -monitor stdio"
+Q="qemu-system-i386 -accel kvm -accel tcg -cpu n270 -m 1024 -smp 2 -vga std -display none -monitor stdio"
 rm -f teste/y32_*.ppm teste/aprovado-32
 falhas=0
 

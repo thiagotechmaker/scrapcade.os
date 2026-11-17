@@ -15,7 +15,7 @@ k() { for c in "$@"; do echo "sendkey $c"; sleep 0.5; done; }
 shot() { echo "screendump $TOS/teste/z_$1.ppm"; }
 acorda() { for i in 1 2 3 4 5 6 7; do echo "sendkey up"; sleep 1; done; }   # para a contagem do menu de boot assim que ele aparece
 senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao ligar o SSH
-Q="qemu-system-x86_64 -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
+Q="qemu-system-x86_64 -accel kvm -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
 EFI="-bios /usr/share/ovmf/OVMF.fd"
 rm -f teste/z_*.ppm
 
