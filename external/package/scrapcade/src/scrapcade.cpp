@@ -718,7 +718,7 @@ static void loadBackdrop(const Game *g) {
 static const char *ORDENS[] = {"Nome", "Ano", "Mais jogados", "Últimos jogados"};
 static int ordemAtual() { int v = atoi(prefs["ordem"].c_str()); return v < 0 || v > 3 ? 0 : v; }
 static const int PROTECAO_MIN[] = {0, 5, 10, 30};
-static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 2 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 2 : v; }
+static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 1 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 1 : v; }   // de fabrica: 5 min
 static const int DESLIGAR_MIN[] = {0, 30, 60, 120};
 static int desligarIdx() { int v = atoi(prefs["desligar"].c_str()); return v < 0 || v > 3 ? 0 : v; }
 static Uint32 ultimaTecla = 0;
@@ -3292,6 +3292,26 @@ static void criarPerfil() {
     });
 }
 
+// ---- assistente de primeiro uso (depois do primeiro perfil): rede, se o PC estiver sem conexao, e o controle
+static int assistente = 0;   // 1: a tela de Rede foi aberta pelo assistente
+static void assistenteControle() {
+    if (SDL_NumJoysticks() > 0) {
+        const char *n = SDL_JoystickNameForIndex(0);
+        toast(std::string("Tudo pronto! Controle: ") + (n ? n : "conectado") + ". Select abre o painel Sistema.", 5000);
+    } else {
+        toast("Tudo pronto! Para jogar com controle, ligue um USB ou pareie pelo Bluetooth (Sistema > Controle e som).", 6500);
+    }
+}
+static void iniciarAssistente() {
+    if (ipAddr() == "sem rede") {
+        openRede();
+        assistente = 1;
+        toast("Primeiro uso: conecte a rede (cabo ou Wi-Fi) para baixar capas e atualizações. B pula.", 6000);
+    } else {
+        assistenteControle();
+    }
+}
+
 static void salvarPerfilNovo(const std::string &senha) {
     int maior = 0;
     for (auto &p : perfis) maior = std::max(maior, atoi(p.id.c_str()));
@@ -3299,6 +3319,7 @@ static void salvarPerfilNovo(const std::string &senha) {
     savePerfis();
     profStage = 0;
     login(int(perfis.size()) - 1);
+    if (perfis.size() == 1) iniciarAssistente();   // primeiro perfil do aparelho: o assistente curto
 }
 
 static void entrar(int i) {
@@ -4187,6 +4208,7 @@ int main() {
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
         bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage || pmStage == 1) && now - lastBars > 1000;
+        if (assistente == 1 && !netStage) { assistente = 0; assistenteControle(); any = true; }   // fechou a Rede
         if (pmFim == 1) { pmFim = 0; pmStage = 0; play(); any = true; }        // PortMaster baixado: abre ele
         else if (pmFim == 2) { pmFim = 0; pmStage = 2; any = true; }
         if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
