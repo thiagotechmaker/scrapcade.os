@@ -941,16 +941,18 @@ static void topBar(const Game *g) {
     if (!batAt || SDL_GetTicks() - batAt > 30000) { bat = lerBateria(); batAt = SDL_GetTicks(); }
     float bloco = std::max(T.width(hora, 12.5f, true), T.width(std::string(data) + "  •  " + ip, 7, false));
     float ax = rx - bloco - 12 * u;
-    if (bat.tem) {   // bateria do notebook: icone, porcentagem e raio quando esta na tomada
+    if (bat.tem) {   // bateria do notebook: na linha da hora, logo a esquerda dela (icone, porcentagem, raio na tomada)
         std::string pc = std::to_string(bat.pct) + "%";
-        float tw = T.width(pc, 9, true), bw = 16 * u, bh = 8 * u, bx = ax - tw - bw - 8 * u, by = cy - bh / 2;
+        float hy = cy - 3.6f * u, fim = rx - T.width(hora, 12.5f, true) - 7 * u;
+        float tw = T.width(pc, 8.5f, true), bw = 15 * u, bh = 7.5f * u, bx = fim - tw - 3 * u - bw, by = hy - bh / 2;
         uint32_t cb = bat.pct <= 15 && !bat.carregando ? 0xFFE0564A : 0xFFFFFFFF;
         G.roundRectStroke(bx, by, bw, bh, 1.5f * u, std::max(1.0f, 0.8f * u), cb);
         G.fillRect(bx + bw, by + bh * 0.3f, 1.6f * u, bh * 0.4f, cb);
         G.fillRect(bx + 1.6f * u, by + 1.6f * u, (bw - 3.2f * u) * std::min(100, bat.pct) / 100.0f, bh - 3.2f * u, cb);
-        T.draw(pc, bx + bw + 3 * u + tw, cy, 9, true, cb, 2);
-        if (bat.carregando) T.draw("⚡", bx - 2 * u, cy, 9, true, 0xFFFFD34E, 2);
-        ax = bx - (bat.carregando ? 14 : 6) * u;
+        T.draw(pc, fim, hy, 8.5f, true, cb, 2);
+        if (bat.carregando) T.draw("⚡", bx - 2 * u, hy, 8.5f, true, 0xFFFFD34E, 2);
+        float esq = bx - (bat.carregando ? 12 : 4) * u;     // o avatar fica a esquerda de tudo
+        ax = std::min(ax, esq - 8 * u);
     }
     if (perfilAtual >= 0) {   // quem esta jogando, ao lado do relogio
         ax -= 19 * u;
