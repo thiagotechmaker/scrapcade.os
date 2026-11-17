@@ -33,14 +33,14 @@ pinta() {   # arquivo, byte inicial, bytes por linha, linhas, bytes entre linhas
   done
 }
 logo_inteira() { pinta /logo$bpp.raw 0 $((lw * bypp)) $lh $((lw * bypp)) $x0 $y0; }
-anima() {
-  # as letras (colunas de cada uma na logo de 480 px, o selo OS por ultimo)
+letras() {   # as letras aparecem uma a uma (colunas de cada uma na logo de 480 px, o selo OS por ultimo)
   for l in 4:42 50:88 97:134 143:181 190:227 236:274 282:320 329:366 375:413 422:475; do
     a=${l%:*}; b=${l#*:}
     pinta /logo$bpp.raw $((a * bypp)) $(( (b - a + 1) * bypp )) $lh $((lw * bypp)) $((x0 + a)) $y0
     sleep 0.05
   done
-  # a barra: 12 blocos de 34 x 10 (barra*.raw: 0 apagado, 1 a cabeca, 2 a 4 o rastro); so os que mudam sao redesenhados
+}
+barra() {   # 12 blocos de 34 x 10 (barra*.raw: 0 apagado, 1 a cabeca, 2 a 4 o rastro); so os que mudam sao redesenhados
   bw=34; bh=10; bx=$((x0 + 3)); by=$((y0 + lh + 26)); B=/barra$bpp.raw
   [ -f $B ] && [ $((by + bh)) -le "$h" ] || return 0
   k=0; while [ $k -lt 12 ]; do pinta $B 0 $((bw * bypp)) $bh $((bw * bypp)) $((bx + k * 40)) $by; k=$((k + 1)); done
@@ -58,10 +58,12 @@ anima() {
     c=$(( (c + 1) % 12 )); sleep 0.1
   done
 }
+# as duas animacoes correm juntas (a barra desde o comeco); ao sair do initrd, as duas param e a logo fica inteira
 para_logo() { [ -n "$ANIM" ] && { kill $ANIM 2>/dev/null; wait $ANIM 2>/dev/null; ANIM=""; logo_inteira; }; }
 if ! grep -q "loglevel=7" /proc/cmdline && tela; then
   printf '\033[2J\033[H' > /dev/tty1 2>/dev/null
-  anima & ANIM=$!
+  barra & ANIM=$!
+  letras & ANIM="$ANIM $!"
 fi
 
 achou=""

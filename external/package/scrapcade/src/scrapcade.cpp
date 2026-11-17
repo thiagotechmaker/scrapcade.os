@@ -586,8 +586,19 @@ static Card &card(const Game &g) {
 static std::string fotoDoPonto(const Game &g) {
     std::string pid = perfilAtual >= 0 && perfilAtual < int(perfis.size()) ? perfis[perfilAtual].id : "1";
     std::string dir = "/userdata/saves/" + g.sys->id + (pid != "1" && !pid.empty() ? "/perfil-" + pid : "");
-    std::string f = dir + "/" + g.base + ".state.auto.png";
-    return isFile(f) ? f : "";
+    std::string nome = g.base + ".state.auto.png";
+    if (isFile(dir + "/" + nome)) return dir + "/" + nome;
+    // o RetroArch guarda os saves numa subpasta com o nome do emulador (saves/nes/Mesen/...)
+    std::string achado;
+    if (DIR *d = opendir(dir.c_str())) {
+        while (dirent *e = readdir(d)) {
+            if (e->d_name[0] == '.') continue;
+            std::string f = dir + "/" + e->d_name + "/" + nome;
+            if (isFile(f)) { achado = f; break; }
+        }
+        closedir(d);
+    }
+    return achado;
 }
 
 static void clearCards() {
