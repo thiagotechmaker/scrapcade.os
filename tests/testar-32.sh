@@ -16,7 +16,7 @@ rotulos() {
     blkid -p -o value -s LABEL -O $((st * 512)) "$1" 2>/dev/null; done | tr '\n' ' '; }
 k() { for c in "$@"; do echo "sendkey $c"; sleep 0.5; done; }
 shot() { echo "screendump $TOS/teste/y32_$1.ppm"; }
-senha() { k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; }
+senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao ligar o SSH
 opt() { k tab; sleep 2; for i in $(seq $1); do echo "sendkey down"; sleep 0.25; done; sleep 1; }
 fecha() { k esc; sleep 1; k esc; sleep 1; }
 W=http://127.0.0.1:18081

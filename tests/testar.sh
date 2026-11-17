@@ -14,7 +14,7 @@ rotulos() {   # nomes das particoes de um disco (sem precisar de root)
 k() { for c in "$@"; do echo "sendkey $c"; sleep 0.5; done; }
 shot() { echo "screendump $TOS/teste/z_$1.ppm"; }
 acorda() { for i in 1 2 3 4 5 6 7; do echo "sendkey up"; sleep 1; done; }   # para a contagem do menu de boot assim que ele aparece
-senha() { k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; }
+senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao ligar o SSH
 Q="qemu-system-x86_64 -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
 EFI="-bios /usr/share/ovmf/OVMF.fd"
 rm -f teste/z_*.ppm
@@ -85,7 +85,7 @@ RO=$TOS/tests/roms
   opt 31; k ret; sleep 8; shot p_rede; fecha
   opt 25; k ret; sleep 12; shot p_bluetooth; fecha
   opt 32; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
-  opt 33; k right; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
+  opt 33; k right; sleep 3; k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
   opt 23; k ret; sleep 3; shot p_controle; fecha
   opt 40; k ret; sleep 3; shot p_comojogar; fecha
   opt 9; k ret; sleep 4; shot p_bios; fecha

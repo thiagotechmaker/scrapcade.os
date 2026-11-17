@@ -18,6 +18,10 @@ fi
 # pegava a tela antes do ScrapCade e deixava tudo preto.
 rm -f "$TARGET_DIR/etc/init.d/S40xorg"
 
+# ScrapCade: boot e desligamento sem texto na tela (tos-rcs manda as mensagens dos servicos para um registro)
+sed -i -e 's|^::sysinit:/etc/init.d/rcS$|::sysinit:/usr/bin/tos-rcs start|' \
+	-e 's|^::shutdown:/etc/init.d/rcK$|::shutdown:/usr/bin/tos-rcs stop|' "$TARGET_DIR/etc/inittab"
+
 # ScrapCade: GRUB para BIOS antigo. O mesmo nucleo serve para o disk.img (setor 1), o .iso (El Torito) e o instalador.
 G=$(ls -d "$BUILD_DIR"/grub2-*/build-i386-pc 2>/dev/null | head -1)
 if [ -n "$G" ]; then

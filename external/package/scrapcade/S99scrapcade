@@ -21,6 +21,7 @@ case "$1" in
   start)
     printf "Starting scrapcade: "
     mkdir -p "${LOG%/*}"
+    /usr/bin/tos-carregando 30     # logo + CARREGANDO ate o menu desenhar (o menu encerra a animacao)
     start-stop-daemon -S -q -b -m -p "$PIDFILE" -x /bin/sh -- -c "exec $DAEMON >>$LOG 2>&1" && echo "OK" || echo "FAIL"
     ;;
   stop)

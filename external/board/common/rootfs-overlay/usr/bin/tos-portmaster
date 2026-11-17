@@ -1,33 +1,47 @@
 #!/bin/bash
 # ScrapCade OS: abre o PortMaster (loja de ports de jogos, licenca MIT, github.com/PortsMaster/PortMaster-GUI).
-# Na primeira vez baixa a versao oficial do GitHub (conferida pelo MD5 publicado) para SCRAP-DADOS/roms/ports;
-# depois o proprio PortMaster se atualiza. Chamado pelo "PortMaster" do console Ports (via tos-jogar).
+#   tos-portmaster baixar   baixa a versao oficial do GitHub (conferida pelo MD5 publicado) para SCRAP-DADOS/roms/ports,
+#                           com o progresso em /tmp/tos-portmaster.txt ("porcentagem mensagem"): o ScrapCade mostra
+#                           numa tela propria, sem terminal. Depois o proprio PortMaster se atualiza.
+#   tos-portmaster          abre o PortMaster (chamado pelo "PortMaster" do console Ports, via tos-jogar)
 PM=/roms/ports/PortMaster
 LOG=/userdata/system/logs/portmaster.log
 BASE=https://github.com/PortsMaster/PortMaster-GUI/releases/latest/download
-msg() { printf '%s\n' "$1" > /dev/tty1; echo "$1" >> "$LOG"; }
+P=/tmp/tos-portmaster.txt
+p() { echo "$1 $2" > $P; echo "tos-portmaster: $1% $2" >> "$LOG"; }
 mkdir -p /userdata/system/logs /roms/ports
-printf '\033c' > /dev/tty1
+instalado() { [ -f "$PM/pugwash" ] && [ -f "$PM/utils/pm_launch.txt" ]; }
 
-if [ ! -f "$PM/pugwash" ] || [ ! -f "$PM/utils/pm_launch.txt" ]; then
-  msg "ScrapCade OS: baixando o PortMaster (so na primeira vez, uns 25 MB)..."
+baixar() {
   T=/userdata/system/tmp-portmaster
   rm -rf "$T"; mkdir -p "$T"
-  if curl -fsSL -m 900 -o "$T/PortMaster.zip" "$BASE/PortMaster.zip" &&
-     curl -fsSL -m 60 -o "$T/PortMaster.zip.md5" "$BASE/PortMaster.zip.md5" &&
-     [ "$(md5sum < "$T/PortMaster.zip" | cut -c1-32)" = "$(tr -d ' \n' < "$T/PortMaster.zip.md5" | cut -c1-32)" ]; then
-    msg "Instalando..."
-    (cd /roms/ports && unzip -oq "$T/PortMaster.zip") >> "$LOG" 2>&1
-  else
-    msg "Nao deu para baixar o PortMaster. Confira a internet em Sistema > Rede e Wi-Fi e tente de novo."
-    rm -rf "$T"; sleep 8; exit 1
-  fi
+  p 1 "Procurando a versão mais nova"
+  tam=$(curl -fsSIL -m 30 "$BASE/PortMaster.zip" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ll]ength: *//p' | tail -1)
+  curl -fsSL -m 900 -o "$T/PortMaster.zip" "$BASE/PortMaster.zip" & C=$!
+  while kill -0 $C 2>/dev/null; do
+    feito=$(stat -c %s "$T/PortMaster.zip" 2>/dev/null || echo 0)
+    [ "${tam:-0}" -gt 0 ] && p $(( 2 + feito * 88 / tam )) "Baixando: $((feito / 1048576)) de $((tam / 1048576)) MB" \
+                          || p 10 "Baixando: $((feito / 1048576)) MB"
+    sleep 1
+  done
+  wait $C || { p 0 "ERRO: o download falhou"; rm -rf "$T"; return 1; }
+  p 92 "Conferindo o arquivo"
+  curl -fsSL -m 60 -o "$T/PortMaster.zip.md5" "$BASE/PortMaster.zip.md5" &&
+    [ "$(md5sum < "$T/PortMaster.zip" | cut -c1-32)" = "$(tr -d ' \n' < "$T/PortMaster.zip.md5" | cut -c1-32)" ] \
+    || { p 0 "ERRO: o arquivo baixado não confere"; rm -rf "$T"; return 1; }
+  p 95 "Instalando"
+  (cd /roms/ports && unzip -oq "$T/PortMaster.zip") >> "$LOG" 2>&1 || { p 0 "ERRO: não deu para instalar"; rm -rf "$T"; return 1; }
   rm -rf "$T"
-fi
+  instalado || { p 0 "ERRO: a instalação ficou incompleta"; return 1; }
+  p 100 "Pronto"
+}
 
+if [ "$1" = baixar ]; then
+  baixar; exit $?
+fi
+instalado || baixar || exit 1          # o ScrapCade ja baixa pela tela dele; isto so vale se chamado direto
 # ajustes do ScrapCade OS, refeitos a cada vez (o PortMaster se atualiza e pode trocar estes arquivos)
 cp /usr/share/tos/portmaster/control.txt "$PM/control.txt"
 chmod -R +x "$PM" 2>/dev/null
 echo "== $(date '+%d/%m %H:%M') PortMaster" >> "$LOG"
 cd "$PM" && bash ./PortMaster.sh >> "$LOG" 2>&1
-printf '\033c' > /dev/tty1

@@ -1,0 +1,15 @@
+#!/bin/sh
+# ScrapCade OS: liga e desliga os servicos sem texto na tela (chamado pelo /etc/inittab no lugar do rcS e do rcK).
+# As mensagens vao para /tmp/tos-boot.log, copiado para SCRAP-DADOS/system/logs/boot.log. Com "Iniciar mostrando
+# as mensagens" no menu de boot (loglevel=7), tudo aparece na tela como antes.
+S=/etc/init.d/rcS
+[ "$1" = stop ] && S=/etc/init.d/rcK
+grep -q "loglevel=7" /proc/cmdline && exec $S
+printf '\033[?25l' > /dev/tty1 2>/dev/null       # sem cursor piscando por cima da logo
+if [ "$1" = stop ]; then
+  $S >> /tmp/tos-boot.log 2>&1 < /dev/null
+else
+  $S > /tmp/tos-boot.log 2>&1 < /dev/null
+  [ -d /userdata/system/logs ] && cp /tmp/tos-boot.log /userdata/system/logs/boot.log 2>/dev/null
+fi
+exit 0

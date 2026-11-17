@@ -60,6 +60,9 @@ p 25 "Copiando o sistema"
 mkdir -p /mnt/tos-boot /mnt/tos-dados
 mount "$P1" /mnt/tos-boot || { p 0 "ERRO: nao montou a particao SCRAPCADE"; exit 1; }
 cp -r /boot/EFI /boot/boot /mnt/tos-boot/ || { umount /mnt/tos-boot; p 0 "ERRO: copia do sistema falhou"; exit 1; }
+# instalado no computador: o GRUB liga direto na logo (o menu de boot so aparece segurando Esc ou Shift).
+# No pen drive (converter) o menu continua aparecendo, porque ele e a midia de instalacao.
+[ "$JOGOS" != converter ] && echo "instalado em $(date +%d/%m/%Y)" > /mnt/tos-boot/boot/tos-instalado
 sync
 
 if [ "$JOGOS" = jogos ] && ! grep -q " /userdata tmpfs" /proc/mounts; then
@@ -77,7 +80,8 @@ fi
 # entrada "ScrapCade" no menu de boot da placa-mae (o caminho padrao EFI/BOOT ja funciona sem ela)
 if [ -d /sys/firmware/efi ] && [ "$JOGOS" != converter ]; then
   mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null
-  efibootmgr -c -d "$D" -p 1 -L "ScrapCade OS" -l '\EFI\BOOT\bootx64.efi' >/dev/null 2>&1 || true
+  efi=$(cd /mnt/tos-boot/EFI/BOOT && ls boot*.efi | head -1)   # bootx64.efi (64 bits) ou bootia32.efi (32 bits)
+  efibootmgr -c -d "$D" -p 1 -L "ScrapCade OS" -l "\\EFI\\BOOT\\${efi:-bootx64.efi}" >/dev/null 2>&1 || true
 fi
 umount /mnt/tos-boot
 sync

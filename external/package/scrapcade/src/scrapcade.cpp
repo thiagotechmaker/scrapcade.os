@@ -77,6 +77,7 @@ static void drawAvatar(const Perfil *p, int av, float x, float y, float s);
 static std::string emuNome(const Sys *s);
 static bool servico(const std::string &nome, const char *padrao);
 static void redraw();
+static void ligarSSH();
 // Consoles com mais de um emulador: o primeiro e o padrao
 struct Nucleo { const char *so, *nome; };
 static std::vector<Nucleo> nucleos(const std::string &id) {
@@ -1333,7 +1334,18 @@ static const char *optAjuda(int o) {
     case OPT_ANIM: return "Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.";
     case OPT_COVERS: return "Mostrar: desenha a capa de cada jogo. Ocultar: só o nome e a cor do console, mais leve para computadores antigos.";
     case OPT_BG: return "Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.";
-    case OPT_ENGINE: return "GPU (OpenGL ES): usa a placa de vídeo, mais suave. Software: desenha pelo processador; use se a tela ficar preta ou piscando. Vale ao reiniciar o ScrapCade.";
+    case OPT_ENGINE: {   // explica a opcao que esta escolhida agora (muda ao passar com < >)
+        std::string d;
+        if (engineWant == "opengles2") d = "GPU (OpenGL ES): desenha pela placa de vídeo. É o mais suave na maioria dos computadores.";
+        else if (engineWant == "opengl") d = "GPU (OpenGL): a placa de vídeo pelo OpenGL de PC. Experimente em placas NVIDIA e AMD antigas, ou se o OpenGL ES falhar.";
+        else if (engineWant == "opengles") d = "GPU (OpenGL ES 1): para placas de vídeo bem antigas, que não têm o OpenGL ES 2.";
+        else if (engineWant == "vulkan") d = "GPU (Vulkan): o mais moderno; pode ser o mais rápido em placas Intel e AMD recentes.";
+        else if (engineWant == "software") d = "CPU: desenha tudo pelo processador, sem a placa de vídeo. Mais lento; use se a tela ficar preta, piscando ou com cores erradas.";
+        else d = engineName(engineWant) + ": outro jeito de desenhar que este computador oferece.";
+        static std::string txt;     // a funcao devolve const char*: o texto montado fica guardado aqui
+        txt = d + (engineWant != engineNow ? " Aperte A para aplicar (o ScrapCade reabre)." : " É o que está em uso agora.");
+        return txt.c_str();
+    }
     case OPT_VOLUME: return "Volume de tudo: menu e jogos. A toca um som de teste para conferir as caixas ou o fone.";
     case OPT_REDE: return "Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o ScrapCade acha capas e atualizações.";
     case OPT_BLUETOOTH: return "Pareia controles sem fio (PS4, PS5, Switch, Xbox) e fones. Coloque o controle em modo de pareamento antes.";
@@ -2454,6 +2466,50 @@ static void drawAtualizar() {
     if (nh) panelHints(H, nh, x, y + h, w);
 }
 
+// ------------------------------------------------------------------ baixar o PortMaster (primeira vez), sem terminal
+// O tos-portmaster baixar grava o progresso em /tmp/tos-portmaster.txt ("porcentagem mensagem"); esta tela mostra.
+static int pmStage = 0;                 // 0 fechada, 1 baixando, 2 nao deu
+static std::atomic<int> pmFim{0};       // 1 terminou bem (abre o PortMaster), 2 falhou
+static int pmPct = 0;
+static std::string pmMsg;
+static bool portMasterInstalado() { return isFile(ROMS + "/ports/PortMaster/pugwash"); }
+static void baixarPortMaster() {
+    pmStage = 1; pmPct = 0; pmMsg = "Começando o download";
+    remove("/tmp/tos-portmaster.txt");
+    std::thread([] {
+        int r = system("/usr/bin/tos-portmaster baixar >> /userdata/system/logs/portmaster.log 2>&1");
+        pmFim = (r == 0 && portMasterInstalado()) ? 1 : 2;
+        redraw();
+    }).detach();
+}
+static void drawPortMaster() {
+    if (!pmStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), lh = 15 * u;
+    if (pmStage == 1) {
+        std::ifstream in("/tmp/tos-portmaster.txt");
+        int pc = 0;
+        std::string msg;
+        if (in >> pc) { std::getline(in, msg); pmPct = pc; if (msg.size() > 1) pmMsg = msg.substr(1); }
+    }
+    bool erro = pmStage == 2;
+    float h = 22 * u + 16 * u + 3 * lh + 22 * u + (erro ? 0 : 14 * u);
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("PortMaster", x, y, w, h) + 12 * u;
+    T.draw(erro ? "Não deu para baixar o PortMaster." : "Baixando o PortMaster (só na primeira vez, uns 25 MB)",
+           x + 14 * u, top + lh / 2, 9.5f, false, erro ? 0xFFD0362B : 0xFF2B2E33, 0, w - 28 * u);
+    T.draw(erro ? "Confira a internet em Rede e Wi-Fi e tente de novo." : pmMsg + "  (" + std::to_string(pmPct) + "%)",
+           x + 14 * u, top + lh * 1.5f, 9.5f, false, erro ? 0xFF5E6269 : 0xFF1E9C4A, 0, w - 28 * u);
+    T.draw("A loja de ports é o PortMaster (licença MIT, github.com/PortsMaster).", x + 14 * u, top + lh * 2.5f, 8.5f,
+           false, 0xFF5E6269, 0, w - 28 * u);
+    if (!erro) {
+        float by = top + 3 * lh, bw = w - 28 * u;
+        G.roundRect(x + 14 * u, by, bw, 8 * u, 4 * u, 0xFFE3E5E8);
+        G.roundRect(x + 14 * u, by, std::max(8 * u, bw * pmPct / 100.0f), 8 * u, 4 * u, 0xFF2CCF9A);
+    } else {
+        const char *H[] = {"b", "voltar"};
+        panelHints(H, 2, x, y + h, w);
+    }
+}
 // ------------------------------------------------------------------ instalar no disco (tos-instalar)
 
 static int instStage = 0;   // 0 fechado, 1 escolher o disco, 2 confirmar, 3 instalando, 4 terminou
@@ -2753,7 +2809,7 @@ static void optAction(int dir) {
         btScan();
         return;
     case OPT_SAMBA: trocarServico("samba", "on"); return;
-    case OPT_SSH: trocarServico("ssh", "off"); return;
+    case OPT_SSH: ligarSSH(); return;
     case OPT_CONTROLE:
         if (dir != 0) return;
         if (SDL_NumJoysticks() == 0) { toast("Nenhum controle ligado: ligue um controle USB ou pareie pelo Bluetooth.", 6000); return; }
@@ -2795,6 +2851,7 @@ static void optAction(int dir) {
 enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER, B_X, B_START, B_Y };
 
 static bool tecladoInput(int b);
+static void ligarSSH();
 static bool perfisInput(int b);
 
 static bool netInput(int b) {
@@ -2923,6 +2980,12 @@ static bool gratisInput(int b) {
     return true;
 }
 
+static bool pmInput(int b) {
+    if (!pmStage) return false;
+    if (pmStage == 2 && (b == B_A || b == B_B)) pmStage = 0;
+    return true;     // baixando: os botoes esperam
+}
+
 static bool updInput(int b) {
     if (!updStage) return false;
     std::string nova;
@@ -3004,6 +3067,7 @@ static bool panelInput(Btn b) {
     if (netInput(b)) return true;
     if (btInput(b)) return true;
     if (updInput(b)) return true;
+    if (pmInput(b)) return true;
     if (hdInput(b)) return true;
     if (navInput(b)) return true;
     if (gratisInput(b)) return true;
@@ -3429,6 +3493,40 @@ static bool tecladoInput(int b) {
     return true;
 }
 
+// ---- senha do administrador (root): o boot nao pede; o painel pede ao ligar o SSH, com o teclado na tela
+static bool semSenhaRoot() {
+    std::ifstream in("/etc/shadow");
+    std::string l;
+    while (std::getline(in, l))
+        if (l.compare(0, 5, "root:") == 0) {
+            std::string h = l.substr(5, l.find(':', 5) - 5);
+            return h.empty() || h[0] == '!' || h[0] == '*';
+        }
+    return true;
+}
+static bool gravarSenhaRoot(const std::string &senha) {
+    FILE *p = popen("passwd root >/dev/null 2>&1", "w");     // o passwd do BusyBox le as duas vezes da entrada
+    if (!p) return false;
+    fprintf(p, "%s\n%s\n", senha.c_str(), senha.c_str());
+    bool ok = pclose(p) == 0 && !semSenhaRoot();
+    if (ok && system("mkdir -p /userdata/system && cp /etc/shadow /userdata/system/shadow && chmod 600 /userdata/system/shadow") != 0) {}
+    return ok;
+}
+static void ligarSSH() {
+    if (servico("ssh", "off") || !semSenhaRoot()) { trocarServico("ssh", "off"); return; }
+    abrirTeclado("SSH: crie a senha do administrador (root)", true, [](bool ok) {
+        if (!ok) return;
+        std::string a = tkTexto;
+        if (a.size() < 4) { toast("A senha precisa de 4 letras ou mais.", 4000); return; }
+        abrirTeclado("Repita a senha", true, [a](bool ok2) {
+            if (!ok2) return;
+            if (tkTexto != a) { toast("As senhas não conferem. Tente de novo.", 4000); return; }
+            if (!gravarSenhaRoot(a)) { toast("Não consegui gravar a senha.", 4000); return; }
+            trocarServico("ssh", "off");
+        });
+    });
+}
+
 static bool perfisInput(int b) {
     if (!profStage) return false;
     int n = int(perfis.size()) + 1;
@@ -3535,6 +3633,7 @@ static void render() {
     drawRede();
     drawBluetooth();
     drawAtualizar();
+    drawPortMaster();
     drawNavegador();
     drawGratis();
     drawConfirmacao();
@@ -3585,7 +3684,7 @@ static std::string coreOf(const std::string &id) {
         {"nes", {"mesen", "fceumm"}}, {"snes", {"snes9x", "snes9x2010"}}, {"megadrive", {"genesis_plus_gx", "picodrive"}},
         {"gb", {"gambatte"}}, {"gbc", {"gambatte"}}, {"gba", {"mgba", "gpsp"}}, {"psx", {"pcsx_rearmed"}},
         {"n64", {"mupen64plus_next"}}, {"arcade", {"fbneo"}}, {"neogeo", {"fbneo"}}, {"psp", {"ppsspp"}},
-        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}};
+        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}, {"dos", {"dosbox_pure"}}};
     auto it = m.find(id);
     if (it == m.end()) return "";
     for (auto &c : it->second)
@@ -3628,6 +3727,7 @@ static void play() {
     std::string core = coreEscolhido(g->sys->id);
     // Ports (PortMaster: o jogo e um script) e Half-Life (Xash3D): sem nucleo do RetroArch
     bool port = g->sys->id == "ports" || g->sys->id == "halflife";
+    if (g->sys->id == "ports" && g->file == "PortMaster.sh" && !portMasterInstalado()) { baixarPortMaster(); return; }
     if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
         toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
@@ -3786,6 +3886,8 @@ int main() {
     G.r = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
     if (!G.r) G.r = SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE);
     if (!G.r) { fprintf(stderr, "scrapcade: renderer: %s\n", SDL_GetError()); return 1; }
+    // a tela de carregamento (tos-carregando, desenhada no /dev/fb0 na volta do jogo) para: o menu ja tem a tela
+    if (isFile("/tmp/tos-carregando.pid") && system("/usr/bin/tos-carregando para") != 0) {}
     SDL_RendererInfo info;
     SDL_GetRendererInfo(G.r, &info);
     engineNow = engineWant = info.name;
@@ -4084,7 +4186,9 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage) && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage || pmStage == 1) && now - lastBars > 1000;
+        if (pmFim == 1) { pmFim = 0; pmStage = 0; play(); any = true; }        // PortMaster baixado: abre ele
+        else if (pmFim == 2) { pmFim = 0; pmStage = 2; any = true; }
         if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {
