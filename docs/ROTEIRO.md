@@ -12,7 +12,7 @@ O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela
 - **Instalar ao lado do Windows** (dual boot), além do disco inteiro; liga no último sistema usado, com um menu de 3 s para trocar.
 - **Modo desktop** com um navegador moderno no lugar do NetSurf.
 - **Fuso horário** no painel (Brasília de fábrica).
-- **Site do projeto** (GitHub Pages) com capturas, download, tutorial e **requisitos por console**.
+- **Boot sem texto nenhum:** calar a frase do initrd ("procurando o sistema no pen drive...") fora do modo de diagnóstico.
 - **Fliperama do iChroma:** troca rápida, coleções, atualizar o app pela página do navegador, fuso no painel (e sons do menu, se o som da placa voltar).
 
 ## v0.22.0-beta
