@@ -4,20 +4,23 @@ O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela
 
 ## v0.21.0-beta (próxima)
 
-- **Conquistas** (RetroAchievements), desligadas por padrão.
-- **Saves sincronizados** entre aparelhos (Syncthing).
-- **Jogar em rede** (netplay) e jogos do PC gamer pela rede (Moonlight).
+- **Consoles novos:** Sega CD, 32X e Master System como consoles próprios; PC Engine/TurboGrafx; Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan e Virtual Boy. **MAME 2003-Plus** no fliperama, junto do FBNeo.
+- **Jogos livres nativos:** Cave Story (NXEngine), Quake shareware (TyrQuake) e mais homebrews nos Jogos grátis.
+- **Shaders:** o pacote completo do RetroArch, escolhido por console. **Molduras** (bezels) opcionais no painel.
+- **Coleções** personalizadas nos filtros. **ScreenScraper** opcional, com a conta do usuário (descrições, logos, vídeos).
+- **Netplay** (jogar online), **print** por atalho.
+- **Instalar ao lado do Windows** (dual boot), além do disco inteiro.
+- **Modo desktop** com um navegador moderno no lugar do NetSurf.
 
 ## v0.22.0-beta
 
-- **Tela vertical** (girar o menu e os jogos verticais).
-- **Pistola de luz, spinner e trackball** no fliperama.
-- **TV de tubo em 240p** (resolução trocada pelo RetroArch).
+- **PS2, GameCube, Wii e 3DS** (PCSX2, Dolphin, Azahar), só na versão de 64 bits.
+- **Conquistas** (RetroAchievements) e **saves sincronizados** (Syncthing).
+- **Idioma inglês** no menu, no painel e na página.
+- **Desempenho automático:** o sistema mede o PC no primeiro boot e escolhe os ajustes de cada emulador.
 
 ## Depois
 
-- **Emuladores:** PCSX2, Dolphin, Azahar, xemu, Vita3K, ScummVM e os consoles leves que faltam.
-- **Perfil de desempenho automático:** o sistema mede o PC no primeiro boot e escolhe os ajustes de cada emulador.
-- **Fluidez:** boot em até 15 segundos, menu sempre a 60 quadros, abrir e sair dos jogos mais rápido.
-- **Idioma** (português e inglês), brilho, fuso horário, "Ajustar a TV" e "Montar o menu".
-- **Teste em hardware de verdade:** Dell Inspiron N5010 e PCs de 32 bits.
+- Tela vertical, pistola de luz, spinner e trackball, TV de tubo em 240p, Moonlight, xemu, Vita3K, ScummVM.
+- Fluidez: boot em até 15 segundos, abrir e sair dos jogos mais rápido.
+- Teste em mais hardware de verdade (notebooks e PCs de 32 bits).

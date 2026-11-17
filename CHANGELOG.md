@@ -19,9 +19,10 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 - Música (da pasta `music`) e sons no menu, desligados por padrão.
 - PC antigo (DOS) pelo DOSBox Pure, direto do `.zip`.
 - Tela de download do PortMaster no menu, com barra de progresso.
+- Assistente de primeiro uso: depois do primeiro perfil, abre a Rede se o PC estiver sem conexão e diz se o controle está pronto.
 
 ### Alterado
-- A atualização automática só avisa que há versão nova (baixar sozinho é uma opção do painel), e os sons do menu vêm ligados.
+- A atualização automática só avisa que há versão nova (baixar sozinho é uma opção do painel), e os sons do menu vêm ligados. A proteção de tela vem em 5 minutos.
 - Um número de versão só (arquivo `VERSION`, em SemVer) no menu, em Informações, no `.iso` (`scrapcade-os-v<versão>-pc-64bits.iso`) e na tag.
 - O atualizador compara pelo arquivo `BUILD_ID` publicado junto com a versão, e mostra a versão SemVer.
 - Menu do RetroArch com as cores do ScrapCade.
