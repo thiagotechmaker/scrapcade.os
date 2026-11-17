@@ -3,21 +3,21 @@
 <p align="center"><img src="docs/logo.png" width="620" alt="ScrapCade OS"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.19.0--beta-orange" alt="versão v0.19.0-beta">
-  <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686%20(em%20breve)-informational" alt="arquitetura x86_64, i686 em breve">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.20.0--beta-orange" alt="versão v0.20.0-beta">
+  <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686-informational" alt="arquitetura x86_64 e i686">
   <img src="https://img.shields.io/badge/base-Linux%206.12%20%2B%20Buildroot%202026.02-lightgrey" alt="base Linux 6.12 e Buildroot 2026.02">
   <img src="https://img.shields.io/badge/licen%C3%A7a-GPLv3-blue" alt="licença GPLv3">
 </p>
 
-**Sistema operacional para emulação de jogos que dá uma segunda vida a computadores que iriam para o lixo.** É um Linux próprio (kernel 6.12, montado com o Buildroot 2026.02) que liga direto num menu de jogos, o **ScrapCade**, feito em C++ e SDL2. Roda em PCs e notebooks de 64 bits, por BIOS antigo ou UEFI, a partir de um pen drive ou instalado no HD. Uma versão para PCs de 32 bits está a caminho.
+**Sistema operacional para emulação de jogos que dá uma segunda vida a computadores que iriam para o lixo.** É um Linux próprio (kernel 6.12, montado com o Buildroot 2026.02) que liga direto num menu de jogos, o **ScrapCade**, feito em C++ e SDL2. Roda em PCs e notebooks de 64 bits e em PCs antigos de 32 bits (Pentium 4, Pentium M, Atom), por BIOS antigo ou UEFI, a partir de um pen drive ou instalado no HD.
 
-<p align="center"><a href="https://github.com/thiagotechmaker/scrapcade.os/releases/latest"><b>⬇️ Baixar a versão mais nova (.iso, PC 64 bits)</b></a></p>
+<p align="center"><a href="https://github.com/thiagotechmaker/scrapcade.os/releases/latest"><b>⬇️ Baixar a versão mais nova (.iso, PC de 64 ou de 32 bits)</b></a></p>
 
 ## Sobre e capturas
 
 **Instalar:**
 
-1. Baixe o `.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases/latest). É um arquivo só, que liga por BIOS antigo e por UEFI.
+1. Baixe o `.iso` em [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases/latest): `pc-64bits` para os PCs de hoje, `pc-32bits` para Pentium 4, Pentium M e Atom antigos. É um arquivo só, que liga por BIOS antigo e por UEFI.
 2. Grave num pen drive de 4 GB ou mais com o [Rufus](https://rufus.ie) (modo ISO ou DD) ou o [balenaEtcher](https://etcher.balena.io).
 3. Ligue o PC pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc). No primeiro boot ele arruma o pen drive sozinho (sistema + partição SCRAP-DADOS para os jogos) e abre a criação do seu perfil.
 4. Coloque jogos pelo navegador do PC ou do celular (o endereço aparece na tela), pela pasta na rede do Windows ou por um pen drive. Cada jogo vai sozinho para o console certo, com capa e dados.
@@ -25,7 +25,7 @@
 
 As versões novas chegam sozinhas pelo próprio sistema, sem mexer em jogos e saves. Jogos, BIOS e ROMs não acompanham o sistema.
 
-**Boot:** menu próprio (GRUB e syslinux), com modo de compatibilidade e teste de memória, e a logo do ScrapCade OS desenhada pelo initrd.
+**Boot:** menu próprio (GRUB e syslinux), com modo de compatibilidade e teste de memória, e a logo do ScrapCade OS animada pelo initrd (as letras acendem e uma barra de blocos corre até o sistema subir).
 
 <p align="center"><img src="docs/capturas/1_menu_de_boot.png" width="49%" alt="Menu de boot"> <img src="docs/capturas/2_boot.png" width="49%" alt="Logo no boot"></p>
 
@@ -44,11 +44,11 @@ As versões novas chegam sozinhas pelo próprio sistema, sem mexer em jogos e sa
 <details><summary>Ver tudo o que o sistema faz</summary>
 
 - **Perfis** com avatar ("Quem vai jogar?"), cada um com favoritos, saves e preferências.
-- **Consoles:** NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama e Neo Geo (FBNeo), pelo RetroArch. Também Doom e jogos `.wad` (PrBoom), **Half-Life** (Xash3D: copie a pasta `valve` da sua cópia da Steam para `roms/halflife`) e os ports do PortMaster.
-- **Jogando:** voltar de onde parou, filtro de imagem (liso ou TV de tubo), proporção, menos atraso nos controles (run-ahead), FPS na tela, emulador de cada console. Em todo jogo, Select + Start sai e Select + X abre o menu do emulador.
+- **Consoles:** NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance, PlayStation, Nintendo 64, PSP, Nintendo DS, Sega Saturn, Dreamcast, Fliperama e Neo Geo (FBNeo), pelo RetroArch. Também PC antigo (DOS, pelo DOSBox Pure, direto do `.zip`), Doom e jogos `.wad` (PrBoom), **Half-Life** (Xash3D: copie a pasta `valve` da sua cópia da Steam para `roms/halflife`) e os ports do PortMaster.
+- **Jogando:** troca rápida de jogo (Start no carrossel: "Continuar jogando" com a foto de onde parou), voltar de onde parou, filtro de imagem (liso ou TV de tubo), proporção, menos atraso nos controles (run-ahead), FPS na tela, emulador de cada console. Em todo jogo, Select + Start sai e Select + X abre o menu do emulador.
 - **Jogos:** jogos grátis de licença livre, trazer do pen drive, gerenciador de arquivos (copiar, mover, clonar, renomear, apagar para a Lixeira), ordenar, consoles vazios, BIOS dos consoles, cópia dos saves no pen drive. Se um jogo não abrir, o sistema avisa na tela.
-- **Aparência:** 8 temas ou uma imagem sua, tamanho do texto, animações, proteção de tela.
-- **Tela e energia:** perfis de energia, desligar sozinho, relógio 12/24 h.
+- **Aparência:** 8 temas ou uma imagem sua, tamanho do texto, animações, proteção de tela em modo atração (as cenas dos jogos), música e sons no menu.
+- **Tela e energia:** botão de energia com menu (Suspender, Reiniciar, Desligar), suspender ao fechar a tampa, perfis de energia, desligar sozinho, relógio 12/24 h.
 - **Rede:** Wi-Fi, Bluetooth (controles sem fio), pasta na rede do Windows (Samba), SSH, envio de jogos pelo navegador.
 - **Sistema:** atualização A/B pela internet (se a versão nova não ligar, volta sozinha para a anterior), instalar no HD, modo desktop (Fluxbox), voltar tudo ao padrão.
 
@@ -61,7 +61,7 @@ O mesmo menu roda num analisador de laboratório reaproveitado como fliperama: [
 | Máquina | Boot | Vídeo | Som | Rede | Controles | Situação |
 |---|---|---|---|---|---|---|
 | QEMU x86_64 (UEFI/OVMF e BIOS) | ✅ | ✅ virtio/std | ✅ Intel HDA | ✅ e1000 | ✅ teclado e controle | testado a cada versão (bateria automática) |
-| PCs de 32 bits (Pentium 4, Pentium M, Atom) | — | — | — | — | — | versão i686 em desenvolvimento |
+| QEMU i386 (Atom N270, 1 GB, BIOS) | ✅ | ✅ std (llvmpipe) | — | ✅ e1000 | ✅ teclado | versão de 32 bits testada a cada versão (`tests/testar-32.sh`) |
 
 <details><summary>Ver os drivers incluídos</summary>
 
@@ -73,7 +73,7 @@ O mesmo menu roda num analisador de laboratório reaproveitado como fliperama: [
 
 </details>
 
-**Limitações conhecidas:** PS2, GameCube, Wii, 3DS e PC (DOS) aparecem no menu mas ainda não têm emulador; os ports do PortMaster são feitos para portáteis ARM, então poucos rodam em PC; sem Secure Boot.
+**Limitações conhecidas:** PS2, GameCube, Wii e 3DS aparecem no menu mas ainda não têm emulador (entram na v0.21); os ports do PortMaster são feitos para portáteis ARM, então poucos rodam em PC; sem Secure Boot.
 
 ## Estrutura de pastas
 
@@ -86,8 +86,10 @@ O mesmo menu roda num analisador de laboratório reaproveitado como fliperama: [
 │   ├── board/x86_64/          boot (GRUB, syslinux, initramfs), kernel (linux.config e fragmentos), scripts de imagem e .iso
 │   ├── board/common/          rootfs-overlay: comandos tos-* (instalar, atualizar, jogar, rede), configuração do RetroArch
 │   └── package/               scrapcade (o menu, em C++/SDL2), retroarch, núcleos libretro, xash3d-fwgs, hlsdk-portable
-├── tests/                     bateria automática no QEMU (testar.sh) e telas de referência
+├── tests/                     bateria automática no QEMU (testar.sh; testar-32.sh para a de 32 bits) e telas de referência
 ├── scripts/                   publicar-versao.ps1 (sobe a versão aprovada nas Releases)
+├── .github/                   verificação a cada push (GitHub Actions) e modelos para relatar problemas
+├── VERSION                    número da versão (SemVer), usado no sistema, no .iso e na tag
 └── docs/                      detalhes técnicos, composição, roteiro e capturas
 ```
 
@@ -106,7 +108,7 @@ bash ~/scrapcade.os/build-x86_64.sh          # make tos_x86_64_defconfig + make;
 bash ~/scrapcade.os/tests/testar.sh          # opcional: bateria automática no QEMU (precisa do qemu, ovmf, mtools e python3-pil)
 ```
 
-A primeira compilação baixa e compila tudo (algumas horas); as seguintes só o que mudou. Para 32 bits: `bash ~/scrapcade.os/build-i686.sh`. Detalhes em [docs/DETALHES.md](docs/DETALHES.md), [docs/COMPOSICAO.md](docs/COMPOSICAO.md) e [docs/ROTEIRO.md](docs/ROTEIRO.md); o histórico de versões está no [CHANGELOG.md](CHANGELOG.md).
+A primeira compilação baixa e compila tudo (algumas horas); as seguintes só o que mudou. Para 32 bits: `bash ~/scrapcade.os/build-i686.sh` e `bash ~/scrapcade.os/tests/testar-32.sh`. Detalhes em [docs/DETALHES.md](docs/DETALHES.md), [docs/COMPOSICAO.md](docs/COMPOSICAO.md) e [docs/ROTEIRO.md](docs/ROTEIRO.md); o histórico de versões está no [CHANGELOG.md](CHANGELOG.md).
 
 ## Licença
 
