@@ -9,8 +9,11 @@ O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela
 - **Shaders:** o pacote completo do RetroArch, escolhido por console. **Molduras** (bezels) opcionais no painel.
 - **Coleções** personalizadas nos filtros. **ScreenScraper** opcional, com a conta do usuário (descrições, logos, vídeos).
 - **Netplay** (jogar online), **print** por atalho.
-- **Instalar ao lado do Windows** (dual boot), além do disco inteiro.
+- **Instalar ao lado do Windows** (dual boot), além do disco inteiro; liga no último sistema usado, com um menu de 3 s para trocar.
 - **Modo desktop** com um navegador moderno no lugar do NetSurf.
+- **Fuso horário** no painel (Brasília de fábrica).
+- **Site do projeto** (GitHub Pages) com capturas, download, tutorial e **requisitos por console**.
+- **Fliperama do iChroma:** troca rápida, coleções, atualizar o app pela página do navegador, fuso no painel (e sons do menu, se o som da placa voltar).
 
 ## v0.22.0-beta
 
