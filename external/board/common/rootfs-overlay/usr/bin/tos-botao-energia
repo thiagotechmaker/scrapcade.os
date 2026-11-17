@@ -1,0 +1,17 @@
+#!/bin/sh
+# ScrapCade OS: botao de energia e tampa do notebook (chamado pelo acpid).
+#   energia: com o ScrapCade na tela, ele mostra o menu (Suspender, Reiniciar, Desligar); jogando, suspende.
+#   tampa:   fechada, suspende (abre e continua de onde estava).
+T=/tmp/tos-botao-energia.ultimo
+agora=$(cut -d. -f1 /proc/uptime)
+[ -f $T ] && [ $((agora - $(cat $T))) -lt 3 ] && exit 0   # o acpid repete o evento: um por vez
+echo $agora > $T
+case "$1" in
+  tampa)
+    grep -qs closed /proc/acpi/button/lid/*/state && exec /usr/bin/tos-suspender
+    ;;
+  *)
+    if pidof scrapcade >/dev/null; then kill -USR1 $(pidof scrapcade)
+    else exec /usr/bin/tos-suspender; fi
+    ;;
+esac

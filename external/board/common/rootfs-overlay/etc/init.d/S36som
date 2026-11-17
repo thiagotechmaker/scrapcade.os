@@ -1,0 +1,17 @@
+#!/bin/sh
+# ScrapCade OS: som que sai de primeira. Em muitos notebooks o ALSA comeca com o alto-falante, o fone ou o Master
+# mudos (ou em zero), mesmo com o driver certo. Aqui toda placa de som tem as saidas ligadas e em 80%, e o
+# "Auto-Mute" troca sozinho entre alto-falante e fone. O volume escolhido no painel (S99scrapcade) vem depois.
+case "$1" in
+  start)
+    for c in /proc/asound/card[0-9]*; do
+      [ -d "$c" ] || continue
+      n=${c##*card}
+      for ctl in Master Speaker Headphone PCM Front "Line Out" Surround Center LFE "Bass Speaker" "Master Mono"; do
+        amixer -q -c "$n" sset "$ctl" 80% unmute 2>/dev/null
+      done
+      amixer -q -c "$n" sset "Auto-Mute Mode" Enabled 2>/dev/null
+    done
+    ;;
+esac
+exit 0

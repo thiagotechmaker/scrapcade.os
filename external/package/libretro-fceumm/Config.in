@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_FCEUMM
+	bool "libretro-fceumm"
+	help
+	  Nucleo libretro fceumm (leve, para o ScrapCade OS de 32 bits).

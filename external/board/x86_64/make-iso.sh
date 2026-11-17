@@ -12,14 +12,16 @@ cp "$B/bzImage" "$T/boot/bzImage"
 cp "$B/tos-initrd.gz" "$T/boot/initrd.gz"
 cp "$B/rootfs.squashfs" "$T/boot/tos.squashfs"
 cp "$B/tos-live" "$T/boot/tos-live"
-cp "$B/efi-part/EFI/BOOT/bootx64.efi" "$T/EFI/BOOT/"
+BOOTEFI=$(cd "$B/efi-part/EFI/BOOT" && ls boot*.efi | head -1)   # bootx64.efi (64 bits) ou bootia32.efi (32 bits)
+ARQ=$(grep -q "^BR2_i386=y" "$BR2_CONFIG" && echo i686 || echo x86_64)
+cp "$B/efi-part/EFI/BOOT/$BOOTEFI" "$T/EFI/BOOT/"
 cp "$(dirname "$0")/grub-live.cfg" "$T/EFI/BOOT/grub.cfg"
 EFI=$BUILD_DIR/tos-efi.img
 rm -f "$EFI"
 dd if=/dev/zero of="$EFI" bs=1M count=4 status=none
 "$HOST_DIR/sbin/mkfs.vfat" -n TOS_EFI "$EFI" >/dev/null
 "$HOST_DIR/bin/mmd" -i "$EFI" ::/EFI ::/EFI/BOOT
-"$HOST_DIR/bin/mcopy" -i "$EFI" "$T/EFI/BOOT/bootx64.efi" "$T/EFI/BOOT/grub.cfg" ::/EFI/BOOT/
+"$HOST_DIR/bin/mcopy" -i "$EFI" "$T/EFI/BOOT/$BOOTEFI" "$T/EFI/BOOT/grub.cfg" ::/EFI/BOOT/
 cp "$EFI" "$T/boot/efi.img"
 # BIOS antigo: isolinux com o menu de boot (o Rufus no modo ISO reconhece e instala o syslinux)
 mkdir -p "$T/isolinux"
@@ -29,7 +31,7 @@ cp "$B/tos-syslinux/fundo.png" "$T/isolinux/"
 cp "$B/tos-memtest.bin" "$T/boot/memtest.bin"
 cp "$B/tos-memtest.efi" "$T/boot/memtest.efi"
 HYB=$(ls "$BUILD_DIR"/syslinux-*/bios/mbr/isohdpfx.bin | head -1)
-ISO=$B/scrapcade-os-$VER-x86_64.iso
+ISO=$B/scrapcade-os-$VER-$ARQ.iso
 "$HOST_DIR/bin/xorriso" -as mkisofs -iso-level 3 -J -R -V "SCRAPCADE_$VER" \
 	-isohybrid-mbr "$HYB" \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table \

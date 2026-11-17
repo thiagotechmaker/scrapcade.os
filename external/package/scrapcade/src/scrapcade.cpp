@@ -1,4 +1,4 @@
-// ScrapCade - versao 1.19 (conversao do ScrapCade do iChroma para C++/SDL2)
+// ScrapCade - o menu do ScrapCade OS (conversao do ScrapCade do iChroma para C++/SDL2); versao no arquivo VERSION
 //
 // Modo jogo do ScrapCade: carrossel de capas com perspectiva e reflexo, filtros LB/RB (Todos, Favoritos,
 // Mais jogados e cada console), barra de cima com logo do console, emulador, filtro, hora, data e IP,
@@ -42,6 +42,8 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <cmath>
+#include <SDL_mixer.h>
 
 
 // ------------------------------------------------------------------ preferencias (favoritos, jogados, tema)
@@ -75,6 +77,7 @@ static void drawAvatar(const Perfil *p, int av, float x, float y, float s);
 static std::string emuNome(const Sys *s);
 static bool servico(const std::string &nome, const char *padrao);
 static void redraw();
+static void ligarSSH();
 // Consoles com mais de um emulador: o primeiro e o padrao
 struct Nucleo { const char *so, *nome; };
 static std::vector<Nucleo> nucleos(const std::string &id) {
@@ -305,6 +308,21 @@ static SDL_Texture *image(const std::string &path) {
     return t;
 }
 
+// "CARREGANDO..." animado (anel de blocos e pontinhos, nas letras de pixel da logo; o mesmo do iChroma).
+// data/carregando.png tem os 8 quadros lado a lado (art_src/gera_animacoes.py do repositorio scrapcade-fliperama);
+// o quadro vem do relogio.
+static void drawCarregando(float cx, float cy, float escala) {
+    SDL_Texture *t = image(DATA + "/carregando.png");
+    if (!t) return;
+    int tw = 0, th = 0;
+    SDL_QueryTexture(t, nullptr, nullptr, &tw, &th);
+    SDL_SetTextureScaleMode(t, SDL_ScaleModeNearest);     // pixel art: sem borrar ao aumentar
+    int qw = tw / 8, q = int(SDL_GetTicks() / 100 % 8);
+    SDL_Rect src{q * qw, 0, qw, th};
+    SDL_Rect dst{int(cx - qw * escala / 2), int(cy - th * escala / 2), int(qw * escala), int(th * escala)};
+    SDL_RenderCopy(G.r, t, &src, &dst);
+}
+
 static SDL_Texture *whiteLogo(const Sys *s) {
     if (!s || s->logo.empty()) return nullptr;
     return image(DATA + "/logos_brancos/" + s->logo + ".png");
@@ -480,8 +498,12 @@ static void drawCardTitle(const std::string &t, float l, float top, float r, flo
     }
 }
 
+static std::string fotoDoPonto(const Game &g);
+static bool cartoesPonto = false;   // "Continuar jogando" aberto: as capas viram a foto do ponto salvo
+static void render();
 static Card &card(const Game &g) {
-    std::string key = g.key() + "|" + std::to_string(theme) + (showCovers ? "" : "|s");
+    std::string ponto = cartoesPonto ? fotoDoPonto(g) : "";
+    std::string key = g.key() + "|" + std::to_string(theme) + (showCovers ? "" : "|s") + (ponto.empty() ? "" : "|ponto");
     auto it = cardInfo.find(key);
     if (it != cardInfo.end()) return it->second;
     float cw = coverW(), ch = coverH(), m = margin(), u = G.u;
@@ -496,7 +518,7 @@ static Card &card(const Game &g) {
     SDL_Texture *art = nullptr;
     int aw = 0, ah = 0;
     if (showCovers) {
-        std::string p = coverOf(g);
+        std::string p = ponto.empty() ? coverOf(g) : ponto;   // "Continuar jogando": a foto de onde voce parou
         if (!p.empty()) art = IMG_LoadTexture(G.r, p.c_str());
         if (art) SDL_QueryTexture(art, nullptr, nullptr, &aw, &ah);
     }
@@ -560,6 +582,24 @@ static Card &card(const Game &g) {
     cards[key] = t;
     cardInfo[key] = Card{t, top, side};
     return cardInfo[key];
+}
+
+static std::string fotoDoPonto(const Game &g) {
+    std::string pid = perfilAtual >= 0 && perfilAtual < int(perfis.size()) ? perfis[perfilAtual].id : "1";
+    std::string dir = "/userdata/saves/" + g.sys->id + (pid != "1" && !pid.empty() ? "/perfil-" + pid : "");
+    std::string nome = g.base + ".state.auto.png";
+    if (isFile(dir + "/" + nome)) return dir + "/" + nome;
+    // o RetroArch guarda os saves numa subpasta com o nome do emulador (saves/nes/Mesen/...)
+    std::string achado;
+    if (DIR *d = opendir(dir.c_str())) {
+        while (dirent *e = readdir(d)) {
+            if (e->d_name[0] == '.') continue;
+            std::string f = dir + "/" + e->d_name + "/" + nome;
+            if (isFile(f)) { achado = f; break; }
+        }
+        closedir(d);
+    }
+    return achado;
 }
 
 static void clearCards() {
@@ -678,10 +718,77 @@ static void loadBackdrop(const Game *g) {
 static const char *ORDENS[] = {"Nome", "Ano", "Mais jogados", "Últimos jogados"};
 static int ordemAtual() { int v = atoi(prefs["ordem"].c_str()); return v < 0 || v > 3 ? 0 : v; }
 static const int PROTECAO_MIN[] = {0, 5, 10, 30};
-static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 2 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 2 : v; }
+static int protecaoIdx() { auto it = prefs.find("protecao"); int v = it == prefs.end() || it->second.empty() ? 1 : atoi(it->second.c_str()); return v < 0 || v > 3 ? 1 : v; }   // de fabrica: 5 min
 static const int DESLIGAR_MIN[] = {0, 30, 60, 120};
 static int desligarIdx() { int v = atoi(prefs["desligar"].c_str()); return v < 0 || v > 3 ? 0 : v; }
-static Uint32 ultimaTecla = 0;      // ultimo botao ou tecla (para a protecao de tela e o desligar sozinho)
+static Uint32 ultimaTecla = 0;
+// musica (da pasta music da SCRAP-DADOS: .ogg, .mp3, .flac, .wav) e sons do menu, desligados por padrao
+static const std::string MUSICA_DIR = "/userdata/music";
+static bool mixerAberto = false;
+static Mix_Music *musicaAtual = nullptr;
+static std::atomic<bool> musicaAcabou{false};
+static Mix_Chunk *somMover = nullptr, *somOk = nullptr, *somVoltar = nullptr;
+static bool abrirMixer() {
+    if (mixerAberto) return true;
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return false;
+    if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) != 0) { SDL_QuitSubSystem(SDL_INIT_AUDIO); return false; }
+    Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC);
+    mixerAberto = true;
+    return true;
+}
+// bipe curto e suave (sem arquivo): frequencia que desliza de f0 para f1 em ms milissegundos
+static Mix_Chunk *bipe(float f0, float f1, int ms) {
+    int n = 44100 * ms / 1000;
+    Sint16 *b = (Sint16 *)SDL_malloc(n * 4);
+    double fase = 0;
+    for (int i = 0; i < n; i++) {
+        float t = float(i) / n, f = f0 + (f1 - f0) * t, env = t < 0.1f ? t / 0.1f : (1 - t) / 0.9f;
+        fase += 2 * M_PI * f / 44100;
+        Sint16 v = Sint16(sin(fase) * 6000 * env);
+        b[2 * i] = b[2 * i + 1] = v;
+    }
+    Mix_Chunk *c = Mix_QuickLoad_RAW((Uint8 *)b, n * 4);
+    return c;
+}
+static void tocarSom(Mix_Chunk *c) {
+    if (prefs["sons"] == "0" || !c || !mixerAberto) return;
+    Mix_PlayChannel(-1, c, 0);
+}
+static std::vector<std::string> musicas() {
+    std::vector<std::string> v;
+    if (DIR *d = opendir(MUSICA_DIR.c_str())) {
+        while (dirent *e = readdir(d)) {
+            std::string n = e->d_name;
+            if (endsWith(n, ".ogg") || endsWith(n, ".mp3") || endsWith(n, ".flac") || endsWith(n, ".wav")) v.push_back(MUSICA_DIR + "/" + n);
+        }
+        closedir(d);
+    }
+    return v;
+}
+static void tocarMusica() {   // uma musica sorteada da pasta; quando acaba, a proxima
+    if (prefs["musica"] != "1" || !abrirMixer()) return;
+    auto v = musicas();
+    if (v.empty()) return;
+    if (musicaAtual) { Mix_HaltMusic(); Mix_FreeMusic(musicaAtual); musicaAtual = nullptr; }
+    musicaAtual = Mix_LoadMUS(v[rand() % v.size()].c_str());
+    if (!musicaAtual) return;
+    Mix_VolumeMusic(MIX_MAX_VOLUME * 35 / 100);
+    Mix_HookMusicFinished([] { musicaAcabou = true; });
+    Mix_PlayMusic(musicaAtual, 1);
+}
+static void pararMusica() {
+    if (musicaAtual) { Mix_HaltMusic(); Mix_FreeMusic(musicaAtual); musicaAtual = nullptr; }
+}
+static void prepararSons() {
+    if (prefs["sons"] == "0" && prefs["musica"] != "1") return;
+    if (!abrirMixer()) return;
+    if (!somMover) { somMover = bipe(1250, 1250, 22); somOk = bipe(880, 1320, 70); somVoltar = bipe(990, 660, 60); }
+}
+// menu do botao de energia (o acpid manda SIGUSR1 ao ScrapCade)
+static volatile sig_atomic_t botaoEnergia = 0;
+static void onBotaoEnergia(int) { botaoEnergia = 1; }
+static int energiaMenu = 0;   // 0 fechado; senao 1 + opcao destacada
+static const char *ENERGIA_OPCOES[] = {"Suspender", "Reiniciar", "Desligar", "Cancelar"};      // ultimo botao ou tecla (para a protecao de tela e o desligar sozinho)
 static bool protecaoOn = false;
 static const char *FILTROS_IMG[] = {"Nenhum", "Liso", "TV de tubo"};
 static int filtroImg() { int v = atoi(prefs["filtro"].c_str()); return v < 0 || v > 2 ? 0 : v; }
@@ -740,6 +847,7 @@ static std::string filterName(const std::string &id) {
 }
 
 static void applyFilter(int keepIndex = -1) {
+    cartoesPonto = filter == F_REC;
     view.clear();
     for (auto &g : all) {
         if (filter == F_FAV && !isFav(g)) continue;
@@ -833,16 +941,18 @@ static void topBar(const Game *g) {
     if (!batAt || SDL_GetTicks() - batAt > 30000) { bat = lerBateria(); batAt = SDL_GetTicks(); }
     float bloco = std::max(T.width(hora, 12.5f, true), T.width(std::string(data) + "  •  " + ip, 7, false));
     float ax = rx - bloco - 12 * u;
-    if (bat.tem) {   // bateria do notebook: icone, porcentagem e raio quando esta na tomada
+    if (bat.tem) {   // bateria do notebook: na linha da hora, logo a esquerda dela (icone, porcentagem, raio na tomada)
         std::string pc = std::to_string(bat.pct) + "%";
-        float tw = T.width(pc, 9, true), bw = 16 * u, bh = 8 * u, bx = ax - tw - bw - 8 * u, by = cy - bh / 2;
+        float hy = cy - 3.6f * u, fim = rx - T.width(hora, 12.5f, true) - 7 * u;
+        float tw = T.width(pc, 8.5f, true), bw = 15 * u, bh = 7.5f * u, bx = fim - tw - 3 * u - bw, by = hy - bh / 2;
         uint32_t cb = bat.pct <= 15 && !bat.carregando ? 0xFFE0564A : 0xFFFFFFFF;
         G.roundRectStroke(bx, by, bw, bh, 1.5f * u, std::max(1.0f, 0.8f * u), cb);
         G.fillRect(bx + bw, by + bh * 0.3f, 1.6f * u, bh * 0.4f, cb);
         G.fillRect(bx + 1.6f * u, by + 1.6f * u, (bw - 3.2f * u) * std::min(100, bat.pct) / 100.0f, bh - 3.2f * u, cb);
-        T.draw(pc, bx + bw + 3 * u + tw, cy, 9, true, cb, 2);
-        if (bat.carregando) T.draw("⚡", bx - 2 * u, cy, 9, true, 0xFFFFD34E, 2);
-        ax = bx - (bat.carregando ? 14 : 6) * u;
+        T.draw(pc, fim, hy, 8.5f, true, cb, 2);
+        if (bat.carregando) T.draw("⚡", bx - 2 * u, hy, 8.5f, true, 0xFFFFD34E, 2);
+        float esq = bx - (bat.carregando ? 12 : 4) * u;     // o avatar fica a esquerda de tudo
+        ax = std::min(ax, esq - 8 * u);
     }
     if (perfilAtual >= 0) {   // quem esta jogando, ao lado do relogio
         ax -= 19 * u;
@@ -985,7 +1095,7 @@ static void drawDetails() {
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
 enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
-       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_COUNT };
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_COUNT };
 static bool sysOpen = false;
 
 // Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
@@ -995,10 +1105,10 @@ static const std::vector<Secao> SECOES = {
     {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
     {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO}},
     {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_PROTECAO}},
-    {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH}},
+    {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH, OPT_MUSICA, OPT_SONS}},
     {"TELA E ENERGIA", {OPT_ENERGIA, OPT_DESLIGAR, OPT_RELOGIO}},
     {"REDE", {OPT_REDE, OPT_SAMBA, OPT_SSH, OPT_ENVIAR}},
-    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_REBOOT, OPT_OFF}},
+    {"SISTEMA", {OPT_ATUALIZAR, OPT_AUTOUPD, OPT_INSTALL, OPT_DESKTOP, OPT_ENGINE, OPT_HELP, OPT_INFO, OPT_PADRAO, OPT_SUSPENDER, OPT_REBOOT, OPT_OFF}},
 };
 static std::vector<int> painelLinhas;   // -(secao + 1) = titulo da secao; >= 0 = opcao
 static std::vector<int> painelOpts;     // so as opcoes, na ordem da tela
@@ -1105,6 +1215,13 @@ static std::string optLabel(int i) {
     case OPT_RELOGIO: return std::string("Relógio:   ‹ ") + (prefs["relogio"] == "12" ? "12 h (AM/PM)" : "24 h") + " ›";
     case OPT_ENVIAR: return "Enviar jogos do PC:   http://" + ipAddr() + ":" + std::to_string(Envio::PORT);
     case OPT_PADRAO: return "Voltar tudo ao padrão";
+    case OPT_MUSICA: {
+        size_t n = musicas().size();
+        return std::string("Música do menu:   ‹ ") + (prefs["musica"] == "1" ? "Ligada" : "Desligada") + " ›" +
+               (n ? "   (" + std::to_string(n) + (n == 1 ? " música)" : " músicas)") : "   (pasta music vazia)");
+    }
+    case OPT_SONS: return std::string("Sons do menu:   ‹ ") + (prefs["sons"] != "0" ? "Ligados" : "Desligados") + " ›";
+    case OPT_SUSPENDER: return "Suspender (continua de onde parou)";
     case OPT_PROTECAO: { int m = PROTECAO_MIN[protecaoIdx()]; return std::string("Proteção de tela:   ‹ ") + (m ? std::to_string(m) + " min" : "Desligada") + " ›"; }
     case OPT_DESLIGAR: {
         int m = DESLIGAR_MIN[desligarIdx()];
@@ -1118,7 +1235,7 @@ static std::string optLabel(int i) {
     case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
     case OPT_BACKUP: return "Cópia dos saves no pen drive";
     case OPT_EJETAR: return "Ejetar pen drive";
-    case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "0" ? "Desligado" : "Ligado") + " ›";
+    case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "1" ? "Ligado" : "Desligado") + " ›";
     case OPT_FONTE: return std::string("Tamanho do texto:   ‹ ") + FONTES[nivelFonte()] + " ›";
     case OPT_THEME: return std::string("Tema:   ‹ ") + temaNome() + " ›   (A: imagem)";
     case OPT_ANIM: return std::string("Animações:   ‹ ") + (ANIM_MS < 200 ? "Rápidas" : "Normais") + " ›";
@@ -1198,6 +1315,9 @@ static const char *optAjuda(int o) {
     case OPT_NUCLEO: return "Troca o emulador do console do jogo selecionado, quando há mais de um (por exemplo Snes9x ou bsnes no Super Nintendo). Vale para todos os jogos desse console.";
     case OPT_RELOGIO: return "Formato da hora na barra de cima: 24 h (14:30) ou 12 h com AM e PM (02:30 PM).";
     case OPT_ENVIAR: return "No PC ou no celular, na mesma rede, abra este endereço no navegador e arraste os jogos. Eles vão sozinhos para o console certo.";
+    case OPT_MUSICA: return "Toca as músicas que você colocar na pasta music da SCRAP-DADOS (.ogg, .mp3, .flac ou .wav), em ordem sorteada, só no menu. O ScrapCade não traz músicas.";
+    case OPT_SONS: return "Um som curto ao andar pelo carrossel, ao escolher e ao voltar.";
+    case OPT_SUSPENDER: return "Desliga a tela e quase tudo, como um console em descanso. Ao apertar o botão de energia (ou abrir a tampa) volta exatamente onde estava. O botão de energia também abre este menu.";
     case OPT_PROTECAO: return "Parado no menu por esse tempo, a tela escurece e a logo com a hora muda de lugar devagar (a imagem não marca a TV). Qualquer botão volta, sem fazer nada.";
     case OPT_DESLIGAR: return "Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.";
     case OPT_PADRAO: return "Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.";
@@ -1216,7 +1336,18 @@ static const char *optAjuda(int o) {
     case OPT_ANIM: return "Normais: o carrossel desliza suave. Rápidas: anda mais depressa, bom para listas grandes ou computadores mais fracos.";
     case OPT_COVERS: return "Mostrar: desenha a capa de cada jogo. Ocultar: só o nome e a cor do console, mais leve para computadores antigos.";
     case OPT_BG: return "Mostrar: a cena do jogo selecionado aparece borrada atrás do carrossel. Ocultar: fica só o fundo do tema.";
-    case OPT_ENGINE: return "GPU (OpenGL ES): usa a placa de vídeo, mais suave. Software: desenha pelo processador; use se a tela ficar preta ou piscando. Vale ao reiniciar o ScrapCade.";
+    case OPT_ENGINE: {   // explica a opcao que esta escolhida agora (muda ao passar com < >)
+        std::string d;
+        if (engineWant == "opengles2") d = "GPU (OpenGL ES): desenha pela placa de vídeo. É o mais suave na maioria dos computadores.";
+        else if (engineWant == "opengl") d = "GPU (OpenGL): a placa de vídeo pelo OpenGL de PC. Experimente em placas NVIDIA e AMD antigas, ou se o OpenGL ES falhar.";
+        else if (engineWant == "opengles") d = "GPU (OpenGL ES 1): para placas de vídeo bem antigas, que não têm o OpenGL ES 2.";
+        else if (engineWant == "vulkan") d = "GPU (Vulkan): o mais moderno; pode ser o mais rápido em placas Intel e AMD recentes.";
+        else if (engineWant == "software") d = "CPU: desenha tudo pelo processador, sem a placa de vídeo. Mais lento; use se a tela ficar preta, piscando ou com cores erradas.";
+        else d = engineName(engineWant) + ": outro jeito de desenhar que este computador oferece.";
+        static std::string txt;     // a funcao devolve const char*: o texto montado fica guardado aqui
+        txt = d + (engineWant != engineNow ? " Aperte A para aplicar (o ScrapCade reabre)." : " É o que está em uso agora.");
+        return txt.c_str();
+    }
     case OPT_VOLUME: return "Volume de tudo: menu e jogos. A toca um som de teste para conferir as caixas ou o fone.";
     case OPT_REDE: return "Mostra o cabo de rede e as redes Wi-Fi. Escolha a sua e digite a senha com o teclado da tela. Com internet o ScrapCade acha capas e atualizações.";
     case OPT_BLUETOOTH: return "Pareia controles sem fio (PS4, PS5, Switch, Xbox) e fones. Coloque o controle em modo de pareamento antes.";
@@ -1314,7 +1445,36 @@ static void drawConfirmacao() {
 
 static void drawProtecao() {
     if (!protecaoOn) return;
-    G.fillRect(0, 0, float(G.W), float(G.H), 0xF5000000);
+    G.fillRect(0, 0, float(G.W), float(G.H), 0xFF000000);
+    // modo atracao (como os fliperamas parados): a cena de um jogo sorteado a cada 10 s, escurecida, com nome e console
+    static long cenaVez = -1;
+    static SDL_Texture *cena = nullptr;
+    static std::string cenaNome, cenaSis;
+    long vez = long(time(nullptr) / 10);
+    if (vez != cenaVez) {
+        cenaVez = vez;
+        if (cena) { SDL_DestroyTexture(cena); cena = nullptr; }
+        std::vector<const Game *> com;
+        for (auto &g : all) if (!coverOf(g, "-fundo").empty()) com.push_back(&g);
+        if (!com.empty()) {
+            const Game *g = com[(unsigned(vez) * 2654435761u) % com.size()];
+            cena = IMG_LoadTexture(G.r, coverOf(*g, "-fundo").c_str());
+            cenaNome = g->title;
+            cenaSis = g->sys->name;
+        }
+    }
+    if (cena) {
+        int cw = 0, chh = 0;
+        SDL_QueryTexture(cena, nullptr, nullptr, &cw, &chh);
+        float esc = std::max(G.W / float(std::max(1, cw)), G.H / float(std::max(1, chh)));
+        SDL_FRect d{(G.W - cw * esc) / 2, (G.H - chh * esc) / 2, cw * esc, chh * esc};
+        SDL_SetTextureColorMod(cena, 110, 110, 110);
+        SDL_RenderCopyF(G.r, cena, nullptr, &d);
+        float u = G.u;
+        G.fillRect(0, G.H - 46 * u, float(G.W), 46 * u, 0x99000000);
+        T.draw(cenaNome, 18 * u, G.H - 30 * u, 13, true, 0xFFFFFFFF, 0, G.W * 0.6f);
+        T.draw(cenaSis, 18 * u, G.H - 13 * u, 9, false, 0xFFB8BEC8, 0);
+    }
     float u = G.u, lw = 300 * u, lh = lw * 200 / 1489;   // logo de pixel (1489x200)
     unsigned semente = unsigned(time(nullptr) / 10);   // muda de lugar a cada 10 s
     semente = semente * 1103515245u + 12345u;
@@ -1331,6 +1491,20 @@ static void drawProtecao() {
     char hora[16];
     strftime(hora, sizeof hora, prefs["relogio"] == "12" ? "%I:%M %p" : "%H:%M", &lt);
     T.draw(hora, x + lw / 2, y + lh + 18 * u, 16, true, 0xCCFFFFFF, 1);
+}
+
+static void drawEnergia() {
+    if (!energiaMenu) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 300 * u * T.escala), rh = 17 * u * T.escala;
+    float h = 22 * u + 8 * u + 4 * rh + 8 * u + 22 * u, x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Energia", x, y, w, h) + 8 * u;
+    for (int i = 0; i < 4; i++) {
+        bool sel = energiaMenu - 1 == i;
+        if (sel) G.fillRect(x, top + i * rh, w, rh, 0xFF2FD09A);
+        T.draw(ENERGIA_OPCOES[i], x + 14 * u, top + i * rh + rh / 2, 10, sel, 0xFF2B2E33);
+    }
+    static const char *H[] = {"ud", "escolher", "a", "fazer", "b", "cancelar"};
+    panelHints(H, 6, x, y + h, w);
 }
 
 static void drawTextPanel() {
@@ -1363,6 +1537,8 @@ static std::string firstLine(const char *path, const char *key) {
     return "";
 }
 
+static std::string coreEscolhido(const std::string &id);
+static std::string emuNome(const Sys *s);
 static void openInfo() {
     struct utsname un;
     uname(&un);
@@ -1384,9 +1560,13 @@ static void openInfo() {
     }
     double up = 0;
     std::ifstream("/proc/uptime") >> up;
-    std::string emus;
-    for (auto &s : SYSTEMS)
-        if (emus.find(s.emu) == std::string::npos) emus += (emus.empty() ? "" : ", ") + s.emu;
+    std::string emus;   // so os emuladores instalados nesta versao (a de 32 bits tem os leves)
+    for (auto &s : SYSTEMS) {
+        std::string c = coreEscolhido(s.id);
+        bool tem = s.id == "ports" || s.id == "halflife" || (!c.empty() && isFile("/usr/lib/libretro/" + c + "_libretro.so"));
+        std::string e = tem ? emuNome(&s) : "";
+        if (!e.empty() && emus.find(e) == std::string::npos) emus += (emus.empty() ? "" : ", ") + e;
+    }
     std::string ver = firstLine("/etc/os-release", "VERSION=");
     ver.erase(std::remove(ver.begin(), ver.end(), '"'), ver.end());
     if (!ver.empty() && ver[0] == '=') ver.erase(0, 1);
@@ -1402,7 +1582,7 @@ static void openInfo() {
     textLines.push_back(buf);
     textLines.push_back("Tela: " + std::to_string(G.W) + " x " + std::to_string(G.H) + "     Rede: " + ipAddr());
     snprintf(buf, sizeof buf, "  •  ligado há %d min", int(up / 60));
-    textLines.push_back("Sistema: ScrapCade OS " + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")  •  menu: ScrapCade 1.19" + buf);
+    textLines.push_back("Sistema: ScrapCade OS v" + ver.substr(ver.find('=') + 1) + " (Linux " + un.release + ")" + buf);
     textLines.push_back("Jogos: " + std::to_string(all.size()) + ", em " + ROMS);
     textLines.push_back("Emuladores: " + emus);
     textLines.push_back("");
@@ -2187,8 +2367,9 @@ static std::string updAtual, updNova, updMB, updMsg;
 static int updPct = 0;
 static std::mutex updMu;
 
-static std::string versaoBonita(const std::string &b) {   // 202611132145 -> 13/11/2026 21:45
-    if (b.size() < 12) return b;
+static std::string versaoBonita(const std::string &b) {   // 0.20.0-beta -> v0.20.0-beta; 202611132145 -> 13/11/2026 21:45
+    bool data = b.size() == 12 && b.find_first_not_of("0123456789") == std::string::npos;
+    if (!data) return !b.empty() && isdigit((unsigned char)b[0]) ? "v" + b : b;
     return b.substr(6, 2) + "/" + b.substr(4, 2) + "/" + b.substr(0, 4) + " " + b.substr(8, 2) + ":" + b.substr(10, 2);
 }
 
@@ -2287,6 +2468,50 @@ static void drawAtualizar() {
     if (nh) panelHints(H, nh, x, y + h, w);
 }
 
+// ------------------------------------------------------------------ baixar o PortMaster (primeira vez), sem terminal
+// O tos-portmaster baixar grava o progresso em /tmp/tos-portmaster.txt ("porcentagem mensagem"); esta tela mostra.
+static int pmStage = 0;                 // 0 fechada, 1 baixando, 2 nao deu
+static std::atomic<int> pmFim{0};       // 1 terminou bem (abre o PortMaster), 2 falhou
+static int pmPct = 0;
+static std::string pmMsg;
+static bool portMasterInstalado() { return isFile(ROMS + "/ports/PortMaster/pugwash"); }
+static void baixarPortMaster() {
+    pmStage = 1; pmPct = 0; pmMsg = "Começando o download";
+    remove("/tmp/tos-portmaster.txt");
+    std::thread([] {
+        int r = system("/usr/bin/tos-portmaster baixar >> /userdata/system/logs/portmaster.log 2>&1");
+        pmFim = (r == 0 && portMasterInstalado()) ? 1 : 2;
+        redraw();
+    }).detach();
+}
+static void drawPortMaster() {
+    if (!pmStage) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 440 * u), lh = 15 * u;
+    if (pmStage == 1) {
+        std::ifstream in("/tmp/tos-portmaster.txt");
+        int pc = 0;
+        std::string msg;
+        if (in >> pc) { std::getline(in, msg); pmPct = pc; if (msg.size() > 1) pmMsg = msg.substr(1); }
+    }
+    bool erro = pmStage == 2;
+    float h = 22 * u + 16 * u + 3 * lh + 22 * u + (erro ? 0 : 14 * u);
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("PortMaster", x, y, w, h) + 12 * u;
+    T.draw(erro ? "Não deu para baixar o PortMaster." : "Baixando o PortMaster (só na primeira vez, uns 25 MB)",
+           x + 14 * u, top + lh / 2, 9.5f, false, erro ? 0xFFD0362B : 0xFF2B2E33, 0, w - 28 * u);
+    T.draw(erro ? "Confira a internet em Rede e Wi-Fi e tente de novo." : pmMsg + "  (" + std::to_string(pmPct) + "%)",
+           x + 14 * u, top + lh * 1.5f, 9.5f, false, erro ? 0xFF5E6269 : 0xFF1E9C4A, 0, w - 28 * u);
+    T.draw("A loja de ports é o PortMaster (licença MIT, github.com/PortsMaster).", x + 14 * u, top + lh * 2.5f, 8.5f,
+           false, 0xFF5E6269, 0, w - 28 * u);
+    if (!erro) {
+        float by = top + 3 * lh, bw = w - 28 * u;
+        G.roundRect(x + 14 * u, by, bw, 8 * u, 4 * u, 0xFFE3E5E8);
+        G.roundRect(x + 14 * u, by, std::max(8 * u, bw * pmPct / 100.0f), 8 * u, 4 * u, 0xFF2CCF9A);
+    } else {
+        const char *H[] = {"b", "voltar"};
+        panelHints(H, 2, x, y + h, w);
+    }
+}
 // ------------------------------------------------------------------ instalar no disco (tos-instalar)
 
 static int instStage = 0;   // 0 fechado, 1 escolher o disco, 2 confirmar, 3 instalando, 4 terminou
@@ -2478,6 +2703,18 @@ static void optAction(int dir) {
     case OPT_NUCLEO: if (current()) trocarNucleo(current()); return;
     case OPT_RELOGIO: prefs["relogio"] = prefs["relogio"] == "12" ? "24" : "12"; break;
     case OPT_PROTECAO: prefs["protecao"] = std::to_string((protecaoIdx() + d + 4) % 4); break;
+    case OPT_MUSICA:
+        prefs["musica"] = prefs["musica"] == "1" ? "0" : "1";
+        if (prefs["musica"] == "1") {
+            if (musicas().empty()) toast("Coloque músicas (.ogg, .mp3, .flac, .wav) na pasta music da SCRAP-DADOS.", 6000);
+            prepararSons();
+            tocarMusica();
+        } else pararMusica();
+        break;
+    case OPT_SONS: prefs["sons"] = prefs["sons"] != "0" ? "0" : "1"; prepararSons(); tocarSom(somOk); break;
+    case OPT_SUSPENDER:
+        if (dir == 0) { sysOpen = false; savePrefs(); render(); if (system("/usr/bin/tos-suspender") != 0) {} ultimaTecla = SDL_GetTicks(); }
+        return;
     case OPT_DESLIGAR: prefs["desligar"] = std::to_string((desligarIdx() + d + 4) % 4); break;
     case OPT_ENVIAR:
         if (dir == 0) toast("No PC ou no celular, na mesma rede, abra http://" + ipAddr() + ":" + std::to_string(Envio::PORT) + " e arraste os jogos.", 6000);
@@ -2504,7 +2741,7 @@ static void optAction(int dir) {
         if (dir == 0) toast(Usb::eject() ? "Pode tirar o pen drive." : "Nenhum pen drive em uso.", 4000);
         return;
     case OPT_AUTOUPD:
-        prefs["autoupd"] = prefs["autoupd"] == "0" ? "1" : "0";
+        prefs["autoupd"] = prefs["autoupd"] == "1" ? "0" : "1";
         break;
     case OPT_FONTE:
         prefs["fonte"] = std::to_string((nivelFonte() + d + 3) % 3);
@@ -2574,7 +2811,7 @@ static void optAction(int dir) {
         btScan();
         return;
     case OPT_SAMBA: trocarServico("samba", "on"); return;
-    case OPT_SSH: trocarServico("ssh", "off"); return;
+    case OPT_SSH: ligarSSH(); return;
     case OPT_CONTROLE:
         if (dir != 0) return;
         if (SDL_NumJoysticks() == 0) { toast("Nenhum controle ligado: ligue um controle USB ou pareie pelo Bluetooth.", 6000); return; }
@@ -2616,6 +2853,7 @@ static void optAction(int dir) {
 enum Btn : int { B_UP, B_DOWN, B_LEFT, B_RIGHT, B_A, B_B, B_SELECT, B_OTHER, B_X, B_START, B_Y };
 
 static bool tecladoInput(int b);
+static void ligarSSH();
 static bool perfisInput(int b);
 
 static bool netInput(int b) {
@@ -2744,6 +2982,12 @@ static bool gratisInput(int b) {
     return true;
 }
 
+static bool pmInput(int b) {
+    if (!pmStage) return false;
+    if (pmStage == 2 && (b == B_A || b == B_B)) pmStage = 0;
+    return true;     // baixando: os botoes esperam
+}
+
 static bool updInput(int b) {
     if (!updStage) return false;
     std::string nova;
@@ -2801,14 +3045,31 @@ static bool confirmacaoInput(int b) {
     return true;
 }
 
+static bool energiaInput(int b) {
+    if (!energiaMenu) return false;
+    if (b == B_UP) energiaMenu = (energiaMenu + 2) % 4 + 1;
+    if (b == B_DOWN) energiaMenu = energiaMenu % 4 + 1;
+    if (b == B_B) energiaMenu = 0;
+    if (b == B_A) {
+        int o = energiaMenu - 1;
+        energiaMenu = 0;
+        if (o == 0) { savePrefs(); render(); if (system("/usr/bin/tos-suspender") != 0) {} ultimaTecla = SDL_GetTicks(); }
+        else if (o == 1) powerOff(true);
+        else if (o == 2) powerOff(false);
+    }
+    return true;
+}
+
 static bool panelInput(Btn b) {
     if (ctlStep >= 0) return true;   // configurando controle: o menu nao mexe
+    if (energiaInput(b)) return true;
     if (confirmacaoInput(b)) return true;
     if (tecladoInput(b)) return true;
     if (perfisInput(b)) return true;
     if (netInput(b)) return true;
     if (btInput(b)) return true;
     if (updInput(b)) return true;
+    if (pmInput(b)) return true;
     if (hdInput(b)) return true;
     if (navInput(b)) return true;
     if (gratisInput(b)) return true;
@@ -3033,6 +3294,26 @@ static void criarPerfil() {
     });
 }
 
+// ---- assistente de primeiro uso (depois do primeiro perfil): rede, se o PC estiver sem conexao, e o controle
+static int assistente = 0;   // 1: a tela de Rede foi aberta pelo assistente
+static void assistenteControle() {
+    if (SDL_NumJoysticks() > 0) {
+        const char *n = SDL_JoystickNameForIndex(0);
+        toast(std::string("Tudo pronto! Controle: ") + (n ? n : "conectado") + ". Select abre o painel Sistema.", 5000);
+    } else {
+        toast("Tudo pronto! Para jogar com controle, ligue um USB ou pareie pelo Bluetooth (Sistema > Controle e som).", 6500);
+    }
+}
+static void iniciarAssistente() {
+    if (ipAddr() == "sem rede") {
+        openRede();
+        assistente = 1;
+        toast("Primeiro uso: conecte a rede (cabo ou Wi-Fi) para baixar capas e atualizações. B pula.", 6000);
+    } else {
+        assistenteControle();
+    }
+}
+
 static void salvarPerfilNovo(const std::string &senha) {
     int maior = 0;
     for (auto &p : perfis) maior = std::max(maior, atoi(p.id.c_str()));
@@ -3040,6 +3321,7 @@ static void salvarPerfilNovo(const std::string &senha) {
     savePerfis();
     profStage = 0;
     login(int(perfis.size()) - 1);
+    if (perfis.size() == 1) iniciarAssistente();   // primeiro perfil do aparelho: o assistente curto
 }
 
 static void entrar(int i) {
@@ -3234,6 +3516,40 @@ static bool tecladoInput(int b) {
     return true;
 }
 
+// ---- senha do administrador (root): o boot nao pede; o painel pede ao ligar o SSH, com o teclado na tela
+static bool semSenhaRoot() {
+    std::ifstream in("/etc/shadow");
+    std::string l;
+    while (std::getline(in, l))
+        if (l.compare(0, 5, "root:") == 0) {
+            std::string h = l.substr(5, l.find(':', 5) - 5);
+            return h.empty() || h[0] == '!' || h[0] == '*';
+        }
+    return true;
+}
+static bool gravarSenhaRoot(const std::string &senha) {
+    FILE *p = popen("passwd root >/dev/null 2>&1", "w");     // o passwd do BusyBox le as duas vezes da entrada
+    if (!p) return false;
+    fprintf(p, "%s\n%s\n", senha.c_str(), senha.c_str());
+    bool ok = pclose(p) == 0 && !semSenhaRoot();
+    if (ok && system("mkdir -p /userdata/system && cp /etc/shadow /userdata/system/shadow && chmod 600 /userdata/system/shadow") != 0) {}
+    return ok;
+}
+static void ligarSSH() {
+    if (servico("ssh", "off") || !semSenhaRoot()) { trocarServico("ssh", "off"); return; }
+    abrirTeclado("SSH: crie a senha do administrador (root)", true, [](bool ok) {
+        if (!ok) return;
+        std::string a = tkTexto;
+        if (a.size() < 4) { toast("A senha precisa de 4 letras ou mais.", 4000); return; }
+        abrirTeclado("Repita a senha", true, [a](bool ok2) {
+            if (!ok2) return;
+            if (tkTexto != a) { toast("As senhas não conferem. Tente de novo.", 4000); return; }
+            if (!gravarSenhaRoot(a)) { toast("Não consegui gravar a senha.", 4000); return; }
+            trocarServico("ssh", "off");
+        });
+    });
+}
+
 static bool perfisInput(int b) {
     if (!profStage) return false;
     int n = int(perfis.size()) + 1;
@@ -3340,12 +3656,14 @@ static void render() {
     drawRede();
     drawBluetooth();
     drawAtualizar();
+    drawPortMaster();
     drawNavegador();
     drawGratis();
     drawConfirmacao();
     drawPerguntaHD();
     drawControle();
     drawTeclado();
+    drawEnergia();
     drawToast();
     drawProtecao();
     SDL_RenderPresent(G.r);
@@ -3389,7 +3707,7 @@ static std::string coreOf(const std::string &id) {
         {"nes", {"mesen", "fceumm"}}, {"snes", {"snes9x", "snes9x2010"}}, {"megadrive", {"genesis_plus_gx", "picodrive"}},
         {"gb", {"gambatte"}}, {"gbc", {"gambatte"}}, {"gba", {"mgba", "gpsp"}}, {"psx", {"pcsx_rearmed"}},
         {"n64", {"mupen64plus_next"}}, {"arcade", {"fbneo"}}, {"neogeo", {"fbneo"}}, {"psp", {"ppsspp"}},
-        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}};
+        {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}, {"dos", {"dosbox_pure"}}};
     auto it = m.find(id);
     if (it == m.end()) return "";
     for (auto &c : it->second)
@@ -3432,6 +3750,7 @@ static void play() {
     std::string core = coreEscolhido(g->sys->id);
     // Ports (PortMaster: o jogo e um script) e Half-Life (Xash3D): sem nucleo do RetroArch
     bool port = g->sys->id == "ports" || g->sys->id == "halflife";
+    if (g->sys->id == "ports" && g->file == "PortMaster.sh" && !portMasterInstalado()) { baixarPortMaster(); return; }
     if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
         toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
@@ -3441,15 +3760,21 @@ static void play() {
     prefs["ultimo"] = g->key();
     savePrefs();
     float u = G.u;
-    G.fillRect(0, 0, float(G.W), float(G.H), 0xE6101418);
-    T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.40f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
-    T.draw(g->sys->name + "  •  " + g->sys->emu, G.W / 2.0f, G.H * 0.40f + 22 * u, 10, false, 0xFFB8BEC8, 1);
-    T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
-           accent(g->sys->color), 1);
-    T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
-           false, 0xFFDDE1E8, 1);
-    SDL_RenderPresent(G.r);
-    SDL_Delay(1800);
+    std::string emu = port ? g->sys->emu : emuNome(g->sys);
+    for (Uint32 ini = SDL_GetTicks(); SDL_GetTicks() - ini < 1800;) {   // 1,8 s com o CARREGANDO andando
+        G.fillRect(0, 0, float(G.W), float(G.H), 0xFF101418);
+        drawCarregando(G.W / 2.0f, G.H * 0.27f, 0.7f * u);
+        T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.42f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
+        T.draw(g->sys->name + "  •  " + emu, G.W / 2.0f, G.H * 0.42f + 22 * u, 10, false, 0xFFB8BEC8, 1);
+        T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
+               accent(g->sys->color), 1);
+        T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
+               false, 0xFFDDE1E8, 1);
+        SDL_RenderPresent(G.r);
+        SDL_PumpEvents();
+        SDL_Delay(33);
+    }
+    pararMusica();
     launchSys = g->sys->id;
     launchRom = g->dir + "/" + g->file;
     launchCore = core;
@@ -3457,6 +3782,17 @@ static void play() {
 }
 
 // ------------------------------------------------------------------ principal
+
+// Troca rapida (como o Game Switcher dos portateis): vai direto para "Continuar jogando"; de novo, volta para Todos
+static void trocaRapida() {
+    details = false;
+    if (filter == F_REC) { filter = F_ALL; applyFilter(); clearCards(); toast("Todos os jogos", 1500); return; }
+    if (std::find(filters.begin(), filters.end(), F_REC) == filters.end()) { toast("Nenhum jogo para continuar ainda: abra um jogo primeiro.", 3500); return; }
+    filter = F_REC;
+    applyFilter();
+    clearCards();
+    toast("Continuar jogando: A volta de onde você parou", 2500);
+}
 
 static volatile sig_atomic_t quit = 0;
 static void onSignal(int) { quit = 1; }
@@ -3548,6 +3884,7 @@ int main() {
     if (getenv("INBOX_DIR")) INBOX = getenv("INBOX_DIR");
     signal(SIGTERM, onSignal);
     signal(SIGINT, onSignal);
+    signal(SIGUSR1, onBotaoEnergia);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     {   // voltando de um jogo ou do desktop: as preferencias sao as do perfil que estava jogando
@@ -3572,6 +3909,8 @@ int main() {
     G.r = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
     if (!G.r) G.r = SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE);
     if (!G.r) { fprintf(stderr, "scrapcade: renderer: %s\n", SDL_GetError()); return 1; }
+    // a tela de carregamento (tos-carregando, desenhada no /dev/fb0 na volta do jogo) para: o menu ja tem a tela
+    if (isFile("/tmp/tos-carregando.pid") && system("/usr/bin/tos-carregando para") != 0) {}
     SDL_RendererInfo info;
     SDL_GetRendererInfo(G.r, &info);
     engineNow = engineWant = info.name;
@@ -3586,6 +3925,8 @@ int main() {
     loadPrefs();
     gravarJogoCfg();
     montarPainel();
+    prepararSons();
+    tocarMusica();
     scanTemas();
     aplicarTemaPrefs();
     T.escala = escalaFonte();
@@ -3644,6 +3985,13 @@ int main() {
             if (botao) {
                 ultimaTecla = SDL_GetTicks();
                 if (protecaoOn) { protecaoOn = false; continue; }   // acorda: o botao nao faz mais nada
+                // sons do menu: andar, escolher, voltar
+                int k = e.type == SDL_KEYDOWN ? e.key.keysym.sym : -1, cb = e.type == SDL_CONTROLLERBUTTONDOWN ? e.cbutton.button : -1;
+                if (k == SDLK_RETURN || k == SDLK_SPACE || cb == SDL_CONTROLLER_BUTTON_A) tocarSom(somOk);
+                else if (k == SDLK_ESCAPE || k == SDLK_BACKSPACE || cb == SDL_CONTROLLER_BUTTON_B) tocarSom(somVoltar);
+                else if (k == SDLK_LEFT || k == SDLK_RIGHT || k == SDLK_UP || k == SDLK_DOWN || cb == SDL_CONTROLLER_BUTTON_DPAD_LEFT ||
+                         cb == SDL_CONTROLLER_BUTTON_DPAD_RIGHT || cb == SDL_CONTROLLER_BUTTON_DPAD_UP || cb == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+                    tocarSom(somMover);
             }
             switch (e.type) {
             case SDL_QUIT: quit = 1; break;
@@ -3715,6 +4063,7 @@ int main() {
                 case SDLK_q: case SDLK_PAGEUP: nextFilter(-1); break;
                 case SDLK_e: case SDLK_PAGEDOWN: nextFilter(1); break;
                 case SDLK_TAB: details = false; openSystem(); break;
+                case SDLK_c: trocaRapida(); break;
                 }
                 break;
             }
@@ -3736,6 +4085,7 @@ int main() {
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: nextFilter(-1); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: nextFilter(1); break;
                 case SDL_CONTROLLER_BUTTON_BACK: details = false; openSystem(); break;
+                case SDL_CONTROLLER_BUTTON_START: trocaRapida(); break;
                 }
                 break;
             }
@@ -3782,7 +4132,7 @@ int main() {
         static std::atomic<int> novaVersao{0};
         if (novaVersao == 0 && now > 40000) {
             novaVersao = 1;
-            bool sozinho = prefs["autoupd"] != "0";
+            bool sozinho = prefs["autoupd"] == "1";   // de fabrica so avisa
             std::thread([sozinho] {
                 std::string r = Rede::run("/usr/bin/tos-atualizar verificar");
                 size_t a = r.find('|'), b = a == std::string::npos ? a : r.find('|', a + 1);
@@ -3809,6 +4159,15 @@ int main() {
             toast("Versão nova do ScrapCade disponível: Sistema > Atualizar o ScrapCade OS", 9000);
             redraw();
         }
+        if (botaoEnergia) {   // botao de energia apertado com o menu na tela
+            botaoEnergia = 0;
+            protecaoOn = false;
+            ultimaTecla = now;
+            energiaMenu = energiaMenu ? 0 : 1;
+            any = true;
+        }
+        if (musicaAcabou.exchange(false)) tocarMusica();
+        if (energiaMenu) any = true;
         // protecao de tela e desligar sozinho: so com o menu parado (jogando, o ScrapCade nem esta aberto)
         {
             if (!ultimaTecla) ultimaTecla = now;
@@ -3850,7 +4209,10 @@ int main() {
         time_t tt = time(nullptr);
         int mnow = localtime(&tt)->tm_min;
         static Uint32 lastBars = 0;
-        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage) && now - lastBars > 1000;
+        bool barsDue = (sysOpen || instStage == 3 || netStage == 1 || netStage == 3 || btStage || updStage || pmStage == 1) && now - lastBars > 1000;
+        if (assistente == 1 && !netStage) { assistente = 0; assistenteControle(); any = true; }   // fechou a Rede
+        if (pmFim == 1) { pmFim = 0; pmStage = 0; play(); any = true; }        // PortMaster baixado: abre ele
+        else if (pmFim == 2) { pmFim = 0; pmStage = 2; any = true; }
         if (ctlStep >= 0 || netStage == 2 || tkOn || profStage) any = true;
         if (barsDue) lastBars = now;
         if (any || animating || backdropFading || toastOn || mnow != minute || barsDue) {

@@ -10,7 +10,9 @@ mkdir -p "$CFG" "/userdata/saves/$SIS" /userdata/bios /userdata/screenshots /use
 # Ports (PortMaster): o "jogo" e um script bash; roda ele e volta para o ScrapCade
 if [ "$SIS" = ports ]; then
   echo "== $(date "+%d/%m %H:%M") ports $ROM" > /userdata/system/logs/ports.log
+  /usr/bin/tos-carregando 4
   ( cd "$(dirname "$ROM")" && HOME=/root bash "$ROM" ) >> /userdata/system/logs/ports.log 2>&1
+  /usr/bin/tos-carregando 5
   exec /usr/bin/scrapcade
 fi
 
@@ -31,6 +33,7 @@ if [ "$SIS" = halflife ]; then
     EXTRAS=$(ls /usr/share/xash3d/valve/extras.pk3 /usr/lib/xash3d/valve/extras.pk3 2>/dev/null | head -1)
     echo "== $(date "+%d/%m %H:%M") halflife $JOGO" > /userdata/system/logs/xash3d.log
     INICIO=$(cut -d. -f1 /proc/uptime)
+    /usr/bin/tos-carregando 4
     ( cd "$HL" && LD_LIBRARY_PATH=/usr/lib/xash3d XASH3D_BASEDIR="$HL" XASH3D_EXTRAS_PAK1="$EXTRAS" HOME=/userdata/system \
         /usr/bin/xash3d -game "$JOGO" -fullscreen +exec scrapcade_controle.cfg ) >> /userdata/system/logs/xash3d.log 2>&1
     [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ] && \
@@ -38,6 +41,7 @@ if [ "$SIS" = halflife ]; then
   else
     echo "Para jogar, copie a pasta $JOGO do Half-Life (da sua cópia da Steam) para roms/halflife." > /tmp/tos-nao-abriu
   fi
+  /usr/bin/tos-carregando 5
   exec /usr/bin/scrapcade
 fi
 
@@ -55,6 +59,7 @@ case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais
   saturn) CORE=mednafen_saturn ;;
   dreamcast) CORE=flycast ;;
   doom) CORE=prboom ;;
+  dos) CORE=dosbox_pure ;;
   *) CORE="" ;;
 esac
 # o ScrapCade pode mandar o nucleo escolhido pelo usuario (ex.: bsnes no lugar do snes9x)
@@ -86,10 +91,31 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
     [ -n "$SHADER" ] && [ -f "$SHADER" ] && SET="--set-shader $SHADER"
   fi
   [ -f "$CFG/retroarch-usuario.cfg" ] && EXTRA="$EXTRA|$CFG/retroarch-usuario.cfg"
+  # N64 em placa de video sem OpenGL 3.3 (Intel antigas, GMA): o GLideN64 nao abre. Neste PC o desenho e pelo
+  # processador (angrylion): mais lento, mas abre em qualquer placa. A marca fica guardada para as proximas vezes.
+  N64SW=/userdata/system/configs/n64-software
+  n64_software() {
+    printf 'mupen64plus-rdp-plugin = "angrylion"\nmupen64plus-rsp-plugin = "hle"\n' > /tmp/tos-n64.opt
+    echo "core_options_path = \"/tmp/tos-n64.opt\"" >> /tmp/tos-console.cfg
+  }
+  [ "$CORE" = mupen64plus_next ] && [ -f "$N64SW" ] && n64_software
   echo "== $(date "+%d/%m %H:%M") $SIS $CORE $ROM" > /userdata/system/logs/retroarch.log
-  INICIO=$(cut -d. -f1 /proc/uptime)
-  retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" $SET -L "$SO" "$ROM" \
-    >> /userdata/system/logs/retroarch.log 2>&1
+  abre() {
+    INICIO=$(cut -d. -f1 /proc/uptime)
+    /usr/bin/tos-carregando 8     # logo + CARREGANDO na tela ate o emulador aparecer (nada de terminal)
+    retroarch --verbose --config "$CFG/retroarch.cfg" --appendconfig "$EXTRA" $SET -L "$SO" "$ROM" \
+      >> /userdata/system/logs/retroarch.log 2>&1 &
+    RA=$!
+    sleep 3; /usr/bin/tos-carregando para   # o emulador ja tem a tela: a animacao para de gastar processador
+    wait $RA
+  }
+  abre
+  # so troca se o motivo foi a placa de video (erro de OpenGL/contexto no registro), nao uma ROM com defeito
+  if [ "$CORE" = mupen64plus_next ] && [ ! -f "$N64SW" ] && [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ] &&
+     grep -qiE "opengl|egl|glsl|gl context|hw context|hw render|gliden" /userdata/system/logs/retroarch.log; then
+    echo "== nao abriu com o GLideN64: tentando de novo com o desenho pelo processador (angrylion)" >> /userdata/system/logs/retroarch.log
+    touch "$N64SW"; n64_software; abre
+  fi
   # fechou em menos de 4 s: o jogo nao abriu (arquivo com defeito, versao errada, falta BIOS). Avisa o ScrapCade
   if [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ]; then
     MOTIVO=$(grep -i "\[error\]" /userdata/system/logs/retroarch.log | tail -1 | sed 's/.*\[[Ee][Rr][Rr][Oo][Rr]\] *//; s/^\[[^]]*\] *//; s/\.*$//' | cut -c1-90)
@@ -98,4 +124,5 @@ if [ -n "$CORE" ] && [ -f "$SO" ] && [ -f "$ROM" ]; then
 elif [ -f "$ROM" ]; then
   echo "Ainda não há emulador para esse console nesta versão do ScrapCade OS." > /tmp/tos-nao-abriu
 fi
+/usr/bin/tos-carregando 5     # na volta, a mesma tela ate o menu desenhar
 exec /usr/bin/scrapcade

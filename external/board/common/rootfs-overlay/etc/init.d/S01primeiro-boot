@@ -1,26 +1,12 @@
 #!/bin/sh
-# ScrapCade: no primeiro boot, pede a senha do administrador (root). A imagem nao traz senha fixa: uma senha
-# publicada seria a mesma em todo aparelho. A senha fica em SCRAP-DADOS (o sistema e somente leitura).
+# ScrapCade: senha do administrador (root). A imagem nao traz senha fixa (seria a mesma em todo aparelho), e o boot
+# nao pede nada: o administrador fica bloqueado ate a senha ser criada no painel Sistema, ao ligar o SSH (e so ele
+# e o login de manutencao no tty2 usam essa senha). A senha fica em SCRAP-DADOS (o sistema e somente leitura).
 SALVA=/userdata/system/shadow
 case "$1" in
   start)
     [ -f "$SALVA" ] && cp "$SALVA" /etc/shadow
-    if grep -q '^root::' /etc/shadow; then
-      {
-        echo
-        echo "=============================================="
-        echo " ScrapCade: primeiro boot"
-        echo " Crie a senha do administrador (root)."
-        echo " Ela sera pedida no login e no acesso remoto."
-        echo "=============================================="
-      } > /dev/console
-      until passwd root < /dev/console > /dev/console 2>&1; do
-        echo "As senhas nao conferem ou estao vazias. Tente de novo." > /dev/console
-      done
-      echo "Senha criada." > /dev/console
-      cp /etc/shadow "$SALVA"
-      chmod 600 "$SALVA" 2>/dev/null || true
-    fi
+    grep -q '^root::' /etc/shadow && passwd -l root >/dev/null 2>&1
     ;;
 esac
 exit 0

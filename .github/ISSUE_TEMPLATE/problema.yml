@@ -1,0 +1,44 @@
+name: Problema no ScrapCade OS
+description: Não ligou, travou, jogo não abre, som ou rede não funcionam
+labels: [problema]
+body:
+  - type: input
+    id: versao
+    attributes:
+      label: Versão
+      description: Aparece em Sistema > Informações (ou no nome do .iso que você gravou)
+      placeholder: v0.20.0-beta
+    validations:
+      required: true
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo de PC
+      options: ["64 bits", "32 bits", "Não sei"]
+    validations:
+      required: true
+  - type: input
+    id: maquina
+    attributes:
+      label: Computador
+      description: Marca e modelo, processador e placa de vídeo, se souber
+      placeholder: "Dell Inspiron N5010, Core i3 M370, Intel HD"
+    validations:
+      required: true
+  - type: dropdown
+    id: boot
+    attributes:
+      label: Como liga
+      options: ["Pen drive pelo UEFI", "Pen drive pelo BIOS antigo (Legacy/CSM)", "Instalado no HD/SSD", "Não sei"]
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu
+      description: O que você fez, o que esperava e o que apareceu na tela. Uma foto da tela ajuda muito.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostico
+    attributes:
+      label: Diagnóstico (opcional)
+      description: Se o ScrapCade chegou a abrir, anexe o arquivo Registros/diagnostico.txt da partição SCRAP-DADOS (pelo Windows ou pela página no navegador).

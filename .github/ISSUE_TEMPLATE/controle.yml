@@ -1,0 +1,31 @@
+name: Controle não reconhecido
+description: O controle não funciona ou os botões estão trocados
+labels: [controle]
+body:
+  - type: input
+    id: versao
+    attributes:
+      label: Versão
+      description: Aparece em Sistema > Informações
+      placeholder: v0.20.0-beta
+    validations:
+      required: true
+  - type: input
+    id: controle
+    attributes:
+      label: Controle
+      description: Marca e modelo, e se é com fio, Bluetooth ou receptor USB
+      placeholder: "Controle genérico USB tipo PS3"
+    validations:
+      required: true
+  - type: dropdown
+    id: onde
+    attributes:
+      label: Onde falha
+      multiple: true
+      options: ["No menu", "Nos jogos", "Botões trocados", "Não aparece nada"]
+  - type: textarea
+    id: diagnostico
+    attributes:
+      label: Diagnóstico
+      description: Ligue o controle, espere 1 minuto e anexe o arquivo Registros/diagnostico.txt da partição SCRAP-DADOS. Ele lista os controles que o sistema viu.

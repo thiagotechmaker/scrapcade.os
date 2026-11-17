@@ -49,9 +49,10 @@ Cada versão fica em [Releases](https://github.com/thiagotechmaker/scrapcade.os/
 |---|---|
 | `scrapcade-os-v<versão>-pc-64bits.iso` | **o ScrapCade inteiro, um arquivo só**, para PC de 64 bits (BIOS antigo e UEFI) |
 | `tos.squashfs`, `bzImage`, `initrd.gz` | usados pela atualização automática |
+| `BUILD_ID` | número da compilação: o atualizador compara com o do PC para saber se a versão é mais nova |
 | `SHA256SUMS` | confere todos os arquivos |
 
-A partir da v0.20.0-beta, a mesma versão traz também os arquivos de 32 bits: `scrapcade-os-v<versão>-pc-32bits.iso`, `tos-32.squashfs`, `bzImage-32`, `initrd-32.gz` e `SHA256SUMS-32`.
+Desde a v0.20.0-beta, a mesma versão traz também os arquivos de 32 bits: `scrapcade-os-v<versão>-pc-32bits.iso`, `tos-32.squashfs`, `bzImage-32`, `initrd-32.gz` e `SHA256SUMS-32`.
 
 Quem já tem o ScrapCade não precisa baixar nada: uns 40 s depois de ligar ele procura a versão nova e avisa na tela; a troca é em *Sistema > Atualizar o ScrapCade OS*. Para publicar uma versão compilada: `powershell -File scripts\publicar-versao.ps1`.
 
@@ -71,7 +72,7 @@ Daí em diante o ScrapCade **roda direto do pen drive**, como o Batocera. Para l
 - Gravado em **DVD**, ou com `tos.vivo` acrescentado aos parâmetros no menu de boot (tecla Tab no BIOS, `e` no UEFI), o ScrapCade só roda, sem mexer em nada (os jogos ficam na memória até desligar).
 - Precisa de 1,5 GB de memória para arrumar o pen drive; com menos, roda sem arrumar.
 
-No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. No primeiro boot o ScrapCade pede a senha do administrador.
+No notebook, ligue pelo pen drive (tecla do menu de boot: F12, F9, F8 ou Esc, conforme a marca). **Liga tanto por UEFI quanto por BIOS antigo (Legacy/CSM)**; se o notebook usar UEFI e recusar o pen drive, desligue o Secure Boot. Instalado no HD ou SSD, o ScrapCade liga direto na logo; segurando Esc ou Shift ao ligar, aparece o menu de boot (modo de compatibilidade, versão anterior, teste de memória).
 
 O kernel traz os controladores USB 1.1/2.0/3.0, SATA, NVMe e leitor de cartão SD, para achar o pen drive e o HD também em máquinas antigas. As placas de vídeo (Intel, AMD, NVIDIA pelo Nouveau) são módulos: só a da máquina é carregada.
 
@@ -102,7 +103,7 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
 | **syslogd / klogd** | Guardam os registros do sistema e do kernel, para descobrir problemas. |
 | **acpid** | Trata o botão de ligar e eventos de energia (desligar ao apertar o botão). |
 | **crond** | Executa tarefas agendadas. |
-| **Primeiro boot** | Script `S01primeiro-boot`: se o administrador ainda não tem senha, pede para criar uma antes do login. |
+| **Senha do administrador** | O boot não pede senha: o administrador fica bloqueado até a senha ser criada no painel Sistema, ao ligar o SSH (`S01primeiro-boot` restaura a senha guardada). |
 | **ScrapCade** | Menu de jogos (modo jogo), em C++ com SDL2. Abre no boot pelo serviço `S99scrapcade`. |
 | **Mesa + LLVM** | Drivers de vídeo abertos (Intel, AMD, NVIDIA/Nouveau) e o `llvmpipe` para PC sem placa de vídeo. |
 | **SDL2** | Base do ScrapCade: tela pela GPU (KMS/DRM, sem servidor gráfico), controles, imagens PNG/JPEG e fontes. |
@@ -120,7 +121,7 @@ Ligue um pen drive com jogos (FAT32, exFAT, NTFS ou ext4) com o ScrapCade aberto
    - sistema em `tos.squashfs` numa partição FAT32 de 1 GB, com initrd próprio;
    - menu de boot próprio (GRUB e syslinux) com fundo e logo do ScrapCade OS;
    - boot silencioso (`quiet`), sem os textos do kernel na tela;
-   - pedido de senha do administrador no primeiro boot.
+   - boot sem texto na tela (`tos-rcs`) e senha do administrador criada no painel, ao ligar o SSH.
 5. **Compilação:** algumas horas na primeira vez (baixa e compila tudo, inclusive o LLVM), minutos nas seguintes.
 6. **Teste:** bateria automática em máquinas virtuais QEMU, com BIOS antigo (SeaBIOS) e UEFI (OVMF).
 

@@ -117,7 +117,8 @@ Scripts próprios em `/etc/init.d`:
 | Script | Função |
 |---|---|
 | `S00dados` | Acha ou cria a SCRAP-DADOS; liga a pasta do Wi-Fi a ela |
-| `S01primeiro-boot` | Pede a senha do administrador e guarda na SCRAP-DADOS |
+| `S01primeiro-boot` | Restaura a senha do administrador guardada na SCRAP-DADOS; sem senha, o administrador fica bloqueado (a senha é criada no painel, ao ligar o SSH) |
+| `S36som` | Tira o mudo e acerta o volume das saídas de todas as placas de som |
 | `S98diagnostico` | Gera `Registros/diagnostico.txt` com placas, drivers, rede e controles |
 | `S99scrapcade` | Abre o menu de jogos; ajusta controles, volume e modo de compatibilidade |
 
@@ -207,6 +208,7 @@ Código em `external/package/scrapcade/src/`:
 | Beetle Saturn | commit fixo | Sega Saturn |
 | Flycast | commit fixo | Dreamcast |
 | PrBoom | commit fixo | Doom e jogos `.wad` (o Freedoom vem pelos Jogos grátis) |
+| DOSBox Pure | commit fixo | PC antigo (DOS), direto do `.zip` |
 | **Xash3D FWGS** + **hlsdk-portable** | commit fixo | Half-Life (os dados vêm da cópia da Steam do usuário) |
 | **PortMaster** | baixado na primeira vez | Ports de jogos de PC (feitos para portáteis ARM: poucos rodam em PC) |
 
@@ -221,7 +223,7 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 **Para pesquisar:**
 
-- **Emuladores que faltam:** GameCube e Wii (Dolphin), PS2 (PCSX2), 3DS (Azahar), PC antigo (DOSBox Pure e ScummVM), Xbox (xemu), PS Vita (Vita3K) e consoles leves (PC Engine, Atari, Neo Geo Pocket, WonderSwan, Virtual Boy, MSX).
+- **Emuladores que faltam:** GameCube e Wii (Dolphin), PS2 (PCSX2), 3DS (Azahar), PC antigo (ScummVM), Xbox (xemu), PS Vita (Vita3K) e consoles leves (PC Engine, Atari, Neo Geo Pocket, WonderSwan, Virtual Boy, MSX).
 - **Perfis por máquina:** escolher os ajustes de cada emulador pelo desempenho do PC.
 - **RetroAchievements** e **netplay**.
 - **DuckStation** para PS1, mais preciso.

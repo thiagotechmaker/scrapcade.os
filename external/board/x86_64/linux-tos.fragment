@@ -1,4 +1,4 @@
-# T-OS: video aberto para AMD, NVIDIA e telas genericas; controles e joystick
+# ScrapCade OS: video aberto para AMD, NVIDIA e telas genericas; controles e joystick
 CONFIG_DRM_AMDGPU=m
 CONFIG_DRM_AMDGPU_SI=y
 CONFIG_DRM_AMDGPU_CIK=y
