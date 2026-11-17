@@ -27,6 +27,7 @@ Jogos, BIOS e ROMs não acompanham o sistema: mande os seus pelo navegador do ce
 
 <p align="center"><img src="docs/capturas/11_painel_sistema.png" width="49%" alt="Painel Sistema"> <img src="docs/capturas/10_perfil_avatar.png" width="49%" alt="Perfis com avatar"></p>
 <p align="center"><img src="docs/capturas/16_freedoom.png" width="49%" alt="Freedoom rodando"> <img src="docs/capturas/1_menu_de_boot.png" width="49%" alt="Menu de boot"></p>
+<p align="center"><img src="docs/capturas/17_continuar_jogando.png" width="49%" alt="Coleção Continuar jogando"> <img src="docs/capturas/18_boot_animado.png" width="49%" alt="Animação de boot"></p>
 
 Os jogos das capturas são de fãs, com licença livre ([µCity](https://github.com/AntonioND/ucity), [Nova the Squirrel](https://github.com/NovaSquirrel/NovaTheSquirrel), [Libbet](https://github.com/pinobatch/libbet), [Freedoom](https://freedoom.github.io)); o sistema baixa em *Sistema > Jogos grátis*.
 
