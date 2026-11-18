@@ -45,6 +45,84 @@ if [ "$SIS" = halflife ]; then
   exec /usr/bin/scrapcade
 fi
 
+# Xbox (xemu) e PS3 (RPCS3): programas proprios (nao sao nucleos do RetroArch). Abrem numa sessao do X so
+# deles; Select + Start (ou Esc segurado) fecha, como nos outros consoles. Os arquivos do console ficam na pasta bios.
+if [ "$SIS" = xbox ] || [ "$SIS" = ps3 ]; then
+  B=/userdata/bios
+  SC=/userdata/system/configs
+  export XDG_RUNTIME_DIR=/tmp/xdg-jogo XDG_CACHE_HOME=/tmp/cache-jogo PIPEWIRE_RUNTIME_DIR=/run/pipewire
+  mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CACHE_HOME"; chmod 700 "$XDG_RUNTIME_DIR"
+  LOGX=/userdata/system/logs/$SIS.log
+  echo "== $(date "+%d/%m %H:%M") $SIS $ROM" > "$LOGX"
+  CLIENTE=/tmp/tos-x-cliente.sh
+  FALTA=""
+  if [ "$SIS" = xbox ]; then
+    [ -f "$B/mcpx_1.0.bin" ] || FALTA="mcpx_1.0.bin"
+    [ -f "$B/Complex_4627.bin" ] || FALTA="${FALTA:+$FALTA e }Complex_4627.bin"
+    # HD vazio oficial do projeto xemu (sem nada da Microsoft), baixado no primeiro jogo e conferido pelo hash
+    if [ -z "$FALTA" ] && [ ! -f "$B/xbox_hdd.qcow2" ]; then
+      /usr/bin/tos-carregando 4
+      Z=/tmp/xbox_hdd.zip
+      curl -fsL -m 120 -o "$Z" https://github.com/xemu-project/xemu-hdd-image/releases/download/1.0/xbox_hdd.qcow2.zip &&
+        echo "d9f5a4c1224ff24cf9066067bda70cc8b9c874ea22b9c542eb2edbfc4621bb39  $Z" | sha256sum -c - >/dev/null 2>&1 &&
+        unzip -oq "$Z" -d "$B" >> "$LOGX" 2>&1
+      rm -f "$Z"
+      [ -f "$B/xbox_hdd.qcow2" ] || FALTA="o HD vazio do Xbox (sem internet? ele é baixado no primeiro jogo)"
+    fi
+    export XDG_DATA_HOME=$SC
+    mkdir -p "$SC/xemu/xemu"
+    cat > "$SC/xemu/xemu/xemu.toml" <<EOF
+[general]
+show_welcome = false
+[display.window]
+fullscreen_on_startup = true
+[display.ui]
+show_menubar = false
+[sys.files]
+bootrom_path = '$B/mcpx_1.0.bin'
+flashrom_path = '$B/Complex_4627.bin'
+eeprom_path = '$SC/xemu/eeprom.bin'
+hdd_path = '$B/xbox_hdd.qcow2'
+dvd_path = '$ROM'
+EOF
+    printf '#!/bin/sh\nexec /usr/bin/xemu -full-screen\n' > "$CLIENTE"
+    PROG=/usr/lib/xemu
+  else
+    # PS3: o atalho .ps3 tem o nome da pasta do jogo (PS3_GAME/USRDIR/EBOOT.BIN)
+    PASTA="$(dirname "$ROM")/$(head -1 "$ROM" | tr -d '\r')"
+    EBOOT="$PASTA/PS3_GAME/USRDIR/EBOOT.BIN"
+    [ -f "$EBOOT" ] || EBOOT="$PASTA/USRDIR/EBOOT.BIN"
+    export XDG_CONFIG_HOME=$SC
+    R3=$SC/rpcs3
+    mkdir -p "$R3/input_configs/global"
+    if [ ! -d "$R3/dev_flash/vsh/module" ] && [ ! -f "$B/PS3UPDAT.PUP" ]; then FALTA="PS3UPDAT.PUP (firmware oficial, do site da Sony)"; fi
+    # controle: o primeiro que o ScrapCade viu (nome do SDL) vira o jogador 1 do RPCS3
+    CTRL=$(head -1 /tmp/tos-controle-sdl 2>/dev/null)
+    if [ -n "$CTRL" ]; then
+      printf 'Player 1 Input:\n  Handler: SDL\n  Device: %s 1\n' "$CTRL" > "$R3/input_configs/global/Default.yml"
+    fi
+    {
+      echo '#!/bin/sh'
+      # firmware: instala uma vez, a partir do PS3UPDAT.PUP da pasta bios
+      echo "[ -d '$R3/dev_flash/vsh/module' ] || /usr/bin/rpcs3 --installfw '$B/PS3UPDAT.PUP'"
+      echo "exec /usr/bin/rpcs3 --no-gui --fullscreen '$EBOOT'"
+    } > "$CLIENTE"
+    PROG=/usr/lib/rpcs3
+  fi
+  if [ -n "$FALTA" ]; then
+    echo "Para jogar $([ "$SIS" = xbox ] && echo Xbox || echo PS3), falta na pasta bios: $FALTA." > /tmp/tos-nao-abriu
+  else
+    chmod +x "$CLIENTE"
+    INICIO=$(cut -d. -f1 /proc/uptime)
+    /usr/bin/tos-carregando 8
+    /usr/bin/tos-sair-combo "$PROG" >> "$LOGX" 2>&1 &
+    xinit "$CLIENTE" -- /usr/bin/Xorg :0 vt1 -nolisten tcp -keeptty >> "$LOGX" 2>&1
+    [ $(( $(cut -d. -f1 /proc/uptime) - INICIO )) -lt 4 ] && echo "Esse jogo não abriu. Veja logs/$SIS.log" > /tmp/tos-nao-abriu
+  fi
+  /usr/bin/tos-carregando 5
+  exec /usr/bin/scrapcade
+fi
+
 case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais leves)
   nes) CORE=$(primeiro mesen fceumm) ;;
   snes) CORE=$(primeiro snes9x snes9x2010) ;;
@@ -60,8 +138,22 @@ case "$SIS" in   # o primeiro nucleo instalado (a imagem de 32 bits leva os mais
   dreamcast) CORE=flycast ;;
   doom) CORE=prboom ;;
   dos) CORE=dosbox_pure ;;
-  mastersystem|segacd) CORE=$(primeiro genesis_plus_gx picodrive) ;;
-  gamegear) CORE=genesis_plus_gx ;;
+  # Game Gear e SG-1000: a imagem de 32 bits nao tem o Genesis Plus GX; o PicoDrive dela roda os dois
+  mastersystem|segacd|gamegear|sg1000) CORE=$(primeiro genesis_plus_gx picodrive) ;;
+  atari5200) CORE=a5200 ;;
+  jaguar) CORE=virtualjaguar ;;
+  colecovision) CORE=gearcoleco ;;
+  intellivision) CORE=freeintv ;;
+  odyssey2) CORE=o2em ;;
+  vectrex) CORE=vecx ;;
+  3do) CORE=opera ;;
+  neogeocd) CORE=neocd ;;
+  msx) CORE=bluemsx ;;
+  c64) CORE=vice_x64 ;;
+  amiga) CORE=puae ;;
+  atarist) CORE=hatari ;;
+  scummvm) CORE=scummvm ;;
+  easyrpg) CORE=easyrpg ;;
   sega32x) CORE=picodrive ;;
   pcengine) CORE=mednafen_pce_fast ;;
   atari2600) CORE=stella2014 ;;
@@ -82,6 +174,22 @@ esac
 SO=/usr/lib/libretro/${CORE}_libretro.so
 # Quake e Cave Story: o "jogo" e um atalho (.quake, .cavestory) com o caminho do arquivo de verdade na primeira linha
 case "$SIS" in quake|cavestory) R=$(head -1 "$ROM" | tr -d '\r'); [ -n "$R" ] && ROM="$(dirname "$ROM")/$R" ;; esac
+# ScummVM e RPG Maker: o atalho (.scummvm, .easyrpg) tem o nome da pasta do jogo. O ScummVM reconhece o jogo
+# sozinho pela pasta quando recebe um arquivo dela; o EasyRPG abre o RPG_RT.ldb.
+case "$SIS" in scummvm|easyrpg)
+  PASTA="$(dirname "$ROM")/$(head -1 "$ROM" | tr -d '\r')"
+  if [ -d "$PASTA" ]; then
+    if [ "$SIS" = easyrpg ]; then A=$(ls "$PASTA" | grep -i '^rpg_rt\.ldb$' | head -1)
+    else A=$(ls "$PASTA" | grep -iv '\.scummvm$' | while read -r f; do [ -f "$PASTA/$f" ] && { echo "$f"; break; }; done); fi
+    [ -n "$A" ] && ROM="$PASTA/$A"
+  fi ;;
+esac
+# dados dos nucleos novos da v0.22 na pasta de BIOS (copia uma vez)
+[ "$CORE" = bluemsx ] && [ ! -d /userdata/bios/Machines ] && cp -r /usr/share/retroarch/system/Databases /usr/share/retroarch/system/Machines /userdata/bios/
+[ "$CORE" = puae ] && [ ! -d /userdata/bios/uae_data ] && cp -r /usr/share/retroarch/system/uae_data /userdata/bios/
+[ "$CORE" = scummvm ] && [ ! -d /userdata/bios/scummvm ] && cp -r /usr/share/retroarch/system/scummvm /userdata/bios/
+# Atari ST sem o TOS original: o EmuTOS livre no lugar
+[ "$CORE" = hatari ] && [ ! -f /userdata/bios/tos.img ] && cp /usr/share/tos/emutos/tos.img /userdata/bios/tos.img
 # Dolphin e PCSX2 precisam dos arquivos deles (Sys, GameIndex) na pasta de BIOS (copia uma vez)
 [ "$CORE" = dolphin ] && [ ! -d /userdata/bios/dolphin-emu/Sys ] && mkdir -p /userdata/bios/dolphin-emu && cp -r /usr/share/tos/dolphin-emu/Sys /userdata/bios/dolphin-emu/
 [ "$CORE" = pcsx2 ] && [ ! -f /userdata/bios/pcsx2/resources/GameIndex.yaml ] && mkdir -p /userdata/bios/pcsx2/bios && cp -r /usr/share/tos/pcsx2/resources /userdata/bios/pcsx2/

@@ -1,0 +1,9 @@
+config BR2_PACKAGE_GOFFICE
+	bool "goffice"
+	depends on BR2_PACKAGE_LIBGTK3
+	select BR2_PACKAGE_LIBGSF
+	select BR2_PACKAGE_LIBXSLT
+	select BR2_PACKAGE_CAIRO
+	select BR2_PACKAGE_PANGO
+	help
+	  Graficos e formatos de escritorio do Gnumeric.

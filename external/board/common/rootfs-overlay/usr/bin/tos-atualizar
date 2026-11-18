@@ -67,6 +67,14 @@ case "$1" in
       dlivre=$(df -m /userdata | awk 'NR==2 {print $4}')
       grep -q " /userdata tmpfs" /proc/mounts && dlivre=0
       atual_mb=$(du -m $D/tos.squashfs | cut -f1)   # (sem stat: o busybox daqui nao traz)
+      # no boot a versao de agora sai da particao e a nova entra no lugar: tem que caber no espaco das duas juntas.
+      # Com Xbox e PS3 (v0.22) o sistema pode passar do que cabe na SCRAPCADE de 1 GB dos pen drives antigos.
+      novo_mb=$(( ${tam:-0} / 1048576 ))
+      if [ $(( ${livre:-0} + ${atual_mb:-0} )) -lt $(( novo_mb + 20 )) ]; then
+        mount -o remount,ro /boot
+        p 0 "ERRO: a versão nova ($novo_mb MB) não cabe na partição do sistema deste pen drive (1 GB, das versões antigas). Copie seus jogos e saves para o PC e grave o .iso novo: ele cria a partição de 2 GB"
+        exit 1
+      fi
       [ "${dlivre:-0}" -ge $(( precisa + atual_mb + 40 )) ] || { mount -o remount,ro /boot; p 0 "ERRO: falta espaço (precisa de $(( precisa + atual_mb + 40 )) MB livres na SCRAP-DADOS, tem ${dlivre:-0} MB)"; exit 1; }
       APERTADO=1
       T=/userdata/.atualizacao

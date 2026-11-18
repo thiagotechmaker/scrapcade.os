@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_VECX
+	bool "libretro-vecx"
+	help
+	  Nucleo libretro: Vectrex.

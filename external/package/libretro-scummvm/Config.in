@@ -1,0 +1,10 @@
+config BR2_PACKAGE_LIBRETRO_SCUMMVM
+	bool "libretro-scummvm"
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_FREETYPE
+	select BR2_PACKAGE_FLAC
+	select BR2_PACKAGE_LIBVORBIS
+	select BR2_PACKAGE_FAAD2
+	select BR2_PACKAGE_FLUIDSYNTH
+	help
+	  Nucleo libretro: ScummVM (jogos de aventura da LucasArts, Sierra e outros).

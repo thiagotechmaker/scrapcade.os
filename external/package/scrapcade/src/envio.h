@@ -9,10 +9,12 @@
 // So atende a rede local (enderecos privados), como um aparelho de casa.
 #pragma once
 #include "catalogo.h"
+#include "central.h"
 #include "meta.h"
 #include "arquivos.h"
 
 #include <arpa/inet.h>
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <netinet/in.h>
@@ -32,6 +34,38 @@ static std::function<void()> changed;    // avisa o menu (chamado fora da thread
 static void setGames(const std::vector<Game> &g) {
     std::lock_guard<std::mutex> l(mu);
     games = g;
+}
+
+// Pagina em ingles quando o menu esta em ingles (o menu liga isto em Idioma::carregar). So o texto que aparece:
+// "apagar", "mover" etc. tambem sao os comandos entre a pagina e o menu, por isso a troca usa o trecho com as
+// marcas em volta (>apagar<, 'Apagar ') e nunca a palavra solta.
+static std::atomic<bool> ingles{false};
+static std::function<std::string(const std::string &)> traduzNome;   // nome dos consoles, pelo dicionario do menu
+static std::string emIngles(std::string s) {
+    if (!ingles) return s;
+    static const std::vector<std::pair<std::string, std::string>> R = {
+        {"lang=pt-br", "lang=en"}, {">Jogos<", ">Games<"}, {">Arquivos<", ">Files<"},
+        {"Arraste os jogos para cá, ou toque para escolher", "Drag your games here, or tap to choose"},
+        {"Cada jogo vai sozinho para o console certo, e a capa é baixada sozinha.",
+         "Each game goes to the right console by itself, and its cover is downloaded automatically."},
+        {"<h2>Jogos (", "<h2>Games ("}, {">trocar capa<", ">change cover<"}, {">apagar<", ">delete<"},
+        {"': enviado'", "': sent'"}, {"': erro, '", "': error, '"}, {"': erro de rede'", "': network error'"},
+        {"'Apagar '", "'Delete '"}, {"Não dá para desfazer.", "This can't be undone."},
+        {"'capa trocada':'erro'", "'cover changed':'error'"}, {"alt=Carregando", "alt=Loading"},
+        {">Início<", ">Home<"}, {"Pasta vazia", "Empty folder"}, {">baixar<", ">download<"}, {">renomear<", ">rename<"},
+        {">mover<", ">move<"}, {">copiar<", ">copy<"}, {">clonar<", ">clone<"}, {"'Novo nome:'", "'New name:'"},
+        {"' e tudo dentro dela'", "' and everything inside it'"}, {"'Mover ':'Copiar '", "'Move ':'Copy '"},
+        {"abra a pasta de destino e ", "open the destination folder and "}, {">colar aqui<", ">paste here<"},
+        {"escolha uma pasta. ", "choose a folder. "}, {">cancelar<", ">cancel<"},
+        {"Abra uma pasta primeiro.", "Open a folder first."}, {"'Nome da pasta nova:'", "'New folder name:'"},
+        {">Nova pasta<", ">New folder<"}, {"Enviar arquivos para esta pasta", "Upload files to this folder"},
+        {"'Feito.'", "'Done.'"}, {"'Erro: '", "'Error: '"}, {"alt=Aguarde", "alt=Wait"},
+        {"ScrapCade - arquivos", "ScrapCade - files"},
+    };
+    for (auto &r : R)
+        for (size_t p = s.find(r.first); p != std::string::npos; p = s.find(r.first, p + r.second.size()))
+            s.replace(p, r.first.size(), r.second);
+    return s;
 }
 
 static std::string html(const std::string &s) {
@@ -92,6 +126,10 @@ static std::string receiveFile(int fd, std::string pre, long long length, const 
     std::string tmp = dest + PARTIAL;
     FILE *f = fopen(tmp.c_str(), "wb");
     if (!f) return "500 Nao gravou";
+    // na central de downloads: "Pelo celular" com o nome e a barra (arquivo pequeno, como capa, nao aparece)
+    std::string nome = dest.substr(dest.rfind('/') + 1), cid = "web:" + nome;
+    bool mostra = length > 2 * 1024 * 1024;
+    if (mostra) Central::inicia(cid, "Pela página: " + nome, length);
     long long left = length;
     if (!pre.empty()) {
         size_t n = std::min<long long>(left, (long long)pre.size());
@@ -104,13 +142,15 @@ static std::string receiveFile(int fd, std::string pre, long long length, const 
         if (n <= 0) break;
         if (fwrite(b.data(), 1, size_t(n), f) != size_t(n)) break;
         left -= n;
+        if (mostra) Central::avanca(cid, length - left);
     }
     fflush(f);
     fsync(fileno(f));
     fclose(f);
-    if (left > 0) { remove(tmp.c_str()); return "500 Envio incompleto"; }
+    if (left > 0) { remove(tmp.c_str()); if (mostra) Central::termina(cid, false, "Envio incompleto"); return "500 Envio incompleto"; }
     remove(dest.c_str());
-    if (rename(tmp.c_str(), dest.c_str()) != 0) { remove(tmp.c_str()); return "500 Nao gravou"; }
+    if (rename(tmp.c_str(), dest.c_str()) != 0) { remove(tmp.c_str()); if (mostra) Central::termina(cid, false, "Não gravou"); return "500 Nao gravou"; }
+    if (mostra) Central::termina(cid, true, "Recebido");
     return "";
 }
 
@@ -185,11 +225,11 @@ static const char *FILES_SCRIPT =
     "abre('roms')";
 
 static std::string filesPage() {
-    return head("ScrapCade - arquivos", true) +
+    return emIngles(head("ScrapCade - arquivos", true) +
            "<div id=cam></div>"
            "<div class=bar><button onclick='nova()'>Nova pasta</button><button onclick=\"document.getElementById('up').click()\">"
            "Enviar arquivos para esta pasta</button><input id=up type=file multiple></div>"
-           "<div id=clip></div><div id=msg></div><table id=t></table></main><script>" + FILES_SCRIPT + "</script></html>";
+           "<div id=clip></div><div id=msg></div><table id=t></table></main><script>" + FILES_SCRIPT + "</script></html>");
 }
 
 static const char *SCRIPT =
@@ -223,16 +263,17 @@ static std::string page() {
     std::string rows;
     for (auto &g : gs) {
         std::string meta = Meta::line(g);
-        rows += "<tr><td>" + html(g.title) + "<div class=c>" + html(g.sys->name) + (meta.empty() ? "" : "  •  " + html(meta)) +
+        std::string sn = ingles && traduzNome ? traduzNome(g.sys->name) : g.sys->name;
+        rows += "<tr><td>" + html(g.title) + "<div class=c>" + html(sn) + (meta.empty() ? "" : "  •  " + html(meta)) +
                 "</div></td><td class=b><button class=p data-k=\"" + html(g.key()) + "\">trocar capa</button>"
                 "<button class=x data-k=\"" + html(g.key()) + "\" data-t=\"" + html(g.title) + "\">apagar</button></td></tr>";
     }
-    return head("ScrapCade", false) +
+    return emIngles(head("ScrapCade", false) +
            "<label id=d>Arraste os jogos para cá, ou toque para escolher<input id=f type=file multiple></label><div id=s></div>"
            "<img id=cg src=/carregando.gif alt=Carregando style='display:none;height:36px;margin:8px 0'>"
                  "<div class=c>Cada jogo vai sozinho para o console certo, e a capa é baixada sozinha.</div>"
                  "<h2>Jogos (" + std::to_string(gs.size()) + ")</h2><table>" + rows + "</table></main><script>" + SCRIPT +
-           "</script></html>";
+           "</script></html>");
 }
 
 // So a rede de casa: 10.x, 172.16-31.x, 192.168.x, 127.x e link-local

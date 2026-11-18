@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/logo.png" width="560" alt="ScrapCade OS"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.21.0--beta-orange" alt="versão v0.21.0-beta">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.22.0--beta-orange" alt="versão v0.22.0-beta">
   <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686-informational" alt="arquitetura x86_64 e i686">
   <img src="https://img.shields.io/badge/base-Linux%206.12%20%2B%20Buildroot%202026.02-lightgrey" alt="base Linux 6.12 e Buildroot 2026.02">
   <img src="https://img.shields.io/badge/licen%C3%A7a-GPLv3-blue" alt="licença GPLv3">
@@ -35,11 +35,14 @@ Os jogos das capturas são de fãs, com licença livre ([µCity](https://github.
 
 <details><summary>Ver tudo o que o sistema faz</summary>
 
-- **Consoles:** NES, Super Nintendo, Nintendo 64, Game Boy (Color, Advance), Nintendo DS, Virtual Boy; Mega Drive, Master System, Game Gear, Sega CD, 32X, Saturn, Dreamcast; PlayStation, PSP; PC Engine (e CD); Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan; fliperama (FBNeo e MAME 2003-Plus) e Neo Geo; PC antigo (DOS), Doom, Quake, Cave Story, Half-Life (com a sua cópia da Steam) e os ports do PortMaster. Só na versão de 64 bits: PlayStation 2, GameCube, Wii e 3DS.
+- **Consoles:** NES, Super Nintendo, Nintendo 64, Game Boy (Color, Advance), Nintendo DS, Virtual Boy; SG-1000, Mega Drive, Master System, Game Gear, Sega CD, 32X, Saturn, Dreamcast; PlayStation, PSP; PC Engine (e CD); Atari 2600, 5200, 7800, Lynx e Jaguar; ColecoVision, Intellivision, Odyssey², Vectrex, 3DO; Neo Geo, Neo Geo CD, Neo Geo Pocket, WonderSwan; fliperama (FBNeo e MAME 2003-Plus).
+- **Computadores e jogos de PC:** MSX, Commodore 64, Amiga, Atari ST, PC antigo (DOS), Doom, Quake, Cave Story, Half-Life (com a sua cópia da Steam), aventuras do ScummVM, jogos do RPG Maker (EasyRPG) e os ports do PortMaster.
+- **Só na versão de 64 bits:** PlayStation 2, PlayStation 3, Xbox, GameCube, Wii e 3DS.
 - **Menu:** carrossel de capas com filtros, "Continuar jogando" com a foto de onde parou, favoritos, coleções, perfis com avatar, 8 temas ou uma imagem sua, sons, proteção de tela com as cenas dos jogos, em português ou inglês.
 - **Jogando:** voltar de onde parou, pacote completo de filtros (um por console), molduras, proporção, run-ahead, FPS na tela, emulador de cada console, jogar online, conquistas (RetroAchievements). Select + Start sai; Select + X abre o menu do emulador; Select + Y tira print.
 - **Jogos:** jogos grátis de licença livre, trazer do pen drive, gerenciador de arquivos, BIOS dos consoles, cópia dos saves.
-- **Sistema:** Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, saves sincronizados (Syncthing), botão de energia com menu, fuso horário, desempenho ajustado ao PC, atualização A/B (se a nova não ligar, volta para a anterior), instalar no HD ou ao lado do Windows, modo desktop com navegador.
+- **Sistema:** Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, saves sincronizados (Syncthing), botão de energia com menu, fuso horário, desempenho ajustado ao PC, atualização A/B (se a nova não ligar, volta para a anterior), instalar no HD ou ao lado do Windows, página do celular em português ou inglês.
+- **Modo desktop:** navegador, gerenciador de arquivos, editor de texto, planilha (Gnumeric), leitor de PDF e imagens, player de vídeo e música.
 
 </details>
 
@@ -64,7 +67,7 @@ Para ligar: PC de 64 bits com 2 GB de memória, ou PC de 32 bits (Pentium 4, Pen
 
 </details>
 
-**Limitações:** PS2, GameCube, Wii e 3DS só na versão de 64 bits e pedem um PC forte; poucos ports do PortMaster rodam em PC; sem Secure Boot.
+**Limitações:** PS2, PS3, Xbox, GameCube, Wii e 3DS só na versão de 64 bits e pedem um PC forte (o PS3 pede processador com SSE4.1 e de preferência 4 núcleos); Xbox 360 ainda não (o emulador não roda jogos no Linux); poucos ports do PortMaster rodam em PC; sem Secure Boot.
 
 ## Estrutura de pastas
 

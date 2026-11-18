@@ -6,6 +6,27 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 
 ## [Unreleased]
 
+## [0.22.0-beta] - 2026-11-18
+
+### Adicionado
+- Xbox (xemu) e PlayStation 3 (RPCS3), só na versão de 64 bits. Os dois vêm dentro do sistema, das versões oficiais conferidas pelo hash. A BIOS e o MCPX do Xbox e o firmware do PS3 (`PS3UPDAT.PUP`, do site da Sony) vão na pasta `bios`; o HD vazio do Xbox é baixado do projeto xemu no primeiro jogo. Select + Start fecha os dois, como nos outros consoles.
+- Consoles leves novos, nas duas versões: SG-1000, Atari 5200 e Jaguar, ColecoVision, Intellivision, Odyssey², Vectrex, 3DO e Neo Geo CD.
+- Computadores antigos: MSX, Commodore 64, Amiga (com o AROS livre embutido no lugar do Kickstart) e Atari ST (com o EmuTOS livre no lugar do TOS).
+- ScummVM (jogos de aventura) e EasyRPG (jogos do RPG Maker 2000/2003): o jogo é uma pasta, e o menu cria o atalho sozinho.
+- Beneath a Steel Sky e Flight of the Amazon Queen nos Jogos grátis (freeware oficial, do site do ScummVM).
+- Aviso na tela de abertura quando o console é pesado para o PC (o jogo abre mesmo assim).
+- Modo desktop: editor de texto (L3afpad), planilha (Gnumeric) e "Imagens e prints" e "Vídeos e músicas" no menu; PDF, imagens, vídeos, músicas, textos e planilhas abrem com dois cliques no gerenciador de arquivos.
+- Página do celular em inglês quando o menu está em inglês.
+- Capas para Cave Story, Quake e os consoles novos: quando o nome exato não está no acervo, o menu usa o nome mais próximo.
+
+### Corrigido
+- Game Gear na versão de 32 bits: não abria (o emulador escolhido não existe nela); agora usa o PicoDrive.
+- CDs de Sega CD e PC Engine CD enviados pela página ou pelo pen drive iam para a pasta do PlayStation; agora vão para o console certo, com as faixas junto. O organizador espera 10 s depois que o arquivo chega, para o `.bin` e o `.cue` do mesmo disco chegarem juntos.
+
+### Alterado
+- A atualização avisa quando a versão nova não cabe num pen drive antigo (partição do sistema de 1 GB) e diz como resolver, em vez de tentar e voltar atrás.
+- Xbox 360 ficou de fora: o emulador (Xenia) ainda não roda jogos no Linux.
+
 ## [0.21.0-beta] - 2026-11-17
 
 Esta versão junta o que estava planejado para a v0.21 e a v0.22.

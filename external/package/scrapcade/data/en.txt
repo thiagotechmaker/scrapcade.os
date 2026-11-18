@@ -474,3 +474,53 @@ Modo desktop	Desktop mode
 mudar	change
 apagar	delete
 Apagar	Delete
+os jogos de 5200 não abrem	5200 games don't open
+os jogos de ColecoVision não abrem	ColecoVision games don't open
+os jogos de Intellivision não abrem	Intellivision games don't open
+os jogos de Odyssey² não abrem	Odyssey² games don't open
+os jogos de 3DO não abrem	3DO games don't open
+os jogos de Neo Geo CD não abrem	Neo Geo CD games don't open
+os jogos de Xbox não abrem	Xbox games don't open
+os jogos de PS3 não abrem (o firmware oficial é baixado no site da Sony)	PS3 games don't open (the official firmware is downloaded from Sony's website)
+usa o AROS livre embutido (a maioria dos jogos roda; alguns pedem o Kickstart original)	uses the built-in free AROS (most games run; some need the original Kickstart)
+usa o EmuTOS livre que vem no sistema	uses the free EmuTOS that comes with the system
+firmware oficial do PS3	official PS3 firmware
+BIOS do Xbox	Xbox BIOS
+TOS da Atari	Atari TOS
+só roda no ScrapCade OS de 64 bits.	only runs on the 64-bit ScrapCade OS.
+Este processador não tem SSE4.1: o PS3 não abre nele.	This processor has no SSE4.1: PS3 doesn't run on it.
+PS3 pede um PC forte (4 núcleos ou mais e placa de vídeo): o jogo pode ficar lento.	PS3 needs a strong PC (4 or more cores and a graphics card): the game may run slowly.
+Este PC é fraco para este console: o jogo pode ficar lento.	This PC is weak for this console: the game may run slowly.
+falta na pasta bios:	missing from the bios folder:
+Para jogar Xbox,	To play Xbox,
+Para jogar PS3,	To play PS3,
+o HD vazio do Xbox (sem internet? ele é baixado no primeiro jogo)	the blank Xbox hard disk (no internet? it is downloaded with the first game)
+firmware oficial, do site da Sony	official firmware, from Sony's website
+Esse jogo não abriu. Veja logs/xbox.log	This game didn't open. See logs/xbox.log
+Esse jogo não abriu. Veja logs/ps3.log	This game didn't open. See logs/ps3.log
+Planilhas	Spreadsheets
+Imagens e prints	Images and screenshots
+Vídeos e músicas	Videos and music
+não cabe na partição do sistema deste pen drive (1 GB, das versões antigas). Copie seus jogos e saves para o PC e grave o .iso novo: ele cria a partição de 2 GB	doesn't fit in this USB stick's system partition (1 GB, from older versions). Copy your games and saves to a PC and write the new .iso: it creates the 2 GB partition
+Downloads e cópias	Downloads and copies
+chegando)	arriving)
+Nada chegando agora.	Nothing arriving right now.
+Ligue um pen drive com jogos, envie pela página do celular ou baixe nos Jogos grátis.	Plug in a USB stick with games, send them from the phone page or download Free games.
+fechar (o que está chegando continua)	close (what's arriving keeps going)
+Pen drive para o disco	USB stick to disk
+Pela página:	From the page:
+Jogo grátis:	Free game:
+baixando de	downloading from
+Pronto: no	Done: in
+Recebido	Received
+Envio incompleto	Incomplete upload
+Não gravou	Could not save
+Versão nova do ScrapCade OS	New ScrapCade OS version
+arquivos copiados do pen drive	files copied from the USB stick
+arquivo copiado do pen drive	file copied from the USB stick
+copiados. Confira o espaço livre e o pen drive.	copied. Check the free space and the USB stick.
+os jogos de Saturn não abrem	Saturn games don't open
+os jogos de PS2 não abrem	PS2 games don't open
+qualquer BIOS do seu PS2	any BIOS from your PS2
+EUA e Europa	USA and Europe
+Japão (Rev H)	Japan (Rev H)

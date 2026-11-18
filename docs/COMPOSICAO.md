@@ -211,8 +211,19 @@ Código em `external/package/scrapcade/src/`:
 | DOSBox Pure | commit fixo | PC antigo (DOS), direto do `.zip` |
 | **Xash3D FWGS** + **hlsdk-portable** | commit fixo | Half-Life (os dados vêm da cópia da Steam do usuário) |
 | **PortMaster** | baixado na primeira vez | Ports de jogos de PC (feitos para portáteis ARM: poucos rodam em PC) |
+| a5200, Virtual Jaguar | commit fixo (Lakka 6.1) | Atari 5200 e Jaguar |
+| Gearcoleco, FreeIntv, O2EM, vecx | commit fixo (Lakka 6.1) | ColecoVision, Intellivision, Odyssey², Vectrex |
+| Opera, NeoCD | commit fixo (Lakka 6.1) | 3DO e Neo Geo CD |
+| blueMSX, VICE (x64), PUAE, Hatari | commit fixo (Lakka 6.1) | MSX, Commodore 64, Amiga (AROS livre embutido), Atari ST |
+| **EmuTOS** | 1.4 (zip oficial, hash conferido) | TOS livre do Atari ST, usado quando o usuário não tem o original |
+| ScummVM (libretro) | commit fixo (Lakka 6.1) | Jogos de aventura (LucasArts, Sierra, Revolution...) |
+| EasyRPG Player + liblcf | commit fixo (Lakka 6.1) | Jogos do RPG Maker 2000/2003 |
+| **xemu** | 0.8.139 (AppImage oficial, hash conferido) | Xbox, só no 64 bits; abre num X só dele |
+| **RPCS3** | build 20550 (AppImage oficial, hash conferido) | PlayStation 3, só no 64 bits; abre num X só dele |
 
-Na versão de 32 bits entram os núcleos leves no lugar dos pesados: FCEUmm (NES), Snes9x 2010, PicoDrive (Mega Drive) e gpSP (GBA). O ScrapCade e o `tos-jogar` usam o primeiro núcleo instalado de cada console.
+Na versão de 32 bits entram os núcleos leves no lugar dos pesados: FCEUmm (NES), Snes9x 2010, PicoDrive (Mega Drive, Master System, Game Gear, SG-1000, Sega CD) e gpSP (GBA). O ScrapCade e o `tos-jogar` usam o primeiro núcleo instalado de cada console. Os emuladores que vêm prontos de fora (xemu, RPCS3, EmuTOS, Syncthing) usam versões de pelo menos duas semanas antes da compilação, com o hash da versão oficial fixado no pacote.
+
+**Modo desktop:** Fluxbox, PCManFM, navegador (MiniBrowser no 64 bits, NetSurf no 32), L3afpad (texto), Gnumeric 1.12.62 com goffice e libgsf (planilhas), MuPDF (PDF), feh (imagens) e mpv (vídeo e música); os tipos de arquivo abrem pelo `mimeapps.list`.
 
 Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
@@ -223,7 +234,7 @@ Configuração central: `/usr/share/tos/retroarch.cfg`. Ela define:
 
 **Para pesquisar:**
 
-- **Emuladores que faltam:** GameCube e Wii (Dolphin), PS2 (PCSX2), 3DS (Azahar), PC antigo (ScummVM), Xbox (xemu), PS Vita (Vita3K) e consoles leves (PC Engine, Atari, Neo Geo Pocket, WonderSwan, Virtual Boy, MSX).
+- **Emuladores que faltam:** Xbox 360 (Xenia, quando rodar no Linux), Wii U (Cemu), PS Vita (Vita3K) e arcade Model 3 (Supermodel), deixados de fora em 18/11/2026.
 - **Perfis por máquina:** escolher os ajustes de cada emulador pelo desempenho do PC.
 - **RetroAchievements** e **netplay**.
 - **DuckStation** para PS1, mais preciso.

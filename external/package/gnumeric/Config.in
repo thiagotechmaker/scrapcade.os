@@ -1,0 +1,7 @@
+config BR2_PACKAGE_GNUMERIC
+	bool "gnumeric"
+	depends on BR2_PACKAGE_LIBGTK3
+	select BR2_PACKAGE_GOFFICE
+	select BR2_PACKAGE_FRIBIDI
+	help
+	  Planilha leve (abre .xls, .xlsx, .ods e .csv).

@@ -16,10 +16,11 @@ for tentativa in 1 2; do   # o QEMU as vezes sai sozinho no inicio: uma segunda 
   U=teste/x-usb.img; usbpen $U
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-    opt 2; k ret; sleep 4; shot x_nav_raiz
+    opt 3; k ret; sleep 4; shot x_nav_raiz
     k ret; sleep 3; k ret; sleep 3; shot x_nav_jogo; k ret; sleep 15; shot x_nav_copiou
     k esc; sleep 1; k esc; sleep 1; k esc; sleep 1; k esc; sleep 20; shot x_carrossel_pen
-    opt 21; k ret; sleep 3; k ret; sleep 3; k down; sleep 1; k ret; sleep 8; shot x_tema_proprio
+    # (a lista do pen drive demora a montar com a maquina ocupada: o A de 1 s depois as vezes se perdia)
+    opt 22; k ret; sleep 3; k ret; sleep 4; k down; sleep 2; k ret; sleep 12; shot x_tema_proprio
     opt 0; k ret; sleep 3; k right; k ret; sleep 3; k m a r i a; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
     opt 0; k ret; sleep 3; shot x_perfis_dois
     k delete; sleep 2; shot x_perfil_confirma; k ret; sleep 4; shot x_perfil_apagado
@@ -89,7 +90,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
     sleep 150; shot x_ota_avisou                     # de fabrica so avisa que ha versao nova (nao baixa sozinho)
-    opt 42; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
+    opt 43; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
     k ret; sleep 180; shot x_ota_baixou              # A: baixa, confere e troca (a de agora fica como anterior)
     rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
     k ret; sleep 200; shot x_ota_reiniciou           # A: reinicia na versao nova
@@ -127,11 +128,11 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
     opt 1; k ret; sleep 3; shot x_gratis
     k ret; sleep 40; k down; k ret; sleep 40; k down; k ret; sleep 40; shot x_gratis_baixou
     k esc; sleep 2; k esc; sleep 45; shot x_carrossel_gratis
-    opt 10; k ret; sleep 25; shot x_copia_saves; fecha
-    opt 3; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
+    opt 11; k ret; sleep 25; shot x_copia_saves; fecha
+    opt 4; k ret; sleep 3; shot x_arq_raizes; k ret; sleep 3; k delete; sleep 2; shot x_arq_acoes
     k ret; sleep 2; k esc; sleep 2; k down; k ret; sleep 3; shot x_arq_colar
     k x; sleep 10; shot x_arq_colou; k esc; sleep 1; fecha   # 3 Esc: pasta, raizes, painel
-    opt 4; k ret; sleep 3; shot x_ejetou
+    opt 5; k ret; sleep 3; shot x_ejetou
     echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio \
       -device qemu-xhci -drive if=none,id=pen,file=$U,format=raw -device usb-storage,drive=pen \
       -nic user,model=e1000 > teste/q12.log 2>&1
@@ -162,7 +163,9 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
     sleep 40; k right; sleep 3; shot x_quebrado_sel
     k ret; sleep 12; shot x_nao_abriu; sleep 10
     opt 1; k ret; sleep 3; k down down down; sleep 1; k ret; sleep 120; shot x_freedoom_baixou
-    k esc; sleep 2; k esc; sleep 45; k right; sleep 3; shot x_freedoom_carrossel
+    # central de downloads (v0.22): a opcao logo abaixo de Jogos gratis mostra o Freedoom que acabou de chegar
+    k esc; sleep 2; k down; sleep 1; k ret; sleep 3; shot x_central; k esc; sleep 2
+    k esc; sleep 45; k right; sleep 3; shot x_freedoom_carrossel
     k ret; sleep 30; shot x_freedoom_jogando; echo "sendkey esc 1000"; sleep 60
     k c; sleep 5; shot x_troca_rapida   # Start/C: Continuar jogando com a foto do ponto salvo
     echo quit ) | timeout 700 $Q $EFI -drive file=$D,format=raw,if=virtio \
@@ -176,10 +179,10 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
   D=teste/x-painel.img; cp $I/disk.img $D; truncate -s 3G $D
   ( sleep 30; senha; sleep 60
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 20
-    opt 12; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
-    opt 5; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
-    opt 34; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
-    opt 50; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
+    opt 13; sleep 1; shot x_painel_jogando; k right right; sleep 1; shot x_painel_filtro_tv; fecha
+    opt 6; k right; sleep 2; shot x_painel_ordenar; k left; sleep 1; fecha
+    opt 35; k right; sleep 2; fecha; sleep 2; shot x_relogio_12h
+    opt 51; k ret; sleep 2; shot x_padrao_confirma; k esc; sleep 1; fecha
     echo system_powerdown; sleep 5; shot x_menu_energia; k esc; sleep 2   # botao de energia: menu
     echo quit ) | timeout 400 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q15.log 2>&1
   [ -f teste/z_x_padrao_confirma.ppm ] && break

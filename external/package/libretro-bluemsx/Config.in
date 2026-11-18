@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_BLUEMSX
+	bool "libretro-bluemsx"
+	help
+	  Nucleo libretro: MSX, MSX2 e SVI.

@@ -1,0 +1,5 @@
+config BR2_PACKAGE_RPCS3_BIN
+	bool "rpcs3-bin"
+	depends on BR2_x86_64
+	help
+	  RPCS3: emulador do PlayStation 3 (AppImage oficial, aberta na imagem).

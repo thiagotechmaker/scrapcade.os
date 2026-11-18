@@ -24,7 +24,8 @@ ESPERADO = [
     (r"ota anterior guardada: sim", "atualizacao: guardou a versao anterior"),
     (r"ota confirmada: sim", "atualizacao: reiniciou na nova e confirmou"),
     (r"ao lado do Windows: 5 particoes", "ao lado do Windows: 2 particoes novas, as 3 do Windows intactas"),
-    (r"consoles novos: mastersystem pcengine atari2600", "consoles novos: cada jogo na pasta certa"),
+    (r"consoles novos: mastersystem pcengine atari2600 msx c64 amiga atarist sg1000 colecovision segacd",
+     "consoles novos (v0.21 e v0.22) e CD de Sega CD: cada jogo na pasta certa"),
 ]
 
 

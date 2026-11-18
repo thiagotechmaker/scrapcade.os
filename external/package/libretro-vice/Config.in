@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_VICE
+	bool "libretro-vice"
+	help
+	  Nucleo libretro: Commodore 64.

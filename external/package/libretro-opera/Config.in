@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_OPERA
+	bool "libretro-opera"
+	help
+	  Nucleo libretro: 3DO.

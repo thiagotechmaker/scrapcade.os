@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_O2EM
+	bool "libretro-o2em"
+	help
+	  Nucleo libretro: Odyssey2 / Videopac.
