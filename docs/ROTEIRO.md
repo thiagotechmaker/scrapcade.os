@@ -2,22 +2,12 @@
 
 O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela frente, na ordem combinada. Cada versão só é publicada depois de passar na bateria automática (`tests/testar.sh`).
 
-## v0.21.0-beta (próxima: junta o que era a v0.21 e a v0.22)
+## v0.22.0-beta (próxima)
 
-- **Consoles novos:** Sega CD, 32X e Master System como consoles próprios; PC Engine/TurboGrafx; Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan e Virtual Boy. **MAME 2003-Plus** no fliperama, junto do FBNeo.
-- **Jogos livres nativos:** Cave Story (NXEngine), Quake shareware (TyrQuake) e mais homebrews nos Jogos grátis.
-- **Shaders:** o pacote completo do RetroArch, escolhido por console. **Molduras** (bezels) opcionais no painel.
-- **Coleções** personalizadas nos filtros. **ScreenScraper** opcional, com a conta do usuário (descrições, logos, vídeos).
-- **Netplay** (jogar online), **print** por atalho.
-- **Instalar ao lado do Windows** (dual boot), além do disco inteiro; liga no último sistema usado, com um menu de 3 s para trocar.
-- **Modo desktop** com um navegador moderno no lugar do NetSurf.
-- **Fuso horário** no painel (Brasília de fábrica).
-- **Boot sem texto nenhum:** calar a frase do initrd ("procurando o sistema no pen drive...") fora do modo de diagnóstico.
-- **Fliperama do iChroma:** troca rápida, coleções, atualizar o app pela página do navegador, fuso no painel (e sons do menu, se o som da placa voltar).
-- **PS2, GameCube, Wii e 3DS** (LRPS2, Dolphin, Citra), só na versão de 64 bits.
-- **Conquistas** (RetroAchievements) e **saves sincronizados** (Syncthing).
-- **Idioma inglês** no menu, no painel e na página.
-- **Desempenho automático:** o sistema mede o PC no primeiro boot e escolhe os ajustes de cada emulador.
+- **ScreenScraper** opcional, com a conta do usuário (descrições, logos, vídeos). A API pede uma credencial de desenvolvedor do projeto, que ainda falta pedir ao ScreenScraper.
+- **Página do celular em inglês**, como o menu e o painel.
+- **Capas dos jogos grátis novos** (Cave Story e Quake).
+- **Fliperama do iChroma:** publicar a v0.5.0-beta (troca rápida, coleções, fuso, atualizar o app pela página) depois do teste no aparelho; sons do menu, se o som da placa voltar.
 
 ## Depois
 
