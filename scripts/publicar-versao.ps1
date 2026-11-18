@@ -5,7 +5,7 @@
 #   - tos.squashfs, bzImage, initrd.gz           usados pela atualizacao automatica (Sistema > Atualizar o ScrapCade OS)
 #   - BUILD_ID                                   numero da compilacao: o atualizador compara com o do PC
 #   - SHA256SUMS                                 confere todos
-#   - os mesmos de 32 bits (-32 no nome), se a compilacao de 32 bits for a mesma e passou no teste dela
+#   - os mesmos de 32 bits (-32 no nome): a compilacao de 32 bits da mesma versao, aprovada no teste dela (ou -So64)
 # Travas: so publica o que passou nos testes automaticos, com a versao no CHANGELOG e sem tag repetida.
 param([string]$Repo = "thiagotechmaker/scrapcade.os", [switch]$So64,
       [string]$Pasta = (Join-Path (Split-Path $PSScriptRoot) "output\x86_64\images\atualizacao"))
@@ -40,15 +40,22 @@ $notas = "**ScrapCade OS v$v** para PC de 64 bits (BIOS antigo e UEFI).`n`n" +
   "**Já tem o ScrapCade:** ele avisa sozinho e atualiza em *Sistema > Atualizar o ScrapCade OS*, sem perder jogos nem saves. Se a versão nova não ligar, volta sozinho para a anterior. " +
   "Quem está na v0.19.0-beta ou antes precisa gravar o ``.iso`` uma vez (o atualizador antigo só reconhece tags de data)."
 
-# 32 bits: vai junto quando e a mesma compilacao (bash build-i686.sh <BUILD_ID>); sem a aprovacao dela, para (ou -So64)
-$P32 = $Pasta -replace "x86_64", "i686"
-if ((Test-Path "$P32\BUILD_ID") -and (Get-Content "$P32\BUILD_ID").Trim() -eq $b) {
+# 32 bits: sempre vai junto, a menos que -So64. Vale a compilacao de 32 bits da mesma versao, aprovada no teste dela
+# (teste/aprovado-32 com o BUILD_ID dela). O numero pode ser outro, desde que nao seja menor que o de 64 bits: o
+# atualizador compara o PC com o BUILD_ID publicado (o de 64 bits), e um 32 bits menor pediria a mesma versao de novo.
+if (-not $So64) {
+  $P32 = $Pasta -replace "x86_64", "i686"
+  $sem32 = "Para subir so a de 64 bits: -So64"
+  foreach ($f in "BUILD_ID", "VERSION") { if (-not (Test-Path "$P32\$f")) { Para "falta $P32\$f (compile: bash build-i686.sh $b). $sem32" } }
+  $b32 = (Get-Content "$P32\BUILD_ID").Trim()
+  if ((Get-Content "$P32\VERSION").Trim() -ne $v) { Para "a compilacao de 32 bits $b32 e de outra versao: compile de novo (bash build-i686.sh $b). $sem32" }
   $ap32 = Join-Path $raiz "teste/aprovado-32"
-  if ((Test-Path $ap32) -and (Get-Content $ap32).Trim() -eq $b) {
-    $iso32 = "scrapcade-os-v$v-pc-32bits.iso"
-    $arq += "tos-32.squashfs","bzImage-32","initrd-32.gz","SHA256SUMS-32",$iso32 | ForEach-Object { Join-Path $P32 $_ }
-    $notas += "`n`n**PC de 32 bits** (Pentium 4, Pentium M, Atom): ``$iso32``. Leva os emuladores leves (sem PS2, GameCube, PSP, Saturn e Dreamcast)."
-  } elseif (-not $So64) { Para "a compilacao de 32 bits $b nao passou no teste dela (bash tests/testar-32.sh). Para subir so a de 64 bits: -So64" }
+  if (-not (Test-Path $ap32) -or (Get-Content $ap32).Trim() -ne $b32) { Para "a compilacao de 32 bits $b32 nao passou no teste dela (bash tests/testar-32.sh). $sem32" }
+  if ([int64]$b32 -lt [int64]$b) { Para "a compilacao de 32 bits ($b32) e mais velha que a de 64 bits ($b): o atualizador ofereceria a mesma versao de novo. Compile com o mesmo numero: bash build-i686.sh $b" }
+  if ($b32 -ne $b) { Write-Host "32 bits: compilacao $b32 (a de 64 bits e $b), aprovada no teste dela" }
+  $iso32 = "scrapcade-os-v$v-pc-32bits.iso"
+  $arq += "tos-32.squashfs","bzImage-32","initrd-32.gz","SHA256SUMS-32",$iso32 | ForEach-Object { Join-Path $P32 $_ }
+  $notas += "`n`n**PC de 32 bits** (Pentium 4, Pentium M, Atom): ``$iso32``. Leva os emuladores leves (sem PS2, GameCube, Wii, 3DS, PSP, Saturn e Dreamcast)."
 }
 $notas += "`n`nJogos, BIOS e ROMs não acompanham o sistema.`n`n### O que mudou`n" + ($secao -join "`n").Trim()
 foreach ($f in $arq) { if (-not (Test-Path $f)) { Para "falta o arquivo $f" } }
