@@ -1389,7 +1389,7 @@ static std::string optLabel(int i) {
                                                  : "Energia:   (fixa neste computador)";
     case OPT_JOGOS: return "Trazer jogos do pen drive";
     case OPT_ARQUIVOS: return "Gerenciador de arquivos";
-    case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
+    case OPT_GRATIS: return "Jogos grátis";
     case OPT_CENTRAL: {
         int n = Central::andando();
         return n ? "Downloads e cópias   (" + std::to_string(n) + " chegando)" : std::string("Downloads e cópias");
@@ -1497,7 +1497,7 @@ static const char *optAjuda(int o) {
     case OPT_DESLIGAR: return "Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.";
     case OPT_PADRAO: return "Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.";
     }
-    if (o == OPT_GRATIS) return "Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.";
+    if (o == OPT_GRATIS) return "Jogos que os autores liberaram de graça: de fãs, freeware e shareware (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa da fonte oficial, confere e coloca no console certo.";
     if (o == OPT_EJETAR) return "Solta o pen drive com segurança antes de tirar (grava o que ainda faltava). Para usar de novo, tire e coloque.";
     if (o == OPT_BACKUP) return "Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.";
     if (o == OPT_AUTOUPD) return "Ligado: quando sai versão nova, o ScrapCade OS baixa sozinho enquanto você joga e só avisa para reiniciar. Desligado: só avisa, e você atualiza em Atualizar o ScrapCade OS.";
@@ -2568,7 +2568,7 @@ static void drawGratis() {
     std::vector<std::string> L;
     std::vector<uint32_t> C;
     auto add = [&](const std::string &t, uint32_t c = 0xFF2B2E33) { L.push_back(t); C.push_back(c); };
-    add("Jogos de fãs com licença livre: pode baixar, jogar e passar adiante.", 0xFF5E6269);
+    add("Jogos que os autores liberaram de graça: pode baixar, jogar e passar adiante.", 0xFF5E6269);
     add("");
     for (int i = 0; i < NGRATIS; i++) {
         const Gratis &g = GRATIS[i];
@@ -2577,7 +2577,7 @@ static void drawGratis() {
             i == gratisSel ? 0xFF1E9C4A : 0xFF2B2E33);
     }
     add("");
-    add(msg.empty() ? "A baixa do site oficial do autor e confere antes de colocar no console." : msg,
+    add(msg.empty() ? "A baixa da fonte oficial e confere antes de colocar no console." : msg,
         msg.rfind("Não", 0) == 0 || msg.rfind("O arquivo", 0) == 0 ? 0xFFD0362B : 0xFF1E9C4A);
     float h = 22 * u + 16 * u + L.size() * lh + 26 * u;
     float x = (G.W - w) / 2, y = (G.H - h) / 2;

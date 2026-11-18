@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/logo.png" width="560" alt="ScrapCade OS"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.22.0--beta-orange" alt="versão v0.22.0-beta">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.22.1--beta-orange" alt="versão v0.22.1-beta">
   <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686-informational" alt="arquitetura x86_64 e i686">
   <img src="https://img.shields.io/badge/base-Linux%206.12%20%2B%20Buildroot%202026.02-lightgrey" alt="base Linux 6.12 e Buildroot 2026.02">
   <img src="https://img.shields.io/badge/licen%C3%A7a-GPLv3-blue" alt="licença GPLv3">
@@ -25,11 +25,13 @@ Jogos, BIOS e ROMs não acompanham o sistema: mande os seus pelo navegador do ce
 
 <details><summary>Ver mais capturas</summary>
 
-<p align="center"><img src="docs/capturas/11_painel_sistema.png" width="49%" alt="Painel Sistema"> <img src="docs/capturas/10_perfil_avatar.png" width="49%" alt="Perfis com avatar"></p>
-<p align="center"><img src="docs/capturas/16_freedoom.png" width="49%" alt="Freedoom rodando"> <img src="docs/capturas/1_menu_de_boot.png" width="49%" alt="Menu de boot"></p>
-<p align="center"><img src="docs/capturas/17_continuar_jogando.png" width="49%" alt="Coleção Continuar jogando"> <img src="docs/capturas/18_boot_animado.png" width="49%" alt="Animação de boot"></p>
+<p align="center"><img src="docs/capturas/11_painel_sistema.png" width="49%" alt="Painel Sistema"> <img src="docs/capturas/20_jogos_gratis.png" width="49%" alt="Jogos grátis"></p>
+<p align="center"><img src="docs/capturas/19_central_downloads.png" width="49%" alt="Central de downloads"> <img src="docs/capturas/21_detalhes.png" width="49%" alt="Detalhes do jogo"></p>
+<p align="center"><img src="docs/capturas/22_scummvm.png" width="49%" alt="Beneath a Steel Sky no ScummVM"> <img src="docs/capturas/16_freedoom.png" width="49%" alt="Freedoom rodando"></p>
+<p align="center"><img src="docs/capturas/17_continuar_jogando.png" width="49%" alt="Coleção Continuar jogando"> <img src="docs/capturas/10_perfil_avatar.png" width="49%" alt="Perfis com avatar"></p>
+<p align="center"><img src="docs/capturas/1_menu_de_boot.png" width="49%" alt="Menu de boot"> <img src="docs/capturas/18_boot_animado.png" width="49%" alt="Animação de boot"></p>
 
-Os jogos das capturas são de fãs, com licença livre ([µCity](https://github.com/AntonioND/ucity), [Nova the Squirrel](https://github.com/NovaSquirrel/NovaTheSquirrel), [Libbet](https://github.com/pinobatch/libbet), [Freedoom](https://freedoom.github.io)); o sistema baixa em *Sistema > Jogos grátis*.
+Os jogos das capturas foram liberados de graça pelos autores: de fãs, com licença livre ([µCity](https://github.com/AntonioND/ucity), [Nova the Squirrel](https://github.com/NovaSquirrel/NovaTheSquirrel), [Libbet](https://github.com/pinobatch/libbet), [Freedoom](https://freedoom.github.io)), e freeware ([Cave Story](https://studiopixel.jp), [Beneath a Steel Sky e Flight of the Amazon Queen](https://www.scummvm.org/games/)). O sistema baixa todos em *Sistema > Jogos grátis*.
 
 </details>
 
@@ -40,7 +42,7 @@ Os jogos das capturas são de fãs, com licença livre ([µCity](https://github.
 - **Só na versão de 64 bits:** PlayStation 2, PlayStation 3, Xbox, GameCube, Wii e 3DS.
 - **Menu:** carrossel de capas com filtros, "Continuar jogando" com a foto de onde parou, favoritos, coleções, perfis com avatar, 8 temas ou uma imagem sua, sons, proteção de tela com as cenas dos jogos, em português ou inglês.
 - **Jogando:** voltar de onde parou, pacote completo de filtros (um por console), molduras, proporção, run-ahead, FPS na tela, emulador de cada console, jogar online, conquistas (RetroAchievements). Select + Start sai; Select + X abre o menu do emulador; Select + Y tira print.
-- **Jogos:** jogos grátis de licença livre, trazer do pen drive, gerenciador de arquivos, BIOS dos consoles, cópia dos saves.
+- **Jogos:** jogos grátis que os autores liberaram, trazer do pen drive (o pen drive arrumado por console vai direto para a pasta certa), central de downloads com o progresso de cada um, gerenciador de arquivos, BIOS dos consoles, cópia dos saves.
 - **Sistema:** Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, saves sincronizados (Syncthing), botão de energia com menu, fuso horário, desempenho ajustado ao PC, atualização A/B (se a nova não ligar, volta para a anterior), instalar no HD ou ao lado do Windows, página do celular em português ou inglês.
 - **Modo desktop:** navegador, gerenciador de arquivos, editor de texto, planilha (Gnumeric), leitor de PDF e imagens, player de vídeo e música.
 
@@ -78,7 +80,8 @@ Para ligar: PC de 64 bits com 2 GB de memória, ou PC de 32 bits (Pentium 4, Pen
 │   ├── configs/                     tos_x86_64_defconfig, tos_i686_defconfig
 │   ├── board/x86_64/                boot (GRUB, syslinux, initramfs), kernel, scripts de imagem e .iso
 │   ├── board/common/                rootfs-overlay: comandos tos-*, serviços, configuração do RetroArch
-│   └── package/                     scrapcade (o menu, C++/SDL2), retroarch, núcleos libretro, xash3d-fwgs
+│   └── package/                     scrapcade (o menu, C++/SDL2), retroarch, núcleos libretro, xash3d-fwgs,
+│                                    xemu e RPCS3 (AppImages oficiais) e os programas do modo desktop
 ├── tests/                           testes automáticos no QEMU e telas de referência
 ├── scripts/                         publicar-versao.ps1
 ├── docs/                            detalhes técnicos, composição, roteiro e capturas
@@ -87,7 +90,7 @@ Para ligar: PC de 64 bits com 2 GB de memória, ou PC de 32 bits (Pentium 4, Pen
 
 ## Como compilar
 
-Ubuntu 24.04 (ou WSL2), uns 40 GB livres:
+Ubuntu 24.04 (ou WSL2), uns 70 GB livres para uma versão (130 GB para a de 64 e a de 32 bits):
 
 ```bash
 sudo apt install build-essential gcc-multilib git wget unzip rsync bc cpio file libncurses-dev python3 \
