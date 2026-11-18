@@ -89,7 +89,7 @@ Perfil:	Profile:
 (A troca)	(A switches)
 Trazer jogos do pen drive	Bring games from a USB stick
 Gerenciador de arquivos	File manager
-Jogos grátis (homebrew livres)	Free games (free homebrew)
+Jogos grátis	Free games
 Cópia dos saves no pen drive	Back up saves to a USB stick
 Atualizar sozinho:	Update automatically:
 Tamanho do texto:	Text size:
@@ -135,7 +135,7 @@ Desliga a tela e quase tudo, como um console em descanso. Ao apertar o botão de
 Parado no menu por esse tempo, a tela escurece e a logo com a hora muda de lugar devagar (a imagem não marca a TV). Qualquer botão volta, sem fazer nada.	After this long idle in the menu, the screen dims and the logo with the time moves around slowly (so the image doesn't burn into the TV). Any button brings it back without doing anything.
 Parado no menu por esse tempo, o computador desliga sozinho (avisa 1 minuto antes; qualquer botão cancela). Jogando, nunca desliga.	After this long idle in the menu, the computer shuts down by itself (it warns 1 minute before; any button cancels). It never shuts down during a game.
 Volta tema, filtros, opções de jogo e do menu ao padrão de fábrica. Favoritos, saves, perfis e jogos ficam como estão.	Resets the theme, filters, game and menu options to the factory defaults. Favorites, saves, profiles and games stay as they are.
-Jogos feitos por fãs com licença livre (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa do site oficial do autor, confere e coloca no console certo.	Fan-made games with a free license (you can download, play and share them). With A, ScrapCade downloads from the author's official site, checks the file and puts it on the right console.
+Jogos que os autores liberaram de graça: de fãs, freeware e shareware (pode baixar, jogar e passar adiante). Com A o ScrapCade baixa da fonte oficial, confere e coloca no console certo.	Games their authors released for free: fan-made, freeware and shareware (you can download, play and share them). With A, ScrapCade downloads from the official source, checks the file and puts it on the right console.
 Solta o pen drive com segurança antes de tirar (grava o que ainda faltava). Para usar de novo, tire e coloque.	Safely ejects the USB stick before you pull it out (writes anything still pending). To use it again, unplug it and plug it back in.
 Copia os saves, os perfis e as configurações para uma pasta ScrapCade-saves no pen drive, com a data. Se o pen drive do sistema estragar, os saves estão guardados.	Copies saves, profiles and settings to a ScrapCade-saves folder on the USB stick, with the date. If the system's USB stick breaks, your saves are safe.
 Ligado: quando sai versão nova, o ScrapCade OS baixa sozinho enquanto você joga e só avisa para reiniciar. Desligado: só avisa, e você atualiza em Atualizar o ScrapCade OS.	On: when a new version comes out, ScrapCade OS downloads it by itself while you play and only asks you to restart. Off: it only lets you know, and you update in Update ScrapCade OS.
@@ -267,9 +267,9 @@ Mandar para a Lixeira:	Send to the Trash:
 O que fazer?	What to do?
 Não deu para baixar: confira a internet (Rede e Wi-Fi).	Couldn't download: check the internet (Network and Wi-Fi).
 O arquivo baixado não confere (SHA-256): nada foi colocado.	The downloaded file doesn't match (SHA-256): nothing was added.
-Jogos de fãs com licença livre: pode baixar, jogar e passar adiante.	Fan games with a free license: you can download, play and share them.
+Jogos que os autores liberaram de graça: pode baixar, jogar e passar adiante.	Games their authors released for free: you can download, play and share them.
 - já tem	- already have it
-A baixa do site oficial do autor e confere antes de colocar no console.	A downloads from the author's official site and checks it before adding it to the console.
+A baixa da fonte oficial e confere antes de colocar no console.	A downloads from the official source and checks it before adding it to the console.
 O arquivo	The file
 Jogos grátis	Free games
 baixar	download
