@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_A5200
+	bool "libretro-a5200"
+	help
+	  Nucleo libretro: Atari 5200.

@@ -1,0 +1,4 @@
+config BR2_PACKAGE_EMUTOS_BIN
+	bool "emutos-bin"
+	help
+	  EmuTOS: sistema livre (GPL) que substitui o TOS da Atari no emulador do Atari ST.

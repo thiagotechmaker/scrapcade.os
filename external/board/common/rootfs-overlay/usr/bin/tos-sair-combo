@@ -1,0 +1,79 @@
+#!/usr/bin/python3
+# ScrapCade: fecha um emulador que nao e do RetroArch (xemu, RPCS3) com o mesmo atalho dos outros consoles:
+# Select + Start no controle, ou Esc segurado por 2 s no teclado. Le os /dev/input/event* direto (sem biblioteca).
+# Uso: tos-sair-combo <trecho do comando do emulador>     (ex.: /usr/lib/xemu)   Termina quando o emulador fecha.
+import glob, os, select, signal, struct, sys, time
+
+ALVO = sys.argv[1].encode()
+FMT = "llHHi"                      # struct input_event: timeval (2 longs), type, code, value
+TAM = struct.calcsize(FMT)
+EV_KEY, KEY_ESC = 1, 1
+# Select + Start: o padrao (BTN_SELECT/BTN_START) e o dos controles genericos (BTN_BASE3/BTN_BASE4)
+PARES = [(314, 315), (296, 297)]
+
+
+def pids():
+    out = []
+    for c in glob.glob("/proc/[0-9]*/cmdline"):
+        try:
+            with open(c, "rb") as f:
+                if ALVO in f.read():
+                    out.append(int(c.split("/")[2]))
+        except OSError:
+            pass
+    return [p for p in out if p != os.getpid()]
+
+
+def fechar():
+    ps = pids()
+    for p in ps:
+        try:
+            os.kill(p, signal.SIGTERM)
+        except OSError:
+            pass
+    for _ in range(30):           # 3 s para salvar e sair; depois, a forca
+        time.sleep(0.1)
+        if not pids():
+            return
+    for p in pids():
+        try:
+            os.kill(p, signal.SIGKILL)
+        except OSError:
+            pass
+
+
+fds, apertados, esc_desde, ultima_busca = {}, set(), None, 0.0
+for _ in range(100):              # espera o emulador aparecer (ate 10 s)
+    if pids():
+        break
+    time.sleep(0.1)
+while pids():
+    if time.time() - ultima_busca > 2:    # controle ligado no meio do jogo tambem vale
+        ultima_busca = time.time()
+        for p in glob.glob("/dev/input/event*"):
+            if p not in fds.values():
+                try:
+                    fds[os.open(p, os.O_RDONLY | os.O_NONBLOCK)] = p
+                except OSError:
+                    pass
+    prontos = select.select(list(fds), [], [], 0.5)[0] if fds else (time.sleep(0.5) or [])
+    for fd in prontos:
+        try:
+            dados = os.read(fd, TAM * 64)
+        except OSError:
+            os.close(fd)
+            del fds[fd]
+            continue
+        for i in range(0, len(dados) - TAM + 1, TAM):
+            _, _, tipo, codigo, valor = struct.unpack(FMT, dados[i:i + TAM])
+            if tipo != EV_KEY:
+                continue
+            if valor:
+                apertados.add(codigo)
+            else:
+                apertados.discard(codigo)
+            if codigo == KEY_ESC:
+                esc_desde = time.time() if valor else None
+    if any(a in apertados and b in apertados for a, b in PARES) or (esc_desde and time.time() - esc_desde > 2):
+        fechar()
+        break

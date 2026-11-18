@@ -113,6 +113,24 @@ static std::string system(const Game &g) {
     if (id == "ngp") return endsWith(g.file, ".ngc") ? "SNK - Neo Geo Pocket Color" : "SNK - Neo Geo Pocket";
     if (id == "wswan") return endsWith(g.file, ".wsc") ? "Bandai - WonderSwan Color" : "Bandai - WonderSwan";
     if (id == "virtualboy") return "Nintendo - Virtual Boy";
+    if (id == "sg1000") return "Sega - SG-1000";
+    if (id == "atari5200") return "Atari - 5200";
+    if (id == "jaguar") return "Atari - Jaguar";
+    if (id == "colecovision") return "Coleco - ColecoVision";
+    if (id == "intellivision") return "Mattel - Intellivision";
+    if (id == "odyssey2") return "Magnavox - Odyssey2";
+    if (id == "vectrex") return "GCE - Vectrex";
+    if (id == "3do") return "The 3DO Company - 3DO";
+    if (id == "neogeocd") return "SNK - Neo Geo CD";
+    if (id == "msx") return endsWith(g.file, ".mx2") ? "Microsoft - MSX2" : "Microsoft - MSX";
+    if (id == "c64") return "Commodore - 64";
+    if (id == "amiga") return "Commodore - Amiga";
+    if (id == "atarist") return "Atari - ST";
+    if (id == "scummvm") return "ScummVM";
+    if (id == "cavestory") return "Cave Story";
+    if (id == "quake") return "Quake";
+    if (id == "xbox") return "Microsoft - Xbox";
+    if (id == "ps3") return "Sony - PlayStation 3";
     std::string ix = Meta::indexId(g);
     if (ix == "gb") return "Nintendo - Game Boy";
     if (ix == "gbc") return "Nintendo - Game Boy Color";
@@ -179,8 +197,10 @@ static std::string neoBox(const std::string &official) {
 }
 
 // O acervo de arcade usa nomes mais novos; pega o mais curto que comeca com o nome do jogo (mundial primeiro).
-static std::string fromIndex(const std::string &title) {
-    std::string idx = index("MAME", ".capas_arcade");
+// (Desde a v0.22 vale para todo console: "Cave Story" acha "Cave Story (En)", "Quake" acha "Quake (v1.06)".)
+static std::string fromIndex(const std::string &title, const std::string &pasta = "MAME",
+                             const std::string &memo = ".capas_arcade") {
+    std::string idx = index(pasta, memo);
     if (idx.empty()) return "";
     std::string safe = lower(safeName(title)), best;
     auto world = [](const std::string &n) { std::string l = lower(n); return has(l, "world") || has(l, "us"); };
@@ -219,6 +239,9 @@ static std::vector<std::pair<std::string, std::string>> candidates(const Game &g
     if (sys.empty()) return l;
     if (!official.empty()) l.push_back({sys, official});
     if (g.base != official) l.push_back({sys, g.base});
+    // nome mais proximo da lista da pasta (o acervo marca versao e idioma entre parenteses)
+    std::string near = fromIndex(official.empty() ? g.title : titleOf(official), sys, ".capas_" + id);
+    if (!near.empty() && near != official && near != g.base) l.push_back({sys, near});
     return l;
 }
 

@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_NEOCD
+	bool "libretro-neocd"
+	help
+	  Nucleo libretro: Neo Geo CD.

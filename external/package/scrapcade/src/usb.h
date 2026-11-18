@@ -3,6 +3,7 @@
 // Conversao do Organizer.importUsb do iChroma. Licenca: GPLv3.
 #pragma once
 #include "catalogo.h"
+#include "central.h"
 #include "organizar.h"
 
 #include <cstdio>
@@ -143,43 +144,116 @@ static void scan(const std::string &d, int depth, std::vector<std::string> &out)
 
 static std::string memoFile() { return ROMS + "/.importados"; }
 
-// Copia para "Jogos novos" o que ainda nao veio deste pen drive. Devolve o aviso, ou "".
-// 'start' e chamado antes de copiar, com quantos arquivos vao vir.
+// Pen drive arrumado como o ScrapCade (roms/<console>/..., bios/...): cada arquivo vai direto para a mesma pasta
+// aqui dentro, com as subpastas (CD de varias faixas, Half-Life, ScummVM), sem passar pelo organizador, que
+// adivinha pela extensao. As pastas que nao sao de console caem no jeito antigo ("Jogos novos").
+struct Copia { std::string de, para, nome; };
+static bool ehConsole(const std::string &id) {
+    for (auto &s : SYSTEMS) if (s.id == id) return true;
+    return false;
+}
+static void scanArrumado(const std::string &d, const std::string &rel, const std::string &destBase, int depth,
+                         std::vector<Copia> &out) {
+    DIR *dir = opendir(d.c_str());
+    if (!dir) return;
+    while (dirent *e = readdir(dir)) {
+        std::string n = e->d_name, p = d + "/" + n;
+        if (n.empty() || n[0] == '.') continue;
+        if (Org::isDir(p)) {
+            if (depth < 6 && lower(n) != "system volume information") scanArrumado(p, rel + n + "/", destBase, depth + 1, out);
+        } else {
+            out.push_back({p, destBase + "/" + rel + n, n});
+        }
+    }
+    closedir(dir);
+}
+
+// Copia um arquivo em pedacos, avisando a central (para a barra andar mesmo num ISO de 5 GB)
+static bool copiaArquivo(const std::string &de, const std::string &para, long long &feitoTotal, long long total, int i, int n) {
+    std::string tmp = para + ".baixando";
+    mkdirs(para.substr(0, para.rfind('/')));
+    FILE *a = fopen(de.c_str(), "rb");
+    FILE *b = a ? fopen(tmp.c_str(), "wb") : nullptr;
+    if (!a || !b) { if (a) fclose(a); if (b) fclose(b); remove(tmp.c_str()); return false; }
+    std::vector<char> buf(4 << 20);
+    size_t r;
+    bool ok = true;
+    std::string det = std::to_string(i) + " de " + std::to_string(n) + ": " + Org::base(de);
+    while ((r = fread(buf.data(), 1, buf.size(), a)) > 0) {
+        if (fwrite(buf.data(), 1, r, b) != r) { ok = false; break; }
+        feitoTotal += (long long)r;
+        Central::avanca("usb", feitoTotal, det, total);
+    }
+    ok = ok && !ferror(a);
+    fclose(a);
+    ok = (fclose(b) == 0) && ok && Org::sizeOf(tmp) == Org::sizeOf(de);
+    if (!ok) { remove(tmp.c_str()); return false; }
+    if (isFile(para)) remove(para.c_str());
+    return rename(tmp.c_str(), para.c_str()) == 0;
+}
+
+// Copia o que ainda nao veio deste pen drive. Devolve o aviso, ou "". 'start' e chamado antes de copiar, com
+// quantos arquivos vao vir. Tudo aparece na central de downloads.
 template <typename F> static std::string import(F start) {
     if (!attach()) return "";
-    std::vector<std::string> all, todo;
-    scan(MOUNT, 0, all);
+    std::vector<Copia> todo, all;
+    // 1) arrumado como o ScrapCade: roms/<console>/... e bios/...
+    if (Org::isDir(MOUNT + "/roms")) {
+        if (DIR *r = opendir((MOUNT + "/roms").c_str())) {
+            while (dirent *e = readdir(r)) {
+                std::string c = e->d_name;
+                if (c.empty() || c[0] == '.' || !Org::isDir(MOUNT + "/roms/" + c)) continue;
+                if (ehConsole(c)) scanArrumado(MOUNT + "/roms/" + c, "", ROMS + "/" + c, 0, all);
+            }
+            closedir(r);
+        }
+    }
+    if (Org::isDir(MOUNT + "/bios")) scanArrumado(MOUNT + "/bios", "", "/userdata/bios", 0, all);
+    // 2) o resto (jogos soltos no pen drive): para "Jogos novos", e o organizador leva ao console
+    std::vector<std::string> soltos;
+    scan(MOUNT, 0, soltos);
+    for (auto &f : soltos) {
+        if (f.compare(0, MOUNT.size() + 6, MOUNT + "/roms/") == 0) continue;   // ja entrou pelo jeito arrumado
+        all.push_back({f, INBOX + "/" + Org::base(f), Org::base(f)});
+    }
     std::set<std::string> memo;
     {
         std::ifstream in(memoFile());
         std::string l;
         while (std::getline(in, l)) memo.insert(l);
     }
-    for (auto &f : all)
-        if (!memo.count(Org::base(f) + "|" + std::to_string(Org::sizeOf(f)))) todo.push_back(f);
+    long long total = 0;
+    for (auto &c : all) {
+        std::string chave = c.para + "|" + std::to_string(Org::sizeOf(c.de));
+        std::string antiga = c.nome + "|" + std::to_string(Org::sizeOf(c.de));   // memoria das versoes antigas
+        if (memo.count(chave) || memo.count(antiga)) continue;
+        if (isFile(c.para) && Org::sizeOf(c.para) == Org::sizeOf(c.de)) continue;   // ja esta aqui igualzinho
+        todo.push_back(c);
+        total += Org::sizeOf(c.de);
+    }
     if (todo.empty()) return "";
-    start(int(todo.size()));
+    start(int(todo.size()), total);
     mkdirs(INBOX);
+    Central::inicia("usb", "Pen drive para o disco", total, "0 de " + std::to_string(todo.size()));
     int done = 0;
-    for (auto &f : todo) {
-        std::string name = Org::base(f), tmp = INBOX + "/" + name + ".baixando";
-        std::ifstream in(f, std::ios::binary);
-        std::ofstream out(tmp, std::ios::binary);
-        out << in.rdbuf();
-        out.close();
-        if (!in || !out || Org::sizeOf(tmp) != Org::sizeOf(f)) {
-            remove(tmp.c_str());   // pen drive saiu no meio ou disco cheio: o que faltou vem na proxima vez
-            return std::to_string(done) + " de " + std::to_string(todo.size()) +
-                   " copiados. Confira o espaço livre e o pen drive.";
+    long long feito = 0;
+    for (auto &c : todo) {
+        if (!copiaArquivo(c.de, c.para, feito, total, done + 1, int(todo.size()))) {
+            // pen drive saiu no meio ou disco cheio: o que faltou vem na proxima vez
+            std::string msg = std::to_string(done) + " de " + std::to_string(todo.size()) +
+                              " copiados. Confira o espaço livre e o pen drive.";
+            Central::termina("usb", false, msg);
+            return msg;
         }
-        rename(tmp.c_str(), (INBOX + "/" + name).c_str());
         FILE *m = fopen(memoFile().c_str(), "a");
-        if (m) { fprintf(m, "%s|%lld\n", name.c_str(), Org::sizeOf(f)); fclose(m); }
+        if (m) { fprintf(m, "%s|%lld\n", c.para.c_str(), Org::sizeOf(c.de)); fclose(m); }
         done++;
     }
     sync();
-    return (done == 1 ? std::string("1 arquivo copiado") : std::to_string(done) + " arquivos copiados") +
-           " do pen drive. Pode tirar.";
+    std::string msg = (done == 1 ? std::string("1 arquivo copiado") : std::to_string(done) + " arquivos copiados") +
+                      " do pen drive (" + Central::tamanho(total) + "). Pode tirar.";
+    Central::termina("usb", true, msg);
+    return msg;
 }
 
 }  // namespace Usb

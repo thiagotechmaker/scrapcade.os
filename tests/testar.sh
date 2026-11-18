@@ -68,10 +68,18 @@ W=http://127.0.0.1:18080
   log "pagina web: $(curl -s -m 10 -o /dev/null -w '%{http_code}' $W/)  lista de arquivos: $(curl -s -m 10 "$W/fs/lista?a=" | head -c 60)"
   for f in nes/"Aventura de Teste.nes" snes/"Corrida de Teste (U) [!].sfc" n64/"Jogo de Teste 64.z64" gb/"Quebra-Cabeça de Teste.gb" megadrive/"Plataforma Sem Capa.md" psx/"Disco de Teste.cue"; do
     log "envio $(basename "$f"): $(up "$RO/$f" "envio/$(enc "$(basename "$f")")")"; done
-  # consoles novos da v0.21: cada extensao vai para a pasta do seu console
-  for n in "Teste Master.sms" "Teste Engine.pce" "Teste Atari.a26"; do head -c 32768 /dev/urandom > "teste/$n"; up "teste/$n" "envio/$(enc "$n")" >/dev/null; done
+  # consoles novos da v0.21 e da v0.22: cada extensao vai para a pasta do seu console
+  for n in "Teste Master.sms" "Teste Engine.pce" "Teste Atari.a26" "Teste MSX.mx2" "Teste C64.d64" "Teste Amiga.adf" \
+           "Teste ST.st" "Teste SG.sg" "Teste Coleco.col"; do
+    head -c 32768 /dev/urandom > "teste/$n"; up "teste/$n" "envio/$(enc "$n")" >/dev/null; done
+  # CD de Sega CD (.cue + .bin com "SEGADISCSYSTEM"): ate a v0.21 ia para a pasta do PlayStation
+  { printf 'SEGADISCSYSTEM  '; head -c 65520 /dev/urandom; } > "teste/Teste SegaCD.bin"
+  printf 'FILE "Teste SegaCD.bin" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n' > "teste/Teste SegaCD.cue"
+  up "teste/Teste SegaCD.bin" "envio/$(enc "Teste SegaCD.bin")" >/dev/null; up "teste/Teste SegaCD.cue" "envio/$(enc "Teste SegaCD.cue")" >/dev/null
   sleep 40
-  ok=""; for p in mastersystem/"Teste Master.sms" pcengine/"Teste Engine.pce" atari2600/"Teste Atari.a26"; do
+  ok=""; for p in mastersystem/"Teste Master.sms" pcengine/"Teste Engine.pce" atari2600/"Teste Atari.a26" msx/"Teste MSX.mx2" \
+                  c64/"Teste C64.d64" amiga/"Teste Amiga.adf" atarist/"Teste ST.st" sg1000/"Teste SG.sg" \
+                  colecovision/"Teste Coleco.col" segacd/"Teste SegaCD.cue"; do
     curl -s -m 10 "$W/fs/lista?p=$(enc "roms/${p%%/*}")" | grep -qF "${p#*/}" && ok="$ok ${p%%/*}"; done
   log "consoles novos:$ok"
   for f in nes/"Aventura de Teste" snes/"Corrida de Teste (U) [!]" n64/"Jogo de Teste 64" gb/"Quebra-Cabeça de Teste" psx/"Disco de Teste"; do
@@ -85,24 +93,24 @@ W=http://127.0.0.1:18080
   k ret; sleep 30; shot sc_jogando; echo "sendkey esc 1000"; sleep 75; shot sc_voltou_do_jogo
   log "samba antes: $(porta 18445)  ssh antes: $(porta 18022)"
   opt 0; k ret; sleep 3; shot p_perfil; fecha
-  opt 32; k right; sleep 2; shot p_energia; fecha
-  opt 21; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 21; k left; sleep 1; fecha
-  opt 23; k right; sleep 2; shot p_anim; k left; fecha
-  opt 24; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
-  opt 25; k right; sleep 2; shot p_fundo_off; k left; fecha
-  opt 46; sleep 1; shot p_motor; fecha
-  opt 36; k ret; sleep 8; shot p_rede; fecha
-  opt 29; k ret; sleep 12; shot p_bluetooth; fecha
-  opt 37; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
-  opt 38; k right; sleep 3; k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
-  opt 27; k ret; sleep 3; shot p_controle; fecha
-  opt 48; k ret; sleep 3; shot p_comojogar; fecha
-  opt 9; k ret; sleep 4; shot p_bios; fecha
-  opt 42; k ret; sleep 20; shot p_atualizar; fecha
-  opt 44; k ret; sleep 4; shot p_instalar; fecha
-  opt 41; k right; sleep 3; shot p_ingles; k left; sleep 2; fecha
-  opt 49; k ret; sleep 4; shot p_info; fecha
-  opt 45; k ret; sleep 40; shot p_desktop
+  opt 33; k right; sleep 2; shot p_energia; fecha
+  opt 22; k right; sleep 3; shot p_tema; k esc; sleep 4; shot sc_tema_8bits; opt 22; k left; sleep 1; fecha
+  opt 24; k right; sleep 2; shot p_anim; k left; fecha
+  opt 25; k right; sleep 3; shot p_capas_off; k left; sleep 2; fecha
+  opt 26; k right; sleep 2; shot p_fundo_off; k left; fecha
+  opt 47; sleep 1; shot p_motor; fecha
+  opt 37; k ret; sleep 8; shot p_rede; fecha
+  opt 30; k ret; sleep 12; shot p_bluetooth; fecha
+  opt 38; k right; sleep 6; log "samba desligado: $(porta 18445)"; shot p_samba_off; k right; sleep 6; log "samba religado: $(porta 18445)"; fecha
+  opt 39; k right; sleep 3; k t e s t e 1 2 3 ret; sleep 2; k t e s t e 1 2 3 ret; sleep 6; log "ssh ligado: $(porta 18022)"; shot p_ssh_on; k right; sleep 6; log "ssh desligado de novo: $(porta 18022)"; fecha
+  opt 28; k ret; sleep 3; shot p_controle; fecha
+  opt 49; k ret; sleep 3; shot p_comojogar; fecha
+  opt 10; k ret; sleep 4; shot p_bios; fecha
+  opt 43; k ret; sleep 20; shot p_atualizar; fecha
+  opt 45; k ret; sleep 4; shot p_instalar; fecha
+  opt 42; k right; sleep 3; shot p_ingles; k left; sleep 2; fecha
+  opt 50; k ret; sleep 4; shot p_info; fecha
+  opt 46; k ret; sleep 40; shot p_desktop
   echo quit
 ) | timeout 1200 $Q $EFI -drive file=$D,format=raw,if=virtio \
     -nic user,model=e1000,hostfwd=tcp:127.0.0.1:18080-:8080,hostfwd=tcp:127.0.0.1:18445-:445,hostfwd=tcp:127.0.0.1:18022-:22 \
@@ -112,7 +120,7 @@ log "disco particoes: $(rotulos $D)"
 for tentativa in 1 2; do   # o QEMU as vezes cai ao ligar ("dumped core"): uma segunda tentativa
   D=teste/t-som.img; cp $I/disk.img $D; truncate -s 3G $D
   ( sleep 30; senha; sleep 60; k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 15
-    opt 28; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
+    opt 29; k left; sleep 2; shot p_volume; k ret; sleep 4; echo quit ) | timeout 300 $Q $EFI -drive file=$D,format=raw,if=virtio     -audiodev wav,id=s0,path=$TOS/teste/som2.wav -device intel-hda -device hda-output,audiodev=s0 > teste/q7.log 2>&1
   [ -s teste/som2.wav ] && [ -f teste/z_p_volume.ppm ] && break
   log "som: QEMU caiu (tentativa $tentativa), repetindo"
 done

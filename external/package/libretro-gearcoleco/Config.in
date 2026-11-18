@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_GEARCOLECO
+	bool "libretro-gearcoleco"
+	help
+	  Nucleo libretro: ColecoVision.

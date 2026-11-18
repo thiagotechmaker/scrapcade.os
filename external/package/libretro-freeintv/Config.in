@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LIBRETRO_FREEINTV
+	bool "libretro-freeintv"
+	help
+	  Nucleo libretro: Intellivision.

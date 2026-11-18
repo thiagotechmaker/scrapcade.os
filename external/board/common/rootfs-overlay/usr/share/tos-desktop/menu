@@ -1,8 +1,11 @@
 [begin] (ScrapCade)
 	[exec] (Navegador) {tos-navegador}
 	[exec] (Arquivos) {pcmanfm /userdata}
+	[exec] (Editor de texto) {l3afpad}
+	[exec] (Planilhas) {gnumeric}
+	[exec] (Imagens e prints) {pcmanfm /userdata/screenshots}
+	[exec] (Vídeos e músicas) {mpv --player-operation-mode=pseudo-gui --force-window=yes}
 	[exec] (Terminal) {xterm -fa "DejaVu Sans Mono" -fs 11 -bg "#101418" -fg "#e6e9f0"}
-	[exec] (Editor de texto) {xterm -fa "DejaVu Sans Mono" -fs 11 -T "Editor de texto" -e nano}
 	[exec] (Volume do som) {xterm -fa "DejaVu Sans Mono" -fs 11 -T "Volume" -e alsamixer}
 	[submenu] (Tela)
 		[exec] (Resolução automática) {xrandr --auto}

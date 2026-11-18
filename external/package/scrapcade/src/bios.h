@@ -45,13 +45,50 @@ static const std::vector<Need> &list() {
         {"Sega CD", true, "os jogos de Sega CD não abrem",
          {{"bios_CD_U.bin", "2efd74e3232ff260e371b99f84024f7f", "EUA"},
           {"bios_CD_E.bin", "e66fa1dc5820d254611fdcdba0662372", "Europa"},
-          {"bios_CD_J.bin", "278a9397d192149e84e820ac621a8edd", "Japão"}}, {}},
+          {"bios_CD_J.bin", "278a9397d192149e84e820ac621a8edd", "Japão"},
+          {"bios_CD_J.bin", "bdeb4c47da613946d422d97d98b21cda", "Japão (Rev H)"}}, {}},
+        {"Sega Saturn", true, "os jogos de Saturn não abrem",
+         {{"mpr-17933.bin", "3240872c70984b6cbfda1586cab68dbe", "EUA e Europa"},
+          {"sega_101.bin", "85ec9ca47d8f6807718151cbcca8b964", "Japão"}}, {}},
+        {"PlayStation 2", true, "os jogos de PS2 não abrem",
+         {{"pcsx2/bios/", "", "qualquer BIOS do seu PS2"}}, {}},
         {"PC Engine CD", true, "os jogos de CD do PC Engine não abrem (os cartuchos abrem)",
          {{"syscard3.pce", "38179df8f4ac870017db21ebcbf53114", "System Card 3.0"}}, {}},
         {"Atari Lynx", true, "os jogos de Lynx não abrem",
          {{"lynxboot.img", "fcd403db69f54290b51035d82f835e7b", "Atari"}}, {}},
         {"Atari 7800", false, "abre direto, sem a tela da Atari",
          {{"7800 BIOS (U).rom", "0763f1ffb006ddbe32e52d497ee848ae", "Atari"}}, {}},
+        {"Atari 5200", true, "os jogos de 5200 não abrem",
+         {{"5200.rom", "281f20ea4320404ec820fb7ec0693b38", "Atari"}}, {}},
+        {"ColecoVision", true, "os jogos de ColecoVision não abrem",
+         {{"colecovision.rom", "2c66f5911e5b42b8ebe113403548eee7", "Coleco"}}, {}},
+        {"Intellivision (Executive)", true, "os jogos de Intellivision não abrem",
+         {{"exec.bin", "62e761035cb657903761800f4437b8af", "Mattel"}}, {}},
+        {"Intellivision (GROM)", true, "os jogos de Intellivision não abrem",
+         {{"grom.bin", "0cd5946c6473e42e8e4c2137785e427f", "Mattel"}}, {}},
+        {"Odyssey²", true, "os jogos de Odyssey² não abrem",
+         {{"o2rom.bin", "562d5ebf9e030a40d6fabfc2f33139fd", "Magnavox"}}, {}},
+        {"3DO", true, "os jogos de 3DO não abrem",
+         {{"panafz10.bin", "51f2f43ae2f3508a14d9f56597e2d3ce", "Panasonic FZ-10"},
+          {"panafz1.bin", "f47264dd47fe30f73ab3c010015c155b", "Panasonic FZ-1"},
+          {"goldstar.bin", "8639fd5e549bd6238cfee79e3e749114", "GoldStar"}}, {}},
+        {"Neo Geo CD", true, "os jogos de Neo Geo CD não abrem",
+         {{"neocd/neocd_f.rom", "", "Front loader"}, {"neocd/neocd_t.rom", "", "Top loader"},
+          {"neocd/neocd_z.rom", "", "CDZ"}, {"neocd/neocd_sf.rom", "", "Front loader (SMKDAN)"},
+          {"neocd/neocd_st.rom", "", "Top loader (SMKDAN)"}, {"neocd/neocd_sz.rom", "", "CDZ (SMKDAN)"}}, {}},
+        {"Neo Geo CD (LO)", true, "os jogos de Neo Geo CD não abrem",
+         {{"neocd/000-lo.lo", "fc7599f3f871578fe9a0453662d1c966", "SNK"}, {"neocd/ng-lo.rom", "", "SNK"}}, {}},
+        {"Amiga", false, "usa o AROS livre embutido (a maioria dos jogos roda; alguns pedem o Kickstart original)",
+         {{"kick34005.A500", "82a21c1890cae844b3df741f2762d48d", "Kickstart 1.3 (A500)"},
+          {"kick40068.A1200", "646773759326fbac3b2311fd8c8793ee", "Kickstart 3.1 (A1200)"}}, {}},
+        {"Atari ST", false, "usa o EmuTOS livre que vem no sistema",
+         {{"tos.img", "", "TOS da Atari"}}, {}},
+        {"Xbox (BIOS)", true, "os jogos de Xbox não abrem",
+         {{"Complex_4627.bin", "", "BIOS do Xbox"}}, {}},
+        {"Xbox (MCPX)", true, "os jogos de Xbox não abrem",
+         {{"mcpx_1.0.bin", "d49c52a4102f6df7bcf8d0617ac475ed", "Microsoft"}}, {}},
+        {"PlayStation 3", true, "os jogos de PS3 não abrem (o firmware oficial é baixado no site da Sony)",
+         {{"PS3UPDAT.PUP", "", "firmware oficial do PS3"}}, {}},
     };
     return L;
 }
@@ -86,6 +123,16 @@ static std::vector<std::string> report() {
             where.insert(where.end(), n.alsoIn.begin(), n.alsoIn.end());
             for (auto &d : where) {
                 std::string p = d + "/" + f.name;
+                // nome terminado em "/": basta a pasta ter algum arquivo (as BIOS do PS2 tem nomes variados)
+                if (!p.empty() && p.back() == '/') {
+                    bool tem = false;
+                    if (DIR *dd = opendir(p.c_str())) {
+                        while (dirent *e = readdir(dd)) if (e->d_name[0] != '.' && isFile(p + e->d_name)) { tem = true; break; }
+                        closedir(dd);
+                    }
+                    if (tem) { found = std::string(f.label); break; }
+                    continue;
+                }
                 if (!isFile(p)) continue;
                 if (!*f.md5 || md5Of(p) == f.md5) { found = std::string(f.name) + " (" + f.label + ")"; break; }
                 wrong = f.name;

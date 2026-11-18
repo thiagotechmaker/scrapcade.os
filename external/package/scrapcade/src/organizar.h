@@ -102,11 +102,20 @@ static uint32_t be32(const unsigned char *b) { return uint32_t(b[0]) << 24 | b[1
 static std::string discKind(const std::string &p) {
     FILE *f = fopen(p.c_str(), "rb");
     if (!f) return "";
-    unsigned char h[0x60] = {0}, v[0x30] = {0};
+    unsigned char h[0x60] = {0}, v[0x30] = {0}, x[0x14] = {0};
     size_t nh = fread(h, 1, sizeof h, f);
     bool iso9660 = fseek(f, 0x8000, SEEK_SET) == 0 && fread(v, 1, sizeof v, f) == sizeof v &&
                    memcmp(v + 1, "CD001", 5) == 0;
+    // Xbox: "MICROSOFT*XBOX*MEDIA" no setor 32 da particao do jogo (no comeco do .iso extraido, ou depois do
+    // video no .iso completo do disco)
+    bool xbox = false;
+    for (long long base : {0LL, 0x18300000LL})
+        if (!xbox && fseeko(f, base + 0x10000, SEEK_SET) == 0 && fread(x, 1, sizeof x, f) == sizeof x)
+            xbox = memcmp(x, "MICROSOFT*XBOX*MEDIA", 20) == 0;
     fclose(f);
+    if (xbox) return "xbox";
+    // 3DO: o disco comeca com o registro do sistema de arquivos Opera (01 5A 5A 5A 5A 5A 01)
+    if (nh >= 7 && memcmp(h, "\x01\x5A\x5A\x5A\x5A\x5A\x01", 7) == 0) return "3do";
     if (nh >= 0x4C && memcmp(h, "RVZ\x01", 4) == 0) {   // RVZ: tipo do disco logo depois do primeiro bloco
         uint32_t t = be32(h + 0x48);
         return t == 2 ? "wii" : (t == 1 ? "gamecube" : "");
@@ -143,6 +152,19 @@ static std::string folder(const std::string &file) {
         {"ngp", {".ngp", ".ngc"}},
         {"wswan", {".ws", ".wsc"}},
         {"virtualboy", {".vb", ".vboy"}},
+        {"sg1000", {".sg"}},
+        {"atari5200", {".a52"}},
+        {"jaguar", {".j64", ".jag"}},
+        {"colecovision", {".col", ".cv"}},
+        {"intellivision", {".int"}},
+        {"vectrex", {".vec"}},
+        {"msx", {".mx1", ".mx2"}},
+        {"c64", {".d64", ".t64", ".prg", ".crt"}},
+        {"amiga", {".adf", ".hdf", ".lha"}},
+        {"atarist", {".st", ".msa", ".stx"}},
+        {"xbox", {".xiso"}},
+        {"scummvm", {".scummvm"}},
+        {"easyrpg", {".easyrpg"}},
         {"quake", {".quake"}},
         {"cavestory", {".cavestory"}},
         {"psx", {".cue", ".pbp", ".m3u", ".chd"}},
@@ -215,6 +237,9 @@ static std::string cueKind(const std::string &cue) {
     std::string h(b, n);
     if (h.find("SEGA SEGASATURN") != std::string::npos) return "saturn";
     if (h.find("SEGADISCSYSTEM") != std::string::npos) return "segacd";
+    // 3DO: registro Opera no comeco dos dados (direto, ou depois dos 16 bytes de sincronia do setor de 2352)
+    if (h.compare(0, 7, "\x01\x5A\x5A\x5A\x5A\x5A\x01", 7) == 0 || (h.size() >= 23 && h.compare(16, 7, "\x01\x5A\x5A\x5A\x5A\x5A\x01", 7) == 0))
+        return "3do";
     // PC Engine CD: a primeira faixa e de audio (o aviso "nao toque este disco no CD player"); no PlayStation e de dados
     std::ifstream in(cue);
     std::string l;
@@ -414,8 +439,13 @@ static std::string run() {
     });
     int ok = 0;
     std::vector<std::string> failed;
+    time_t agora = time(nullptr);
     for (auto &f : fs) {
         if (!isFile(f)) continue;   // ja foi junto com outro
+        // chegou faz menos de 10 s: espera a proxima volta. Um CD chega em partes (.bin e .cue); sem esperar, o .bin
+        // sozinho virava cartucho de Mega Drive e o .cue que chegava depois ia para o PlayStation.
+        struct stat st;
+        if (stat(f.c_str(), &st) == 0 && agora - st.st_mtime < 10 && agora >= st.st_mtime) continue;
         std::string n = base(f), kind = folder(n);
         bool good = false, counted = true;
         if (endsWith(n, ".zip")) {
@@ -428,12 +458,14 @@ static std::string run() {
             bool isCd = sizeOf(f) > 16LL * 1024 * 1024 || isFile(cue) || inSomeCue(f);
             good = moveTo(f, isCd ? "psx" : "megadrive");
             counted = !isCd;
-        } else if (endsWith(n, ".cue") && cueKind(f) == "saturn") {
-            // Saturn: leva as faixas junto (o .bin solto iria para o PlayStation)
+        } else if (endsWith(n, ".cue") && cueKind(f) != "psx") {
+            // Saturn, Sega CD, PC Engine CD e 3DO: leva as faixas junto (o .bin solto iria para o PlayStation).
+            // Ate a v0.21 so o Saturn fazia isso, e os outros CDs caiam na pasta do PlayStation.
+            std::string k = cueKind(f);
             good = true;
             for (auto &tr : cueFiles(f))
-                if (isFile(tr)) good = moveTo(tr, "saturn") && good;
-            good = moveTo(f, "saturn") && good;
+                if (isFile(tr)) good = moveTo(tr, k) && good;
+            good = moveTo(f, k) && good;
         } else if (kind == "?") {
             std::string k = discKind(f);
             good = !k.empty() && moveTo(f, k);

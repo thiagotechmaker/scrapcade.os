@@ -88,7 +88,8 @@ static std::vector<Nucleo> nucleos(const std::string &id) {
     if (id == "megadrive") return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
     if (id == "gba") return {{"mgba", "mGBA"}, {"gpsp", "gpSP (mais leve)"}};
     if (id == "arcade") return {{"fbneo", "FBNeo"}, {"mame2003_plus", "MAME 2003-Plus (romset 0.78)"}};
-    if (id == "mastersystem" || id == "segacd") return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
+    if (id == "mastersystem" || id == "segacd" || id == "gamegear" || id == "sg1000")
+        return {{"genesis_plus_gx", "Genesis Plus GX"}, {"picodrive", "PicoDrive (mais leve)"}};
     return {};
 }
 
@@ -882,13 +883,28 @@ static int desempenhoIdx() { int v = atoi(prefs["desempenho"].c_str()); return v
 static void aplicarDesempenho(int c) {
     prefs["desempenho"] = std::to_string(c);
     const char *leves[][2] = {{"snes", "snes9x2010"}, {"nes", "fceumm"}, {"megadrive", "picodrive"}, {"gba", "gpsp"},
-                              {"mastersystem", "picodrive"}, {"segacd", "picodrive"}};
+                              {"mastersystem", "picodrive"}, {"segacd", "picodrive"}, {"gamegear", "picodrive"},
+                              {"sg1000", "picodrive"}};
     for (auto &l : leves) {
         if (c == 0) prefs[std::string("core|") + l[0]] = l[1];
         else if (prefs[std::string("core|") + l[0]] == l[1]) prefs.erase(std::string("core|") + l[0]);
     }
     if (c == 0) prefs["runahead"] = "0";
     savePrefs();
+}
+// Console pesado num PC que nao aguenta: o jogo abre mesmo assim (decisao de 18/11), com o aviso na tela de abertura.
+static std::string avisoPesado(const std::string &id) {
+    static const std::set<std::string> pesados = {"ps2", "gamecube", "wii", "3ds", "xbox", "saturn", "dreamcast", "psp"};
+    int d = desempenhoIdx();
+    if (id == "ps3") {
+        std::ifstream ci("/proc/cpuinfo");
+        std::string t((std::istreambuf_iterator<char>(ci)), std::istreambuf_iterator<char>());
+        if (t.find(" sse4_1") == std::string::npos) return "Este processador não tem SSE4.1: o PS3 não abre nele.";
+        if (d < 2) return "PS3 pede um PC forte (4 núcleos ou mais e placa de vídeo): o jogo pode ficar lento.";
+        return "";
+    }
+    if (pesados.count(id) && d == 0) return "Este PC é fraco para este console: o jogo pode ficar lento.";
+    return "";
 }
 static void gravarMoldura(bool on) {
     std::string p = "/userdata/system/configs/moldura";
@@ -1069,6 +1085,11 @@ static void topBar(const Game *g) {
         float esq = bx - (bat.carregando ? 12 : 4) * u;     // o avatar fica a esquerda de tudo
         ax = std::min(ax, esq - 8 * u);
     }
+    if (int n = Central::andando()) {   // algo chegando (pen drive, pagina, jogo gratis): a seta e quantos
+        std::string s = "↓ " + std::to_string(n);
+        T.draw(s, ax, cy, 10, true, 0xFF2CCF9A, 2);
+        ax -= T.width(s, 10, true) + 10 * u;
+    }
     if (perfilAtual >= 0) {   // quem esta jogando, ao lado do relogio
         ax -= 19 * u;
         drawAvatar(&perfis[perfilAtual], 0, ax, cy - 9.5f * u, 19 * u);
@@ -1215,14 +1236,14 @@ static void drawDetails() {
 // ------------------------------------------------------------------ painel Sistema (Select), como o Home.buildOptions
 
 enum { OPT_PERFIL, OPT_JOGOS, OPT_ARQUIVOS, OPT_ENERGIA, OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_ENGINE, OPT_VOLUME, OPT_REDE, OPT_BLUETOOTH, OPT_SAMBA, OPT_SSH, OPT_CONTROLE, OPT_DESKTOP, OPT_HELP, OPT_BIOS, OPT_ATUALIZAR, OPT_INSTALL, OPT_INFO, OPT_GRATIS, OPT_BACKUP, OPT_EJETAR, OPT_AUTOUPD, OPT_REBOOT, OPT_OFF,
-       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_SHADER_SIS, OPT_MOLDURA, OPT_ONLINE, OPT_FUSO, OPT_CONQUISTAS, OPT_SYNC, OPT_DESEMPENHO, OPT_IDIOMA, OPT_COUNT };
+       OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_RESUME, OPT_FILTRO, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_RELOGIO, OPT_ENVIAR, OPT_PADRAO, OPT_PROTECAO, OPT_DESLIGAR, OPT_MUSICA, OPT_SONS, OPT_SUSPENDER, OPT_SHADER_SIS, OPT_MOLDURA, OPT_ONLINE, OPT_FUSO, OPT_CONQUISTAS, OPT_SYNC, OPT_DESEMPENHO, OPT_IDIOMA, OPT_CENTRAL, OPT_COUNT };
 static bool sysOpen = false;
 
 // Painel em secoes, como o menu de ajustes de um console de mesa: o dia a dia primeiro, o tecnico no fim.
 // (A bateria de testes conta as opcoes nesta ordem: tests/testar.sh, funcao opt.)
 struct Secao { const char *nome; std::vector<int> opts; };
 static const std::vector<Secao> SECOES = {
-    {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
+    {"JOGOS", {OPT_PERFIL, OPT_GRATIS, OPT_CENTRAL, OPT_JOGOS, OPT_ARQUIVOS, OPT_EJETAR, OPT_ORDENAR, OPT_VAZIOS, OPT_CAPAS, OPT_LIMPAR, OPT_BIOS, OPT_BACKUP}},
     {"JOGANDO", {OPT_RESUME, OPT_FILTRO, OPT_SHADER_SIS, OPT_MOLDURA, OPT_PROPORCAO, OPT_RUNAHEAD, OPT_FPS, OPT_NUCLEO, OPT_ONLINE, OPT_CONQUISTAS}},
     {"APARÊNCIA", {OPT_THEME, OPT_FONTE, OPT_ANIM, OPT_COVERS, OPT_BG, OPT_PROTECAO}},
     {"CONTROLE E SOM", {OPT_CONTROLE, OPT_VOLUME, OPT_BLUETOOTH, OPT_MUSICA, OPT_SONS}},
@@ -1369,6 +1390,10 @@ static std::string optLabel(int i) {
     case OPT_JOGOS: return "Trazer jogos do pen drive";
     case OPT_ARQUIVOS: return "Gerenciador de arquivos";
     case OPT_GRATIS: return "Jogos grátis (homebrew livres)";
+    case OPT_CENTRAL: {
+        int n = Central::andando();
+        return n ? "Downloads e cópias   (" + std::to_string(n) + " chegando)" : std::string("Downloads e cópias");
+    }
     case OPT_BACKUP: return "Cópia dos saves no pen drive";
     case OPT_EJETAR: return "Ejetar pen drive";
     case OPT_AUTOUPD: return std::string("Atualizar sozinho:   ‹ ") + (prefs["autoupd"] == "1" ? "Ligado" : "Desligado") + " ›";
@@ -1543,6 +1568,8 @@ static std::string traduz(const std::string &s) {
 static void carregar(bool ingles) {
     frases.clear();
     feito.clear();
+    Envio::ingles = ingles;   // a pagina do celular segue o idioma do menu
+    Envio::traduzNome = [](const std::string &s) { return traduz(s); };
     if (ingles) {
         std::ifstream in(DATA + "/en.txt");
         for (std::string l; std::getline(in, l);) {
@@ -2445,6 +2472,16 @@ static const Gratis GRATIS[] = {
     {"Quake (shareware)", "Quake", "shareware", "id Software", "https://buildbot.libretro.com/assets/cores/Quake/Quake%20%28Shareware%29.zip",
      "Quake (shareware).quake", "54b818ad098f7242805a5585cbbfc897124f606e482ce7654707a04a42d6a701", "quake",
      "Quake/PAK0.PAK", "id1/pak0.pak", "id1/pak0.pak"},
+    // aventuras liberadas como freeware pelos estudios (Revolution e Interactive Binary Illusions), do site do ScummVM;
+    // o jogo e uma pasta em roms/scummvm e o atalho .scummvm tem o nome dela
+    {"Beneath a Steel Sky", "ScummVM", "freeware", "Revolution Software",
+     "https://downloads.scummvm.org/frs/extras/Beneath%20a%20Steel%20Sky/bass-cd-1.2.zip", "Beneath a Steel Sky.scummvm",
+     "53209b9400eab6fd7fa71518b2f357c8de75cfeaa5ba57024575ab79cc974593", "scummvm",
+     "bass-cd-1.2", "Beneath a Steel Sky", "Beneath a Steel Sky"},
+    {"Flight of the Amazon Queen", "ScummVM", "freeware", "Interactive Binary Illusions",
+     "https://downloads.scummvm.org/frs/extras/Flight%20of%20the%20Amazon%20Queen/FOTAQ_Talkie-1.1.zip",
+     "Flight of the Amazon Queen.scummvm", "a25cdd5e003a0a5e402af99b218cc7ea81ad032cb36b8c05df3bd1167038d8a8", "scummvm",
+     "queen.1c", "Flight of the Amazon Queen/queen.1c", "Flight of the Amazon Queen"},
 };
 static const int NGRATIS = int(sizeof(GRATIS) / sizeof(GRATIS[0]));
 static bool gratisOn = false;
@@ -2477,7 +2514,16 @@ static void gratisBaixar(int i) {
         std::string f = tmp + "/" + g.arquivo;
         bool zip = g.dentro[0] != 0;
         std::string baixa = zip ? tmp + "/gratis.zip" : f;   // o SHA-256 confere o que veio do autor
+        // central de downloads: o tamanho vem do arquivo crescendo (o curl roda quieto)
+        std::string cid = std::string("gratis:") + g.nome;
+        Central::inicia(cid, std::string("Jogo grátis: ") + g.nome, 0, "baixando de " + std::string(g.autor));
+        std::atomic<bool> fim{false};
+        std::thread olho([&] {
+            while (!fim) { Central::avanca(cid, std::max(0LL, sizeOfFile(baixa))); std::this_thread::sleep_for(std::chrono::milliseconds(500)); }
+        });
         std::string r = Rede::run("curl -fsSL -m 600 -o '" + baixa + "' '" + g.url + "' && sha256sum '" + baixa + "'");
+        fim = true;
+        olho.join();
         bool ok = r.rfind(g.sha, 0) == 0;
         if (ok && zip && g.para && *g.para) {   // pasta (ou arquivo) que fica em roms/<sis>, e o atalho com o caminho
             std::string x = tmp + "/gratis", dest = ROMS + "/" + g.sis + "/" + g.para;
@@ -2485,7 +2531,7 @@ static void gratisBaixar(int i) {
             mkdirs(dest.substr(0, dest.rfind('/')));
             Rede::run("rm -rf '" + dest + "' && mv '" + x + "/" + g.dentro + "' '" + dest + "'; rm -rf '" + x + "'");
             std::ofstream(f) << g.abre << "\n";
-            ok = isFile(ROMS + "/" + g.sis + "/" + g.abre);
+            ok = isFile(ROMS + "/" + g.sis + "/" + g.abre) || ehPasta(ROMS + "/" + g.sis + "/" + g.abre);   // ScummVM: pasta
         } else if (ok && zip) {
             Rede::run("unzip -p '" + baixa + "' '" + g.dentro + "' > '" + f + "'");
             ok = sizeOfFile(f) > 0;
@@ -2508,6 +2554,7 @@ static void gratisBaixar(int i) {
         gratisMsg = ok ? std::string(g.nome) + " baixado: aparece no " + g.console + " em alguns segundos."
                        : r.empty() ? "Não deu para baixar: confira a internet (Rede e Wi-Fi)."
                                    : "O arquivo baixado não confere (SHA-256): nada foi colocado.";
+        Central::termina(cid, ok, ok ? std::string("Pronto: no ") + g.console : gratisMsg);
         gratisBaixando = false;
         redraw();
     }).detach();
@@ -2538,6 +2585,57 @@ static void drawGratis() {
     for (size_t i = 0; i < L.size(); i++) T.draw(L[i], x + 14 * u, top + i * lh + lh / 2, 9.5f, false, C[i], 0, w - 28 * u);
     static const char *H[] = {"ud", "escolher", "a", "baixar", "b", "voltar"};
     panelHints(H, 6, x, y + h, w);
+}
+
+// ------------------------------------------------------------------ central de downloads
+// Tudo o que esta chegando, com a barra de cada um: pen drive -> disco, envios pela pagina, jogos gratis e a
+// versao nova do sistema. Abre sozinha quando um pen drive comeca a copiar; B fecha e a copia continua.
+static std::atomic<bool> centralOn{false};   // o pen drive abre de outra thread
+static bool centralDoPainel = false;          // aberta pelo painel: B volta para ele
+static void abrirCentral(bool doPainel = false) { centralDoPainel = doPainel; centralOn = true; }
+
+static void drawCentral() {
+    if (!centralOn) return;
+    float u = G.u, w = std::min(G.W - 24.0f * u, 560 * u * T.escala), lh = 14 * u * T.escala;
+    auto itens = Central::lista();
+    // versao nova do sistema baixando (o tos-atualizar escreve "porcentagem mensagem")
+    struct stat st;
+    if (stat("/tmp/tos-atualizar.trava", &st) == 0) {
+        std::ifstream in("/tmp/tos-atualizar.txt");
+        int pc = 0;
+        std::string msg;
+        if (in >> pc) std::getline(in, msg);
+        Central::Item it;
+        it.id = "sistema"; it.titulo = "Versão nova do ScrapCade OS"; it.detalhe = msg.empty() ? "baixando" : msg.substr(1);
+        it.feito = pc; it.total = 100; it.estado = 0;
+        itens.insert(itens.begin(), it);
+    }
+    int linhas = itens.empty() ? 2 : 0;
+    for (auto &i : itens) linhas += 3;
+    float h = 22 * u + 16 * u + std::min(linhas, 24) * lh + 26 * u;
+    float x = (G.W - w) / 2, y = (G.H - h) / 2;
+    float top = whitePanel("Downloads e cópias", x, y, w, h) + 10 * u, yy = top;
+    if (itens.empty()) {
+        T.draw("Nada chegando agora.", x + 14 * u, yy + lh / 2, 9.5f, false, 0xFF2B2E33, 0, w - 28 * u);
+        T.draw("Ligue um pen drive com jogos, envie pela página do celular ou baixe nos Jogos grátis.", x + 14 * u,
+               yy + lh * 1.5f, 9, false, 0xFF5E6269, 0, w - 28 * u);
+    }
+    int mostrados = 0;
+    for (auto &i : itens) {
+        if (++mostrados > 8) break;
+        uint32_t cor = i.estado == 2 ? 0xFFD0362B : (i.estado == 1 ? 0xFF1E9C4A : 0xFF2B2E33);
+        std::string marca = i.estado == 1 ? "✓  " : (i.estado == 2 ? "✗  " : "↓  ");
+        T.draw(marca + i.titulo, x + 14 * u, yy + lh / 2, 10, true, cor, 0, w - 28 * u);
+        std::string tam;
+        if (i.id != "sistema" && i.feito > 0)
+            tam = Central::tamanho(i.feito) + (i.total > 0 ? " de " + Central::tamanho(i.total) : "");
+        T.draw(i.detalhe + (tam.empty() ? "" : "   •   " + tam), x + 14 * u, yy + lh * 1.5f, 8.5f, false, 0xFF5E6269, 0, w - 28 * u);
+        int pct = i.total > 0 ? int(std::min<long long>(100, i.feito * 100 / std::max(1LL, i.total))) : (i.estado == 1 ? 100 : 0);
+        if (i.estado == 0 && i.total > 0) drawBar("", pct, x + 14 * u - 46 * u, yy + lh * 2.2f, w - 28 * u + 46 * u);
+        yy += 3 * lh;
+    }
+    static const char *H[] = {"b", "fechar (o que está chegando continua)"};
+    panelHints(H, 2, x, y + h, w);
 }
 
 // Copia saves, perfis e configuracoes para o pen drive (pasta ScrapCade-saves/<data>)
@@ -3003,6 +3101,7 @@ static void optAction(int dir) {
     case OPT_JOGOS: if (dir == 0) { sysOpen = false; abrirNavegador(2); } return;
     case OPT_ARQUIVOS: if (dir == 0) { sysOpen = false; abrirNavegador(3); } return;
     case OPT_GRATIS: if (dir == 0) { sysOpen = false; abrirGratis(); } return;
+    case OPT_CENTRAL: if (dir == 0) { sysOpen = false; abrirCentral(true); } return;
     case OPT_BACKUP: if (dir == 0) copiarSaves(); return;
     case OPT_EJETAR:
         if (dir == 0) toast(Usb::eject() ? "Pode tirar o pen drive." : "Nenhum pen drive em uso.", 4000);
@@ -3240,6 +3339,12 @@ static bool hdInput(int b) {
     return true;
 }
 
+static bool centralInput(int b) {
+    if (!centralOn) return false;
+    if (b == B_B || b == B_A) { centralOn = false; if (centralDoPainel) sysOpen = true; }
+    return true;
+}
+
 static bool gratisInput(int b) {
     if (!gratisOn) return false;
     if (b == B_UP) gratisSel = (gratisSel + NGRATIS - 1) % NGRATIS;
@@ -3393,6 +3498,7 @@ static bool panelInput(Btn b) {
     if (pmInput(b)) return true;
     if (hdInput(b)) return true;
     if (navInput(b)) return true;
+    if (centralInput(b)) return true;
     if (gratisInput(b)) return true;
     if (colecaoInput(b)) return true;
     if (details && !sysOpen && b == B_A && current()) { abrirColecoes(); return true; }
@@ -3985,6 +4091,7 @@ static void render() {
     drawPortMaster();
     drawNavegador();
     drawGratis();
+    drawCentral();
     drawColecoes();
     drawConfirmacao();
     drawPerguntaHD();
@@ -4035,11 +4142,17 @@ static std::string coreOf(const std::string &id) {
         {"gb", {"gambatte"}}, {"gbc", {"gambatte"}}, {"gba", {"mgba", "gpsp"}}, {"psx", {"pcsx_rearmed"}},
         {"n64", {"mupen64plus_next"}}, {"arcade", {"fbneo"}}, {"neogeo", {"fbneo"}}, {"psp", {"ppsspp"}},
         {"nds", {"melonds"}}, {"saturn", {"mednafen_saturn"}}, {"dreamcast", {"flycast"}}, {"doom", {"prboom"}}, {"dos", {"dosbox_pure"}},
-        {"mastersystem", {"genesis_plus_gx", "picodrive"}}, {"gamegear", {"genesis_plus_gx"}}, {"segacd", {"genesis_plus_gx", "picodrive"}},
+        // Game Gear: a imagem de 32 bits nao tem o Genesis Plus GX; o PicoDrive dela tambem roda (ate a v0.21 nao abria)
+        {"mastersystem", {"genesis_plus_gx", "picodrive"}}, {"gamegear", {"genesis_plus_gx", "picodrive"}},
+        {"segacd", {"genesis_plus_gx", "picodrive"}}, {"sg1000", {"genesis_plus_gx", "picodrive"}},
         {"sega32x", {"picodrive"}}, {"pcengine", {"mednafen_pce_fast"}}, {"atari2600", {"stella2014"}}, {"atari7800", {"prosystem"}},
         {"lynx", {"handy"}}, {"ngp", {"mednafen_ngp"}}, {"wswan", {"mednafen_wswan"}}, {"virtualboy", {"mednafen_vb"}},
         {"ps2", {"pcsx2"}}, {"gamecube", {"dolphin"}}, {"wii", {"dolphin"}}, {"3ds", {"citra"}},
-        {"quake", {"tyrquake"}}, {"cavestory", {"nxengine"}}};
+        {"quake", {"tyrquake"}}, {"cavestory", {"nxengine"}},
+        {"atari5200", {"a5200"}}, {"jaguar", {"virtualjaguar"}}, {"colecovision", {"gearcoleco"}},
+        {"intellivision", {"freeintv"}}, {"odyssey2", {"o2em"}}, {"vectrex", {"vecx"}}, {"3do", {"opera"}},
+        {"neogeocd", {"neocd"}}, {"msx", {"bluemsx"}}, {"c64", {"vice_x64"}}, {"amiga", {"puae"}}, {"atarist", {"hatari"}},
+        {"scummvm", {"scummvm"}}, {"easyrpg", {"easyrpg"}}};
     auto it = m.find(id);
     if (it == m.end()) return "";
     for (auto &c : it->second)
@@ -4080,8 +4193,13 @@ static void play() {
     const Game *g = current();
     if (!g) return;
     std::string core = coreEscolhido(g->sys->id);
-    // Ports (PortMaster: o jogo e um script) e Half-Life (Xash3D): sem nucleo do RetroArch
-    bool port = g->sys->id == "ports" || g->sys->id == "halflife";
+    // Ports (PortMaster: o jogo e um script), Half-Life (Xash3D), Xbox (xemu) e PS3 (RPCS3): sem nucleo do RetroArch
+    const std::string &sid = g->sys->id;
+    bool port = sid == "ports" || sid == "halflife" || sid == "xbox" || sid == "ps3";
+    if ((sid == "xbox" && !isFile("/usr/bin/xemu")) || (sid == "ps3" && !isFile("/usr/bin/rpcs3"))) {
+        toast("O " + g->sys->name + " só roda no ScrapCade OS de 64 bits.", 3500);
+        return;
+    }
     if (g->sys->id == "ports" && g->file == "PortMaster.sh" && !portMasterInstalado()) { baixarPortMaster(); return; }
     if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
         toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
@@ -4093,11 +4211,13 @@ static void play() {
     savePrefs();
     float u = G.u;
     std::string emu = port ? g->sys->emu : emuNome(g->sys);
-    for (Uint32 ini = SDL_GetTicks(); SDL_GetTicks() - ini < 1800;) {   // 1,8 s com o CARREGANDO andando
+    std::string aviso = avisoPesado(sid);
+    for (Uint32 ini = SDL_GetTicks(); SDL_GetTicks() - ini < (aviso.empty() ? 1800u : 4000u);) {   // CARREGANDO andando; com aviso, 4 s para ler
         G.fillRect(0, 0, float(G.W), float(G.H), 0xFF101418);
         drawCarregando(G.W / 2.0f, G.H * 0.27f, 0.7f * u);
         T.draw("Abrindo " + g->title, G.W / 2.0f, G.H * 0.42f, 16, true, 0xFFFFFFFF, 1, G.W - 40 * u);
         T.draw(g->sys->name + "  •  " + emu, G.W / 2.0f, G.H * 0.42f + 22 * u, 10, false, 0xFFB8BEC8, 1);
+        if (!aviso.empty()) T.draw(aviso, G.W / 2.0f, G.H * 0.42f + 44 * u, 11, true, 0xFFFFC94A, 1, G.W - 40 * u);
         T.draw("Select + Start: sair do jogo (o progresso fica salvo)", G.W / 2.0f, G.H * 0.62f, 11, false,
                accent(g->sys->color), 1);
         T.draw("Select + X: menu     Select + RB: salvar     Select + LB: carregar     Select + Y: print", G.W / 2.0f, G.H * 0.62f + 18 * u, 9.5f,
@@ -4131,7 +4251,7 @@ static void onSignal(int) { quit = 1; }
 
 // ------------------------------------------------------------------ trabalho de fundo (Capas.start do iChroma)
 
-static Uint32 EV_TOAST = 0, EV_META = 0, EV_ART = 0, EV_WEB = 0;
+static Uint32 EV_TOAST = 0, EV_META = 0, EV_ART = 0, EV_WEB = 0, EV_DESENHA = 0;
 static volatile bool workStop = false;
 static std::mutex workMu;
 static std::string workMsg;
@@ -4156,8 +4276,11 @@ static void worker() {
     curl_global_init(CURL_GLOBAL_DEFAULT);
     long long netRetry = 0;
     while (!quit && !workStop) {
-        std::string usb = Usb::import([](int n) {
+        std::string usb = Usb::import([](int n, long long total) {
             { std::lock_guard<std::mutex> l(workMu); workMsg = "Pen drive: copiando " + std::to_string(n) + (n == 1 ? " arquivo..." : " arquivos..."); }
+            // copia grande (jogos de CD/DVD): a central abre sozinha para acompanhar. Pequena: so o aviso e a seta na barra
+            // de cima (abrir sempre roubava os botoes de quem estava mexendo no menu na hora)
+            if (total >= 200LL * 1024 * 1024 && !sysOpen && !gratisOn) abrirCentral();
             post(EV_TOAST);
         });
         if (!usb.empty()) {
@@ -4293,10 +4416,12 @@ int main() {
     }
     std::string sig = signature(scanGames());
     lastMove = SDL_GetTicks();
-    EV_TOAST = SDL_RegisterEvents(4);
+    EV_TOAST = SDL_RegisterEvents(5);
     EV_META = EV_TOAST + 1;
     EV_ART = EV_TOAST + 2;
     EV_WEB = EV_TOAST + 3;
+    EV_DESENHA = EV_TOAST + 4;
+    Central::avisa = [] { post(EV_DESENHA); };   // so redesenha (a barra da central andou)
     std::thread work(worker);
     SDL_StartTextInput();
     if (energiaDisponivel()) {   // modo de energia escolhido no painel (vale para todos os perfis)
@@ -4346,7 +4471,14 @@ int main() {
                     backdropKey = "\x01";   // recarrega o fundo do jogo selecionado
                 }
                 break;
-            case SDL_CONTROLLERDEVICEADDED: SDL_GameControllerOpen(e.cdevice.which); break;
+            case SDL_CONTROLLERDEVICEADDED:
+                if (SDL_GameController *gc = SDL_GameControllerOpen(e.cdevice.which)) {
+                    // o RPCS3 (PS3) pede o nome do controle no jeito do SDL: o tos-jogar usa o primeiro que apareceu
+                    struct stat st;
+                    if (const char *nm = SDL_GameControllerName(gc))
+                        if (stat("/tmp/tos-controle-sdl", &st) != 0) std::ofstream("/tmp/tos-controle-sdl") << nm << "\n";
+                }
+                break;
             case SDL_JOYDEVICEADDED:
                 // controle que o banco do SDL nao conhece: abre a configuracao na hora
                 if (!SDL_IsGameController(e.jdevice.which)) {
@@ -4428,7 +4560,7 @@ int main() {
                     holdDir = 0;
                 break;
             case SDL_CONTROLLERAXISMOTION:
-                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || hdStage || profStage || tkOn) {
+                if (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || centralOn || hdStage || profStage || tkOn) {
                     static int ly = 0;
                     if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
                         int d = e.caxis.value < -20000 ? -1 : (e.caxis.value > 20000 ? 1 : 0);
@@ -4524,7 +4656,7 @@ int main() {
             }
         }
         // segurando o direcional: anda sozinho
-        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
+        if (holdDir && (sysOpen || !textTitle.empty() || instStage || netStage || btStage || updStage || navModo || gratisOn || centralOn || hdStage || ctlStep >= 0 || profStage || tkOn)) holdDir = 0;
         if (holdDir && now >= holdNext) { move(int(holdDir)); holdNext = now + 90; any = true; }
         // jogos novos na pasta: procura de novo a cada 5 s
         if (now - lastScan > 5000) {

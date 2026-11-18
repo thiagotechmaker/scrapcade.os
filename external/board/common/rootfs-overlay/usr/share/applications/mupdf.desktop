@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Leitor de PDF
+Comment=Lê PDF, XPS e livros EPUB/CBZ
+Exec=mupdf-x11 %f
+Icon=document-viewer
+Terminal=false
+MimeType=application/pdf;application/oxps;application/vnd.ms-xpsdocument;application/epub+zip;application/x-cbz;
+Categories=Office;Viewer;
