@@ -75,6 +75,9 @@ if c and j:
 sys.exit(0 if ok else 1)
 P
 cat $R | grep "^tela\|^jogo"
+# nucleo que compila mas nao abre (biblioteca ou simbolo faltando)
+/usr/bin/python3 "$TOS/tests/conferir-bibliotecas.py" "$TOS/output/i686/target" > teste/bibliotecas-32.txt || falhas=$((falhas+1))
+tee -a $R < teste/bibliotecas-32.txt | grep -v "^aviso"
 if [ $falhas -eq 0 ]; then
   cat $I/atualizacao/BUILD_ID > teste/aprovado-32
   echo "APROVADO 32 bits: compilacao $(cat teste/aprovado-32)"

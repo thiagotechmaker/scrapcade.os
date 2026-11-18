@@ -7,7 +7,7 @@
 LIBRETRO_SCUMMVM_VERSION = c3f4936d1ba2af178816cc9bb06087025e4a2bea
 LIBRETRO_SCUMMVM_SITE = $(call github,libretro,scummvm,$(LIBRETRO_SCUMMVM_VERSION))
 LIBRETRO_SCUMMVM_LICENSE = GPL-3.0
-LIBRETRO_SCUMMVM_DEPENDENCIES = zlib freetype flac libvorbis faad2 fluidsynth host-zip
+LIBRETRO_SCUMMVM_DEPENDENCIES = zlib freetype flac libvorbis libogg faad2 fluidsynth host-zip
 
 # O Makefile do libretro baixa duas dependencias (libretro-deps e libretro-common) nos commits fixos que ele mesmo
 # declara em dependencies.mk. Sem a "nuvem" do ScummVM (nada de conta online); bibliotecas de som e fonte do sistema.
@@ -19,6 +19,14 @@ define LIBRETRO_SCUMMVM_LIMPA_SUBMODULOS
 	rmdir $(@D)/backends/platform/libretro/deps/libretro-deps $(@D)/backends/platform/libretro/deps/libretro-common 2>/dev/null || true
 endef
 LIBRETRO_SCUMMVM_POST_EXTRACT_HOOKS += LIBRETRO_SCUMMVM_LIMPA_SUBMODULOS
+
+# o Makefile liga so -lvorbis quando usa o vorbis do sistema; o ScummVM chama a vorbisfile (ov_read, ov_open_callbacks)
+# e o nucleo nao abria ("undefined symbol: ov_read")
+define LIBRETRO_SCUMMVM_LIGA_VORBISFILE
+	sed -i 's/^this_lib_flags := -lvorbis$$/this_lib_flags := -lvorbisfile -lvorbis -logg/' $(@D)/backends/platform/libretro/dependencies.mk
+	grep -q 'this_lib_flags := -lvorbisfile -lvorbis -logg' $(@D)/backends/platform/libretro/dependencies.mk
+endef
+LIBRETRO_SCUMMVM_POST_PATCH_HOOKS += LIBRETRO_SCUMMVM_LIGA_VORBISFILE
 
 define LIBRETRO_SCUMMVM_BUILD_CMDS
 	rm -rf $(@D)/backends/platform/libretro/deps/libretro-deps $(@D)/backends/platform/libretro/deps/libretro-common
