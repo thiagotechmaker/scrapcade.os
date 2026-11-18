@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/logo.png" width="560" alt="ScrapCade OS"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.20.0--beta-orange" alt="versão v0.20.0-beta">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.21.0--beta-orange" alt="versão v0.21.0-beta">
   <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686-informational" alt="arquitetura x86_64 e i686">
   <img src="https://img.shields.io/badge/base-Linux%206.12%20%2B%20Buildroot%202026.02-lightgrey" alt="base Linux 6.12 e Buildroot 2026.02">
   <img src="https://img.shields.io/badge/licen%C3%A7a-GPLv3-blue" alt="licença GPLv3">
@@ -17,7 +17,7 @@
 
 1. Baixe o `.iso` (`pc-64bits` ou `pc-32bits`) nas [Releases](https://github.com/thiagotechmaker/scrapcade.os/releases/latest).
 2. Grave num pen drive de 4 GB ou mais com o [Rufus](https://rufus.ie) ou o [balenaEtcher](https://etcher.balena.io).
-3. Ligue o PC pelo pen drive. No primeiro boot ele se arruma sozinho e cria o seu perfil; para ficar no HD, *Sistema > Instalar*.
+3. Ligue o PC pelo pen drive. No primeiro boot ele se arruma sozinho e cria o seu perfil; para ficar no HD (sozinho ou ao lado do Windows), *Sistema > Instalar*.
 
 Jogos, BIOS e ROMs não acompanham o sistema: mande os seus pelo navegador do celular, pela rede do Windows ou por um pen drive.
 
@@ -35,11 +35,11 @@ Os jogos das capturas são de fãs, com licença livre ([µCity](https://github.
 
 <details><summary>Ver tudo o que o sistema faz</summary>
 
-- **Consoles:** NES, Super Nintendo, Mega Drive, Master System, Game Gear, Game Boy (Color, Advance), PlayStation, Nintendo 64, PSP, Nintendo DS, Saturn, Dreamcast, fliperama e Neo Geo, PC antigo (DOS), Doom, Half-Life (com a sua cópia da Steam) e os ports do PortMaster.
-- **Menu:** carrossel de capas com filtros, "Continuar jogando" com a foto de onde parou, favoritos, perfis com avatar, 8 temas ou uma imagem sua, sons, proteção de tela com as cenas dos jogos.
-- **Jogando:** voltar de onde parou, filtros de imagem, proporção, run-ahead, FPS na tela, emulador de cada console. Select + Start sai; Select + X abre o menu do emulador.
+- **Consoles:** NES, Super Nintendo, Nintendo 64, Game Boy (Color, Advance), Nintendo DS, Virtual Boy; Mega Drive, Master System, Game Gear, Sega CD, 32X, Saturn, Dreamcast; PlayStation, PSP; PC Engine (e CD); Atari 2600, 7800 e Lynx; Neo Geo Pocket, WonderSwan; fliperama (FBNeo e MAME 2003-Plus) e Neo Geo; PC antigo (DOS), Doom, Quake, Cave Story, Half-Life (com a sua cópia da Steam) e os ports do PortMaster. Só na versão de 64 bits: PlayStation 2, GameCube, Wii e 3DS.
+- **Menu:** carrossel de capas com filtros, "Continuar jogando" com a foto de onde parou, favoritos, coleções, perfis com avatar, 8 temas ou uma imagem sua, sons, proteção de tela com as cenas dos jogos, em português ou inglês.
+- **Jogando:** voltar de onde parou, pacote completo de filtros (um por console), molduras, proporção, run-ahead, FPS na tela, emulador de cada console, jogar online, conquistas (RetroAchievements). Select + Start sai; Select + X abre o menu do emulador; Select + Y tira print.
 - **Jogos:** jogos grátis de licença livre, trazer do pen drive, gerenciador de arquivos, BIOS dos consoles, cópia dos saves.
-- **Sistema:** Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, botão de energia com menu, atualização A/B (se a nova não ligar, volta para a anterior), instalar no HD, modo desktop.
+- **Sistema:** Wi-Fi, Bluetooth, pasta na rede do Windows, SSH, saves sincronizados (Syncthing), botão de energia com menu, fuso horário, desempenho ajustado ao PC, atualização A/B (se a nova não ligar, volta para a anterior), instalar no HD ou ao lado do Windows, modo desktop com navegador.
 
 </details>
 
@@ -64,7 +64,7 @@ Para ligar: PC de 64 bits com 2 GB de memória, ou PC de 32 bits (Pentium 4, Pen
 
 </details>
 
-**Limitações:** PS2, GameCube, Wii e 3DS ainda sem emulador (v0.22); poucos ports do PortMaster rodam em PC; sem Secure Boot.
+**Limitações:** PS2, GameCube, Wii e 3DS só na versão de 64 bits e pedem um PC forte; poucos ports do PortMaster rodam em PC; sem Secure Boot.
 
 ## Estrutura de pastas
 

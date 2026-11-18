@@ -23,6 +23,8 @@ ESPERADO = [
     (r"ota baixou: 1", "atualizacao: baixou a versao nova"),
     (r"ota anterior guardada: sim", "atualizacao: guardou a versao anterior"),
     (r"ota confirmada: sim", "atualizacao: reiniciou na nova e confirmou"),
+    (r"ao lado do Windows: 5 particoes", "ao lado do Windows: 2 particoes novas, as 3 do Windows intactas"),
+    (r"consoles novos: mastersystem pcengine atari2600", "consoles novos: cada jogo na pasta certa"),
 ]
 
 

@@ -46,7 +46,7 @@ D=teste/t-bios.img; cp $I/disk.img $D; truncate -s 3G $D
 ( acorda; k down; sleep 1; k down down down; sleep 1; shot boot_bios_memsel; k ret; sleep 25; shot boot_bios_memtest; echo quit ) | timeout 90 $Q -drive file=$D,format=raw > teste/q1.log 2>&1
 ( acorda; k down; k ret; sleep 9; shot boot_logo_kernel; sleep 36; senha; sleep 70; shot boot_bios_compat; echo quit ) | timeout 200 $Q -drive file=$D,format=raw > teste/q2.log 2>&1
 cp $I/disk.img $D; truncate -s 3G $D
-( sleep 4; shot boot_uefi_menu; k up; sleep 1; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
+( acorda; shot boot_uefi_menu; k down; sleep 1; k down; sleep 1; k down; sleep 1; shot boot_uefi_memsel; k ret; sleep 25; shot boot_uefi_memtest; echo quit ) | timeout 90 $Q $EFI -drive file=$D,format=raw,if=virtio > teste/q3.log 2>&1
 # .iso gravado direto: arruma no 1o boot; no 2o boot (BIOS, GRUB) o teste de memoria
 for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentativa, com o .iso intacto de novo
   D=teste/t-iso.img; cp $ISO $D; truncate -s 4G $D
@@ -68,7 +68,12 @@ W=http://127.0.0.1:18080
   log "pagina web: $(curl -s -m 10 -o /dev/null -w '%{http_code}' $W/)  lista de arquivos: $(curl -s -m 10 "$W/fs/lista?a=" | head -c 60)"
   for f in nes/"Aventura de Teste.nes" snes/"Corrida de Teste (U) [!].sfc" n64/"Jogo de Teste 64.z64" gb/"Quebra-Cabeça de Teste.gb" megadrive/"Plataforma Sem Capa.md" psx/"Disco de Teste.cue"; do
     log "envio $(basename "$f"): $(up "$RO/$f" "envio/$(enc "$(basename "$f")")")"; done
+  # consoles novos da v0.21: cada extensao vai para a pasta do seu console
+  for n in "Teste Master.sms" "Teste Engine.pce" "Teste Atari.a26"; do head -c 32768 /dev/urandom > "teste/$n"; up "teste/$n" "envio/$(enc "$n")" >/dev/null; done
   sleep 40
+  ok=""; for p in mastersystem/"Teste Master.sms" pcengine/"Teste Engine.pce" atari2600/"Teste Atari.a26"; do
+    curl -s -m 10 "$W/fs/lista?p=$(enc "roms/${p%%/*}")" | grep -qF "${p#*/}" && ok="$ok ${p%%/*}"; done
+  log "consoles novos:$ok"
   for f in nes/"Aventura de Teste" snes/"Corrida de Teste (U) [!]" n64/"Jogo de Teste 64" gb/"Quebra-Cabeça de Teste" psx/"Disco de Teste"; do
     s=${f%%/*}; b=$(basename "$f"); x=$(ls "$RO/$s" | grep -F "$b." | head -1)
     log "capa $b: $(up "$RO/$s/images/$b.png" "capa/$(enc "$s/$x")")"; done
@@ -76,7 +81,7 @@ W=http://127.0.0.1:18080
   k right right; sleep 3; shot sc_andou; k left left; sleep 2
   k e; sleep 3; shot sc_filtro_fav; k e; sleep 3; shot sc_filtro_mais; k e; sleep 3; shot sc_filtro_console; k q q q; sleep 2
   k x; sleep 2; shot sc_favorito
-  k d; sleep 3; shot sc_detalhes; k d; sleep 2
+  k d; sleep 3; shot sc_detalhes; k ret; sleep 2; shot sc_colecoes; k ret; sleep 2; k r p g; k ret; sleep 3; shot sc_colecao_nova; k esc; sleep 1; k d; sleep 2
   k ret; sleep 30; shot sc_jogando; echo "sendkey esc 1000"; sleep 75; shot sc_voltou_do_jogo
   log "samba antes: $(porta 18445)  ssh antes: $(porta 18022)"
   opt 0; k ret; sleep 3; shot p_perfil; fecha
@@ -95,6 +100,7 @@ W=http://127.0.0.1:18080
   opt 9; k ret; sleep 4; shot p_bios; fecha
   opt 42; k ret; sleep 20; shot p_atualizar; fecha
   opt 44; k ret; sleep 4; shot p_instalar; fecha
+  opt 41; k right; sleep 3; shot p_ingles; k left; sleep 2; fecha
   opt 49; k ret; sleep 4; shot p_info; fecha
   opt 45; k ret; sleep 40; shot p_desktop
   echo quit

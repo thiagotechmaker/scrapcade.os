@@ -2,7 +2,9 @@
 # ScrapCade: particao de dados SCRAP-DADOS (exFAT): jogos, BIOS, saves, temas e configuracoes.
 # Se nao existir, e criada no espaco livre do disco do sistema (no primeiro boot). Atualizar o ScrapCade OS
 # troca so o tos.squashfs da particao SCRAPCADE: a SCRAP-DADOS nunca e mexida.
-msg() { echo "$1" > /dev/console; }
+# com a logo na tela o boot nao escreve nada: o aviso so vai para a tela no modo de mensagens (loglevel=7)
+# (sempre termina com sucesso: "criar" acaba num msg e o resultado dele decide se a particao ficou pronta)
+msg() { echo "$1" >&2; grep -q "loglevel=7" /proc/cmdline && echo "$1" > /dev/console; return 0; }
 
 # SCRAP-DADOS; os pen drives gravados antes da troca de nome usam TOS-DADOS e continuam valendo
 dados() { blkid | sed -n 's/^\([^:]*\):.*LABEL="\(SCRAP-DADOS\|TOS-DADOS\)".*/\1/p' | head -1; }

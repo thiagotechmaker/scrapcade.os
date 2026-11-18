@@ -59,8 +59,18 @@ case "$1" in
     rm -f $D/tos-anterior.squashfs $D/bzImage-anterior $D/initrd-anterior.gz           $D/tos-com-problema.squashfs $D/bzImage-com-problema $D/initrd-com-problema.gz
     precisa=$(( ${tam:-0} / 1048576 + 40 ))
     livre=$(df -m $D | awk 'NR==2 {print $4}')
-    [ "${livre:-0}" -ge "$precisa" ] || { mount -o remount,ro /boot; p 0 "ERRO: falta espaço no pen drive (precisa de $precisa MB, tem $livre MB)"; exit 1; }
+    APERTADO=""
+    echo "espaco: sistema $livre MB livres, precisa $precisa MB"; df -m /boot /userdata; grep -E " /boot | /userdata " /proc/mounts
     T=$D/novo
+    if [ "${livre:-0}" -lt "$precisa" ]; then
+      # SCRAPCADE de 1 GB (pen drives antigos): baixa na SCRAP-DADOS e a versao de agora fica guardada la
+      dlivre=$(df -m /userdata | awk 'NR==2 {print $4}')
+      grep -q " /userdata tmpfs" /proc/mounts && dlivre=0
+      atual_mb=$(du -m $D/tos.squashfs | cut -f1)   # (sem stat: o busybox daqui nao traz)
+      [ "${dlivre:-0}" -ge $(( precisa + atual_mb + 40 )) ] || { mount -o remount,ro /boot; p 0 "ERRO: falta espaço (precisa de $(( precisa + atual_mb + 40 )) MB livres na SCRAP-DADOS, tem ${dlivre:-0} MB)"; exit 1; }
+      APERTADO=1
+      T=/userdata/.atualizacao
+    fi
     rm -rf $T; mkdir -p $T
     i=0
     for f in $SQ $BZ $IR $SUMS; do
@@ -76,10 +86,23 @@ case "$1" in
     [ -n "$X" ] && { mv $T/$SQ $T/tos.squashfs; mv $T/$BZ $T/bzImage; mv $T/$IR $T/initrd.gz; }
     p 94 "Trocando (a versão de agora fica guardada como anterior)"
     cd $D
-    mv tos.squashfs tos-anterior.squashfs
-    mv bzImage bzImage-anterior
-    mv initrd.gz initrd-anterior.gz
-    mv $T/tos.squashfs $T/bzImage $T/initrd.gz .
+    if [ -n "$APERTADO" ]; then
+      # o sistema em uso nao pode sair agora (o espaco so volta quando ele fecha): a versao nova espera na
+      # SCRAP-DADOS e o initrd novo troca no proximo boot, guardando a de agora la como anterior
+      mv bzImage bzImage-anterior
+      mv initrd.gz initrd-anterior.gz
+      cp $T/bzImage $T/initrd.gz . || { mv bzImage-anterior bzImage; mv initrd-anterior.gz initrd.gz; rm -rf $T; sync
+        mount -o remount,ro /boot; p 0 "ERRO: não consegui gravar no pen drive; nada foi trocado"; exit 1; }
+      rm -f $T/bzImage $T/initrd.gz $T/$SUMS
+      echo /.atualizacao/tos.squashfs > tos-trocar-pelos-dados
+      T=""   # fica na SCRAP-DADOS ate o boot
+    else
+      mv tos.squashfs tos-anterior.squashfs
+      mv bzImage bzImage-anterior
+      mv initrd.gz initrd-anterior.gz
+      mv $T/tos.squashfs $T/bzImage $T/initrd.gz .
+      rm -f tos-anterior-nos-dados
+    fi
     rm -rf $T tos-com-problema.squashfs bzImage-com-problema initrd-com-problema.gz
     echo 0 > tos-testando
     echo "$n" > tos-nova-versao   # qual versao esta esperando o reinicio

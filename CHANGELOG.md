@@ -30,6 +30,7 @@ Esta versão junta o que estava planejado para a v0.21 e a v0.22.
 
 ### Alterado
 - O boot não escreve mais nada na tela: os avisos do initrd só aparecem em "Iniciar mostrando as mensagens".
+- A partição do sistema (SCRAPCADE) passa de 1 GB para 2 GB nas instalações novas, para caberem a versão de agora e a nova. Nos pen drives antigos, de 1 GB, a atualização baixa na SCRAP-DADOS e guarda a versão anterior lá; se a nova não ligar 3 vezes, o boot volta para ela.
 
 ## [0.20.0-beta] - 2026-11-15
 

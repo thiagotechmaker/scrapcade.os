@@ -44,6 +44,31 @@ for tentativa in 1 2; do   # o QEMU as vezes cai (segfault): uma segunda tentati
   log "QEMU caiu antes de x_discos (tentativa $tentativa), repetindo"
 done
 
+# ---------------------------------------------------------------- instalar ao lado do Windows (disco que imita o Windows)
+# GPT com particao EFI (o "Windows" e o teste de memoria no lugar do bootmgfw.efi), MSR e uma de dados; o resto livre.
+# UEFI com variaveis guardadas (pflash), para a entrada "ScrapCade OS" da placa-mae valer no boot seguinte.
+W=teste/x-windows.img; rm -f $W; truncate -s 16G $W
+printf 'label: gpt\nsize=200MiB, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B\nsize=16MiB, type=E3C9E316-0B5C-4DB8-817D-F92DF00215AE\nsize=3GiB, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7\n' | sfdisk -q $W
+E=teste/x-windows-esp.img; rm -f $E; truncate -s 200M $E; mkfs.vfat -F 32 -n SYSTEM $E >/dev/null
+mmd -i $E ::/EFI ::/EFI/Microsoft ::/EFI/Microsoft/Boot ::/EFI/Boot
+mcopy -i $E $I/memtest.efi ::/EFI/Microsoft/Boot/bootmgfw.efi; mcopy -i $E $I/memtest.efi ::/EFI/Boot/bootx64.efi
+dd if=$E of=$W bs=1M seek=1 conv=notrunc status=none
+cp /usr/share/OVMF/OVMF_VARS_4M.fd teste/x-windows-vars.fd
+UEFI="-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd -drive if=pflash,format=raw,file=teste/x-windows-vars.fd"
+D=teste/x-pen-lado.img; cp $I/disk.img $D; truncate -s 3G $D
+( sleep 40; senha; sleep 60
+  k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
+  k ret; sleep 4; k ret; sleep 3; shot x_lado_confirma
+  k ret; sleep 90; shot x_lado_pronto
+  echo quit ) | timeout 400 $Q $UEFI -device qemu-xhci \
+    -drive if=none,id=pen,file=$D,format=raw -device usb-storage,drive=pen,bootindex=0 \
+    -drive file=$W,format=raw,if=virtio > teste/q9b.log 2>&1
+log "ao lado do Windows: $(sfdisk -d $W | grep -c '^teste') particoes (eram 3)"
+# boot so com o disco: menu de 3 s com ScrapCade e Windows; escolhe Windows; no boot seguinte ele vem marcado
+( sleep 2; echo "sendkey up"; sleep 1; shot x_lado_menu; k down; sleep 1; k ret; sleep 12; shot x_lado_windows
+  echo system_reset; sleep 2.5; shot x_lado_ultimo
+  echo quit ) | timeout 120 $Q $UEFI -drive file=$W,format=raw,if=virtio > teste/q9c.log 2>&1
+
 # ---------------------------------------------------------------- atualizacao de ponta a ponta (servidor falso)
 F=/tmp/scrapcade-ota; rm -rf $F; mkdir -p $F; cp $I/atualizacao/{tos.squashfs,bzImage,initrd.gz,SHA256SUMS} $F/
 sz=$(stat -c %s $F/tos.squashfs)
@@ -65,7 +90,7 @@ for tentativa in 1 2; do   # o QEMU as vezes cai ao reiniciar depois de outros t
     k ret; sleep 3; k t h i a g o; k ret; sleep 3; k ret; sleep 3; k ret; sleep 30
     sleep 150; shot x_ota_avisou                     # de fabrica so avisa que ha versao nova (nao baixa sozinho)
     opt 42; k ret; sleep 20; shot x_ota_versao_nova  # Atualizar: mostra a versao nova
-    k ret; sleep 90; shot x_ota_baixou               # A: baixa, confere e troca (a de agora fica como anterior)
+    k ret; sleep 180; shot x_ota_baixou              # A: baixa, confere e troca (a de agora fica como anterior)
     rm -f $F/latest                                  # o servidor falso para de anunciar (como depois de publicar)
     k ret; sleep 200; shot x_ota_reiniciou           # A: reinicia na versao nova
     echo quit ) | timeout 900 $Q $EFI -drive file=$D,format=raw,if=virtio -nic user,model=e1000 > teste/q10.log 2>&1
@@ -75,7 +100,8 @@ done
 kill $SRV 2>/dev/null
 log "ota baixou: $(grep -c '"GET /tos.squashfs HTTP/1.1" 200' /tmp/scrapcade-ota.log)"
 B=$(mdir -b -i $D@@$O ::boot 2>/dev/null)
-log "ota anterior guardada: $(echo "$B" | grep -q tos-anterior.squashfs && echo sim || echo nao)"
+# pen drive de 1 GB (como os antigos): a anterior vai para a SCRAP-DADOS e fica um aviso no lugar (tos-anterior-nos-dados)
+log "ota anterior guardada: $(echo "$B" | grep -qE 'tos-anterior.squashfs|tos-anterior-nos-dados' && echo sim || echo nao)"
 log "ota confirmada: $(echo "$B" | grep -q tos-testando && echo nao || echo sim)"
 
 # ---------------------------------------------------------------- pen drive + HD com o ScrapCade instalado: tem que ligar o do PEN

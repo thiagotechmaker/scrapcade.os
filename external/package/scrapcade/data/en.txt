@@ -469,3 +469,8 @@ Copia o ScrapCade para o HD ou SSD do computador, para ligar sem o pen drive. Na
 Atenção: o disco escolhido é apagado (ou use o espaço livre ao lado do Windows).	Warning: the chosen disk is erased (or use the free space next to Windows).
 Escolhe o idioma do menu e do painel. Os nomes das pastas (Jogos novos, bios, roms) ficam iguais.	Chooses the language of the menu and panel. Folder names (Jogos novos, bios, roms) stay the same.
 (cima/baixo)	(up/down)
+Acesso remoto (SSH):	Remote access (SSH):
+Modo desktop	Desktop mode
+mudar	change
+apagar	delete
+Apagar	Delete

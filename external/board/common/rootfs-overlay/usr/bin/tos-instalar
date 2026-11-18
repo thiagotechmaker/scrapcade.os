@@ -27,6 +27,8 @@ if [ "$1" = listar ]; then
     livre=$(sfdisk -F "/dev/$n" 2>/dev/null | awk 'NR>3 && $3 ~ /^[0-9]+$/ {if ($3 > m) m = $3} END {print int(m / 2097152)}')
     win=0
     for pp in /dev/$n*; do [ "$pp" != "/dev/$n" ] && blkid "$pp" 2>/dev/null | grep -q 'TYPE="ntfs"' && win=1; done
+    # a particao reservada da Microsoft (MSR) so existe em disco com Windows
+    sfdisk -d "/dev/$n" 2>/dev/null | grep -qi 'E3C9E316-0B5C-4DB8-817D-F92DF00215AE' && win=1
     echo "/dev/$n|$gb|${modelo:-disco}|${livre:-0}|$win"
   done
   exit 0
@@ -56,7 +58,7 @@ if [ -n "$LADO" ]; then
   INI=$1; TAM=$2
   [ "$TAM" -ge 16777216 ] || { p 0 "ERRO: falta espaco livre (minimo 8 GB). No Windows: Gerenciamento de disco > Diminuir volume"; exit 1; }
   INI=$(( (INI + 2047) / 2048 * 2048 )); TAM=$(( TAM - 2048 ))
-  B=2097152   # 1 GB de sistema; o resto vira SCRAP-DADOS
+  B=4194304   # 2 GB de sistema (cabem a versao de agora e a nova); o resto vira SCRAP-DADOS
   if [ "$TAB" = gpt ]; then
     T=0FC63DAF-8483-4772-8E79-3D69D8477DE4   # tipo Linux: o Windows nao poe letra nem mexe
   elif [ "$TAB" = dos ]; then
@@ -94,15 +96,12 @@ start=%s, size=%s, type=%s
     p 45 "Colocando o ScrapCade no menu de boot (UEFI)"
     ESP=$(sfdisk -d "$D" | grep -i 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B' | head -1 | cut -d' ' -f1)
     [ -b "$ESP" ] && mount "$ESP" /mnt/tos-esp || { umount /mnt/tos-boot; p 0 "ERRO: nao achei a particao EFI do Windows"; exit 1; }
-    efi=$(cd /mnt/tos-boot/EFI/BOOT && ls boot*.efi | head -1)
+    # o GRUB de disco GPT (scrapcade-gpt.efi) traz a configuracao dentro e acha a particao do ScrapCade sozinho:
+    # na EFI do Windows so entra a pasta EFI/ScrapCade, nada do Windows e mexido
+    [ -f /mnt/tos-boot/EFI/BOOT/scrapcade-gpt.efi ] || { umount /mnt/tos-esp; umount /mnt/tos-boot; p 0 "ERRO: falta o scrapcade-gpt.efi nesta versao"; exit 1; }
+    efi=scrapcade.efi
     mkdir -p /mnt/tos-esp/EFI/ScrapCade
-    cp "/mnt/tos-boot/EFI/BOOT/$efi" "/mnt/tos-esp/EFI/ScrapCade/$efi"
-    # o GRUB procura a configuracao em EFI/BOOT da particao de onde veio: um grub.cfg pequeno que so pula para a nossa
-    [ -f /mnt/tos-esp/EFI/BOOT/grub.cfg ] && ! grep -q tos-live /mnt/tos-esp/EFI/BOOT/grub.cfg && \
-      cp /mnt/tos-esp/EFI/BOOT/grub.cfg /mnt/tos-esp/EFI/BOOT/grub.cfg.antes-scrapcade
-    mkdir -p /mnt/tos-esp/EFI/BOOT
-    printf 'search --no-floppy --set=root --file /boot/tos-live\nset prefix=($root)/EFI/BOOT\nconfigfile ($root)/EFI/BOOT/grub.cfg\n' \
-      > /mnt/tos-esp/EFI/BOOT/grub.cfg
+    cp /mnt/tos-boot/EFI/BOOT/scrapcade-gpt.efi "/mnt/tos-esp/EFI/ScrapCade/$efi"
     umount /mnt/tos-esp
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null
     n=$(echo "$ESP" | sed 's/.*[^0-9]//')
@@ -138,7 +137,7 @@ p 5 "Preparando o disco"
 for m in $(grep "^$D" /proc/mounts | cut -d' ' -f2); do umount -l "$m"; done
 wipefs -a "$D" >/dev/null 2>&1
 # MBR: liga por UEFI (particao tipo EFI) e por BIOS antigo (GRUB no comeco do disco)
-printf 'label: dos\n1MiB,1GiB,ef,*\n,,7\n' | sfdisk --wipe always "$D" >/dev/null 2>&1 \
+printf 'label: dos\n1MiB,2GiB,ef,*\n,,7\n' | sfdisk --wipe always "$D" >/dev/null 2>&1 \
   || { p 0 "ERRO: nao consegui particionar o disco"; exit 1; }
 partx -u "$D" 2>/dev/null; sleep 2
 

@@ -19,7 +19,7 @@ baixar() {
   tam=$(curl -fsSIL -m 30 "$BASE/PortMaster.zip" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Ll]ength: *//p' | tail -1)
   curl -fsSL -m 900 -o "$T/PortMaster.zip" "$BASE/PortMaster.zip" & C=$!
   while kill -0 $C 2>/dev/null; do
-    feito=$(stat -c %s "$T/PortMaster.zip" 2>/dev/null || echo 0)
+    feito=$(wc -c < "$T/PortMaster.zip" 2>/dev/null || echo 0)   # (sem stat: o busybox daqui nao traz)
     [ "${tam:-0}" -gt 0 ] && p $(( 2 + feito * 88 / tam )) "Baixando: $((feito / 1048576)) de $((tam / 1048576)) MB" \
                           || p 10 "Baixando: $((feito / 1048576)) MB"
     sleep 1

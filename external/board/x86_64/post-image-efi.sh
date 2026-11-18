@@ -34,6 +34,17 @@ chmod 755 "$I/init"
 
 cp "$B/grub-live.cfg" "$BINARIES_DIR/efi-part/EFI/BOOT/grub.cfg"
 
+# GRUB para disco GPT (instalar ao lado do Windows): o boot*.efi padrao procura a configuracao em (hd0,msdos1);
+# este traz a configuracao dentro dele e acha a particao do ScrapCade em qualquer disco (vai para a EFI do Windows)
+GD=$(ls -d "$BUILD_DIR"/grub2-*/build-*-efi 2>/dev/null | head -1)
+GM=$(sed -n 's/^BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="\(.*\)"/\1/p' "$BR2_CONFIG")
+if [ -x "$HOST_DIR/bin/grub-mkimage" ] && [ -n "$GD" ]; then
+  case "$GD" in *x86_64*) GF=x86_64-efi ;; *) GF=i386-efi ;; esac
+  printf 'search --no-floppy --set=root --file /boot/tos-live\nset prefix=($root)/EFI/BOOT\nconfigfile ($root)/EFI/BOOT/grub.cfg\n' > "$BINARIES_DIR/tos-grub-gpt.cfg"
+  "$HOST_DIR/bin/grub-mkimage" -d "$GD/grub-core" -O $GF -o "$BINARIES_DIR/efi-part/EFI/BOOT/scrapcade-gpt.efi" \
+    -p /EFI/BOOT -c "$BINARIES_DIR/tos-grub-gpt.cfg" $GM configfile || { echo "grub-mkimage falhou"; exit 1; }
+fi
+
 # menu de boot do BIOS antigo (syslinux): configuracao, fundo e modulos do menu
 S=$BINARIES_DIR/tos-syslinux
 rm -rf "$S"; mkdir -p "$S"

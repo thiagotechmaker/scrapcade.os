@@ -134,11 +134,69 @@ case "$achou" in /dev/sr*) ;; *)
   fi ;;
 esac
 
+# pen drive de 1 GB: a versao nova baixada esta na SCRAP-DADOS; troca agora, com o sistema ainda fechado.
+# A de agora vai para a SCRAP-DADOS como anterior (o boot volta para ela se a nova nao ligar 3 vezes).
+if [ -f /boot/boot/tos-trocar-pelos-dados ] && ! grep -q "tos.sistema=" /proc/cmdline; then
+  mount -o remount,rw /boot 2>/dev/null
+  dados=$(blkid | sed -n 's/^\([^:]*\):.*LABEL="SCRAP-DADOS".*/\1/p' | head -1)
+  mkdir -p /dados
+  NOVA="/dados$(cat /boot/boot/tos-trocar-pelos-dados)"
+  if [ -n "$dados" ] && mount -t exfat "$dados" /dados 2>/dev/null && [ -f "$NOVA" ]; then
+    cd /boot/boot
+    mkdir -p /dados/.anterior
+    if cp tos.squashfs /dados/.anterior/tos-anterior.squashfs.parcial && mv /dados/.anterior/tos-anterior.squashfs.parcial /dados/.anterior/tos-anterior.squashfs; then
+      rm -f tos.squashfs
+      if cp "$NOVA" tos.squashfs.parcial && mv tos.squashfs.parcial tos.squashfs; then
+        echo /.anterior/tos-anterior.squashfs > tos-anterior-nos-dados
+        rm -rf "${NOVA%/*}"
+      else   # nao coube: volta tudo como estava e liga a versao de antes
+        rm -f tos.squashfs.parcial
+        cp /dados/.anterior/tos-anterior.squashfs tos.squashfs
+        [ -f bzImage-anterior ] && mv bzImage-anterior bzImage
+        [ -f initrd-anterior.gz ] && mv initrd-anterior.gz initrd.gz
+        rm -f tos-testando tos-nova-versao
+        rm -f tos-trocar-pelos-dados; cd /; sync; umount /dados
+        echo b > /proc/sysrq-trigger 2>/dev/null || reboot -f
+      fi
+    fi
+    rm -f tos-trocar-pelos-dados
+    cd /
+    sync
+    umount /dados
+  fi
+  mount -o remount,ro /boot 2>/dev/null
+fi
+
 # atualizacao A/B: "tos.sistema=" no menu de boot escolhe o arquivo (versao anterior)
 SIS=tos.squashfs
 for a in $(cat /proc/cmdline); do case "$a" in tos.sistema=*) SIS=${a#tos.sistema=} ;; esac; done
 # versao nova ainda em teste: conta as tentativas; na terceira sem chegar ao ScrapCade, volta para a anterior
-if [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boot/tos-anterior.squashfs ]; then
+if [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boot/tos-anterior-nos-dados ]; then
+  # pen drive de 1 GB: a anterior esta na SCRAP-DADOS
+  mount -o remount,rw /boot 2>/dev/null
+  n=$(cat /boot/boot/tos-testando 2>/dev/null); n=$((${n:-0} + 1))
+  if [ "$n" -ge 3 ]; then
+    fala "ScrapCade: a versao nova nao ligou 3 vezes; voltando para a anterior."
+    dados=$(blkid | sed -n 's/^\([^:]*\):.*LABEL="SCRAP-DADOS".*/\1/p' | head -1)
+    mkdir -p /dados
+    if [ -n "$dados" ] && mount -t exfat "$dados" /dados 2>/dev/null && [ -f "/dados$(cat /boot/boot/tos-anterior-nos-dados)" ]; then
+      cd /boot/boot
+      rm -f tos.squashfs
+      cp "/dados$(cat tos-anterior-nos-dados)" tos.squashfs
+      [ -f bzImage-anterior ] && mv bzImage-anterior bzImage
+      [ -f initrd-anterior.gz ] && mv initrd-anterior.gz initrd.gz
+      rm -f tos-testando tos-anterior-nos-dados
+      cd /
+      sync
+      umount /dados
+    fi
+    mount -o remount,ro /boot 2>/dev/null
+    echo b > /proc/sysrq-trigger 2>/dev/null || reboot -f
+  fi
+  echo "$n" > /boot/boot/tos-testando
+  sync
+  mount -o remount,ro /boot 2>/dev/null
+elif [ "$SIS" = tos.squashfs ] && [ -f /boot/boot/tos-testando ] && [ -f /boot/boot/tos-anterior.squashfs ]; then
   mount -o remount,rw /boot 2>/dev/null
   n=$(cat /boot/boot/tos-testando 2>/dev/null); n=$((${n:-0} + 1))
   if [ "$n" -ge 3 ]; then
