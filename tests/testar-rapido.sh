@@ -10,7 +10,8 @@ INICIO=$(date +%s)
 wait
 cat teste/resumo-principal.txt teste/resumo-extras.txt > teste/resumo.txt
 echo "bateria em $(( ($(date +%s) - INICIO) / 60 )) min"
-if /usr/bin/python3 "$TOS/tests/conferir.py" "$TOS/teste" "$TOS/tests/referencias" "$1"; then
+if /usr/bin/python3 "$TOS/tests/conferir.py" "$TOS/teste" "$TOS/tests/referencias" "$1" && \
+   /usr/bin/python3 "$TOS/tests/conferir-bibliotecas.py" "$TOS/output/x86_64/target"; then
   sed -n 's/^BUILD_ID=//p' output/x86_64/target/etc/os-release > teste/aprovado
   echo "APROVADO: compilacao $(cat teste/aprovado) pode ser publicada"
 else

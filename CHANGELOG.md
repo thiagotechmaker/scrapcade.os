@@ -6,6 +6,16 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 
 ## [Unreleased]
 
+## [0.22.1-beta] - 2026-11-18
+
+### Corrigido
+- PlayStation não abria nenhum jogo: o emulador vinha com o leitor de CD físico ligado, e esse código chama duas funções que não eram compiladas. Agora vem sem ele (os jogos de PlayStation vêm de arquivo: `.cue`, `.chd`, `.pbp`).
+- ScummVM não abria (faltava ligar a biblioteca de som Ogg Vorbis).
+- Na versão de 64 bits, Dreamcast, PSP e 3DS não abriam: as bibliotecas de dentro de cada emulador viravam arquivos separados que não iam para o sistema. Agora vão dentro do próprio emulador.
+
+### Adicionado
+- Teste novo (`tests/conferir-bibliotecas.py`): antes de aprovar uma versão, confere se cada programa acha as bibliotecas que pede e se cada emulador abre. Um emulador que compila mas não abre reprova a versão.
+
 ## [0.22.0-beta] - 2026-11-18
 
 ### Adicionado

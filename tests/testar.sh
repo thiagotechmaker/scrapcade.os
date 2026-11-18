@@ -15,7 +15,7 @@ rotulos() {   # nomes das particoes de um disco (sem precisar de root)
     blkid -p -o value -s LABEL -O $((st * 512)) "$1" 2>/dev/null; done | tr '\n' ' '; }
 k() { for c in "$@"; do echo "sendkey $c"; sleep 0.5; done; }
 shot() { echo "screendump $TOS/teste/z_$1.ppm"; }
-acorda() { for i in 1 2 3 4 5 6 7; do echo "sendkey up"; sleep 1; done; }   # para a contagem do menu de boot assim que ele aparece
+acorda() { for i in $(seq 24); do echo "sendkey up"; sleep 0.3; done; }   # para a contagem do menu de boot assim que ele aparece (o do UEFI espera so 1 s: um toque a cada 0,3 s nao deixa passar)
 senha() { sleep 2; }   # o boot nao pede mais senha: ela e criada no painel, ao ligar o SSH
 Q="qemu-system-x86_64 -accel kvm -accel tcg -m 2048 -smp 4 -vga std -display none -monitor stdio"
 EFI="-bios /usr/share/ovmf/OVMF.fd"
@@ -132,7 +132,8 @@ fi   # fim da parte principal
 [ "$PARTE" = tudo ] || exit 0   # as metades nao conferem: o testar-rapido.sh confere tudo junto
 if /usr/bin/python3 -c "import PIL" 2>/dev/null; then
   rm -f teste/aprovado
-  if /usr/bin/python3 "$TOS/tests/conferir.py" "$TOS/teste" "$TOS/tests/referencias" "$1"; then
+  if /usr/bin/python3 "$TOS/tests/conferir.py" "$TOS/teste" "$TOS/tests/referencias" "$1" && \
+     /usr/bin/python3 "$TOS/tests/conferir-bibliotecas.py" "$TOS/output/x86_64/target"; then
     # trava da publicacao: o scripts/publicar-versao.ps1 so sobe a compilacao que passou aqui
     sed -n 's/^BUILD_ID=//p' output/x86_64/target/etc/os-release > teste/aprovado
     echo "APROVADO: compilacao $(cat teste/aprovado) pode ser publicada"
