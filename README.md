@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/logo.png" width="560" alt="ScrapCade OS"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.22.1--beta-orange" alt="versão v0.22.1-beta">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-v0.22.2--beta-orange" alt="versão v0.22.2-beta">
   <img src="https://img.shields.io/badge/arquitetura-x86__64%20%7C%20i686-informational" alt="arquitetura x86_64 e i686">
   <img src="https://img.shields.io/badge/base-Linux%206.12%20%2B%20Buildroot%202026.02-lightgrey" alt="base Linux 6.12 e Buildroot 2026.02">
   <img src="https://img.shields.io/badge/licen%C3%A7a-GPLv3-blue" alt="licença GPLv3">
@@ -39,7 +39,7 @@ Os jogos das capturas foram liberados de graça pelos autores: de fãs, com lice
 
 - **Consoles:** NES, Super Nintendo, Nintendo 64, Game Boy (Color, Advance), Nintendo DS, Virtual Boy; SG-1000, Mega Drive, Master System, Game Gear, Sega CD, 32X, Saturn, Dreamcast; PlayStation, PSP; PC Engine (e CD); Atari 2600, 5200, 7800, Lynx e Jaguar; ColecoVision, Intellivision, Odyssey², Vectrex, 3DO; Neo Geo, Neo Geo CD, Neo Geo Pocket, WonderSwan; fliperama (FBNeo e MAME 2003-Plus).
 - **Computadores e jogos de PC:** MSX, Commodore 64, Amiga, Atari ST, PC antigo (DOS), Doom, Quake, Cave Story, Half-Life (com a sua cópia da Steam), aventuras do ScummVM, jogos do RPG Maker (EasyRPG) e os ports do PortMaster.
-- **Só na versão de 64 bits:** PlayStation 2, PlayStation 3, Xbox, GameCube, Wii e 3DS.
+- **Só na versão de 64 bits:** Dreamcast, Saturn, PSP, Nintendo DS, PlayStation 2, PlayStation 3, Xbox, GameCube, Wii e 3DS.
 - **Menu:** carrossel de capas com filtros, "Continuar jogando" com a foto de onde parou, favoritos, coleções, perfis com avatar, 8 temas ou uma imagem sua, sons, proteção de tela com as cenas dos jogos, em português ou inglês.
 - **Jogando:** voltar de onde parou, pacote completo de filtros (um por console), molduras, proporção, run-ahead, FPS na tela, emulador de cada console, jogar online, conquistas (RetroAchievements). Select + Start sai; Select + X abre o menu do emulador; Select + Y tira print.
 - **Jogos:** jogos grátis que os autores liberaram, trazer do pen drive (o pen drive arrumado por console vai direto para a pasta certa), central de downloads com o progresso de cada um, gerenciador de arquivos, BIOS dos consoles, cópia dos saves.
@@ -69,7 +69,21 @@ Para ligar: PC de 64 bits com 2 GB de memória, ou PC de 32 bits (Pentium 4, Pen
 
 </details>
 
-**Limitações:** PS2, PS3, Xbox, GameCube, Wii e 3DS só na versão de 64 bits e pedem um PC forte (o PS3 pede processador com SSE4.1 e de preferência 4 núcleos); Xbox 360 ainda não (o emulador não roda jogos no Linux); poucos ports do PortMaster rodam em PC; sem Secure Boot.
+<details><summary>Ver o teste de cada console (v0.22.2)</summary>
+
+Um jogo de cada console aberto pelo menu, como uma pessoa faria: pen drive arrumado por console (`roms/<console>`, `bios`) ligado com o menu aberto, cópia pela central de downloads, jogo aberto, jogando e de volta ao menu. Feito no QEMU, sem placa de vídeo (o desenho é pela CPU), então os consoles pesados aparecem bem mais lentos que num PC de verdade.
+
+| Resultado | Consoles |
+|---|---|
+| ✅ abre e volta ao menu | NES, Super Nintendo, Nintendo 64, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS, Mega Drive, SG-1000, Game Gear, Sega CD (`.chd`), 32X, Saturn, Dreamcast, 3DO (`.chd`), PlayStation, PlayStation 2, PSP, GameCube, Xbox, fliperama (FBNeo), Neo Geo, Doom, Quake, Cave Story, ScummVM |
+| 🟡 sem conclusão na máquina virtual | Wii (fica carregando) e 3DS (tela preta depois de formatar os dados): pedem placa de vídeo de verdade |
+| — sem jogo no teste | Master System, PC Engine (e CD), Atari 2600, 5200, 7800, Lynx e Jaguar, ColecoVision, Intellivision, Odyssey², Vectrex, Neo Geo CD, Neo Geo Pocket, WonderSwan, Virtual Boy, MSX, Commodore 64, Amiga, Atari ST, DOS, RPG Maker, PS3, Half-Life, ports do PortMaster |
+
+A cada versão, `tests/conferir-bibliotecas.py` confere que todo console tem emulador instalado e que todo emulador abre (bibliotecas, símbolos e pilha).
+
+</details>
+
+**Limitações:** Dreamcast, Saturn, PSP, Nintendo DS, PS2, PS3, Xbox, GameCube, Wii e 3DS só na versão de 64 bits; os seis últimos pedem um PC forte (o PS3 pede processador com SSE4.1 e de preferência 4 núcleos); Xbox 360 ainda não (o emulador não roda jogos no Linux); poucos ports do PortMaster rodam em PC; sem Secure Boot.
 
 ## Estrutura de pastas
 

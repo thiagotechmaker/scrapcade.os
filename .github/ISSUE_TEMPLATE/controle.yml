@@ -7,7 +7,7 @@ body:
     attributes:
       label: Versão
       description: Aparece em Sistema > Informações
-      placeholder: v0.20.0-beta
+      placeholder: v0.22.1-beta
     validations:
       required: true
   - type: input

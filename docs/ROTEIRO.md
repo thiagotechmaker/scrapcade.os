@@ -5,6 +5,9 @@ O que já entrou está no [CHANGELOG](../CHANGELOG.md). Aqui fica o que vem pela
 ## v0.23.0-beta (próxima)
 
 - **ScreenScraper** opcional, com a conta do usuário (descrições, logos, vídeos). A API pede uma credencial de desenvolvedor do projeto, que ainda falta pedir ao ScreenScraper.
+- **Organizador reconhece o console de um `.chd`**: hoje um `.chd` solto (pela página do celular ou fora da pasta do console no pen drive) vai sempre para o PlayStation, mesmo sendo de Sega CD, PC Engine CD, 3DO, Saturn, Dreamcast ou Neo Geo CD. Dentro de `roms/<console>/` no pen drive ele já vai certo.
+- **Wii e 3DS num PC com placa de vídeo:** na máquina virtual o Wii fica carregando e o 3DS fica com a tela preta. E sair de um jogo travado no carregamento: o Select + Start só funciona depois que o emulador termina de abrir.
+- **Consoles sem jogo no teste da v0.22.2** (Master System, PC Engine, Atari, ColecoVision, MSX, C64, Amiga e outros): testar com homebrew de licença livre.
 - **Teste de cada console** com jogos de verdade (lista dos mais pesados por console no guia de testes), e ajuste dos que ficarem lentos.
 - **Fliperama do iChroma:** importar de um pen drive de verdade, analógico direito e teclado/mouse no Half-Life (testes que pedem alguém do lado do aparelho); sons do menu, se o som da placa voltar.
 

@@ -19,6 +19,7 @@ jobs:
                    external/package/scrapcade/S99scrapcade $(grep -rlE '^#!/bin/(ba)?sh' external/board/common/rootfs-overlay); do
             if head -1 "$f" | grep -q bash; then bash -n "$f"; else sh -n "$f"; fi || { echo "::error file=$f::erro de sintaxe"; falhou=1; }
           done
+          for f in tests/*.py; do python3 -m py_compile "$f" || { echo "::error file=$f::erro de sintaxe"; falhou=1; }; done
           exit $falhou
 
       - name: Versao (SemVer) e CHANGELOG
