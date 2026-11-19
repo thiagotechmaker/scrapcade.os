@@ -7,7 +7,7 @@ body:
     attributes:
       label: Versão
       description: Aparece em Sistema > Informações (ou no nome do .iso que você gravou)
-      placeholder: v0.20.0-beta
+      placeholder: v0.22.1-beta
     validations:
       required: true
   - type: dropdown
