@@ -121,6 +121,8 @@ static std::string system(const Game &g) {
     if (id == "odyssey2") return "Magnavox - Odyssey2";
     if (id == "vectrex") return "GCE - Vectrex";
     if (id == "3do") return "The 3DO Company - 3DO";
+    if (id == "dreamcast") return "Sega - Dreamcast";   // faltavam: Dreamcast e Saturn ficavam sem capa
+    if (id == "saturn") return "Sega - Saturn";
     if (id == "neogeocd") return "SNK - Neo Geo CD";
     if (id == "msx") return endsWith(g.file, ".mx2") ? "Microsoft - MSX2" : "Microsoft - MSX";
     if (id == "c64") return "Commodore - 64";

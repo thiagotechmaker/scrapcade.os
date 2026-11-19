@@ -9,8 +9,10 @@ LIBRETRO_MELONDS_SITE = $(call github,libretro,melonDS,$(LIBRETRO_MELONDS_VERSIO
 LIBRETRO_MELONDS_LICENSE = GPL-3.0
 LIBRETRO_MELONDS_DEPENDENCIES = mesa3d
 
+# -z noexecstack: um arquivo em assembly sem a nota GNU-stack deixava a pilha executavel, e o glibc 2.41
+# recusa abrir o nucleo ("cannot enable executable stack"): o Nintendo DS nao abria na v0.22
 define LIBRETRO_MELONDS_BUILD_CMDS
-	$(TARGET_MAKE_ENV) CFLAGS="$(TARGET_CFLAGS)" CXXFLAGS="$(TARGET_CXXFLAGS)" LDFLAGS="$(TARGET_LDFLAGS)" $(MAKE) -C $(@D) platform=unix CC="$(TARGET_CC)" CXX="$(TARGET_CXX)" AR="$(TARGET_AR)" LD="$(TARGET_CXX)"
+	$(TARGET_MAKE_ENV) CFLAGS="$(TARGET_CFLAGS)" CXXFLAGS="$(TARGET_CXXFLAGS)" LDFLAGS="$(TARGET_LDFLAGS) -Wl,-z,noexecstack" $(MAKE) -C $(@D) platform=unix CC="$(TARGET_CC)" CXX="$(TARGET_CXX)" AR="$(TARGET_AR)" LD="$(TARGET_CXX)"
 endef
 
 define LIBRETRO_MELONDS_INSTALL_TARGET_CMDS
