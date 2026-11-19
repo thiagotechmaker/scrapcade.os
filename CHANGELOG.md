@@ -6,6 +6,21 @@ Até a v0.19.0-beta as versões eram publicadas com a data e a hora da compilaç
 
 ## [Unreleased]
 
+## [0.22.2-beta] - 2026-11-19
+
+Achados do teste que abre um jogo de cada console pelo menu, com um pen drive arrumado por console.
+
+### Corrigido
+- Nintendo DS não abria: o emulador (melonDS) pedia pilha executável, que o sistema recusa.
+- 32X não abria na versão de 64 bits: o emulador dele (PicoDrive) só ia na de 32 bits.
+- Xbox não abria: o emulador (xemu) tentava usar o vídeo do menu dentro da janela do jogo e fechava na hora. O PS3 (RPCS3) usava o mesmo caminho.
+- Dreamcast e Saturn ficavam sem capa.
+- A BIOS do Neo Geo (`neogeo.zip`) e outras BIOS de fliperama apareciam no carrossel como jogo.
+- Na versão de 32 bits, abrir um jogo de Dreamcast, Saturn, PS2, GameCube, Wii, PSP, DS ou 3DS dizia "entra numa próxima versão"; agora diz que o console só roda na versão de 64 bits.
+
+### Adicionado
+- O teste de bibliotecas também reprova emulador com pilha executável e console sem emulador instalado.
+
 ## [0.22.1-beta] - 2026-11-18
 
 ### Corrigido

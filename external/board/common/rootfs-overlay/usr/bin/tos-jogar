@@ -85,7 +85,9 @@ eeprom_path = '$SC/xemu/eeprom.bin'
 hdd_path = '$B/xbox_hdd.qcow2'
 dvd_path = '$ROM'
 EOF
-    printf '#!/bin/sh\nexec /usr/bin/xemu -full-screen\n' > "$CLIENTE"
+    # o menu roda com SDL_VIDEODRIVER=kmsdrm (S99scrapcade); dentro do X o SDL do xemu precisa do x11, senao sai na
+    # hora ("kmsdrm not available") e o Xbox nao abria na v0.22
+    printf '#!/bin/sh\nexport SDL_VIDEODRIVER=x11\nexec /usr/bin/xemu -full-screen\n' > "$CLIENTE"
     PROG=/usr/lib/xemu
   else
     # PS3: o atalho .ps3 tem o nome da pasta do jogo (PS3_GAME/USRDIR/EBOOT.BIN)
@@ -103,6 +105,7 @@ EOF
     fi
     {
       echo '#!/bin/sh'
+      echo 'export SDL_VIDEODRIVER=x11'   # o SDL dos controles do RPCS3, dentro do X (o menu usa kmsdrm)
       # firmware: instala uma vez, a partir do PS3UPDAT.PUP da pasta bios
       echo "[ -d '$R3/dev_flash/vsh/module' ] || /usr/bin/rpcs3 --installfw '$B/PS3UPDAT.PUP'"
       echo "exec /usr/bin/rpcs3 --no-gui --fullscreen '$EBOOT'"

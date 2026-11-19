@@ -226,6 +226,13 @@ static bool pastaPs3(const std::string &p) {
     return isFile(p + "/PS3_GAME/USRDIR/EBOOT.BIN") || isFile(p + "/USRDIR/EBOOT.BIN");
 }
 
+static bool ehBiosDeFliperama(const std::string &f) {
+    static const char *BIOS[] = {"neogeo.zip", "pgm.zip", "skns.zip", "decocass.zip", "isgsm.zip", "nmk004.zip",
+                                 "ym2608.zip", "cchip.zip", "bubsys.zip", "qsound.zip", "konamigx.zip", "midssio.zip"};
+    for (auto b : BIOS) if (strcasecmp(f.c_str(), b) == 0) return true;
+    return false;
+}
+
 static std::vector<Game> scanGames() {
     std::vector<Game> out;
     halfLifeAtalhos();
@@ -246,6 +253,9 @@ static std::vector<Game> scanGames() {
             if (!ok) continue;
             // CD: so o .cue/.m3u aparece, as faixas .bin ficam escondidas
             if (s.id == "psx" && endsWith(f, ".bin")) continue;
+            // BIOS que o FBNeo e o MAME pedem na pasta dos jogos: ficam la, mas nao sao jogo (o neogeo.zip aparecia
+            // no carrossel e abria com "romset marked as not working")
+            if ((s.id == "neogeo" || s.id == "arcade") && ehBiosDeFliperama(f)) continue;
             Game g{&s, dir, f, f.substr(0, f.rfind('.')), ""};
             g.title = titleOf(g.base);
             here.push_back(g);

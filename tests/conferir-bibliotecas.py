@@ -94,5 +94,25 @@ for f in nucleos:
         print(f"nucleo nao abre: {f} sem {', '.join(graves[:6])}{' ...' if len(graves) > 6 else ''}")
     elif falta:
         print(f"aviso: {f} chama {', '.join(falta[:4])} que nao existe (so quebra se o nucleo chegar a usar)")
+    # pilha executavel: o glibc 2.41 recusa abrir o nucleo ("cannot enable executable stack"; o melonDS na v0.22)
+    seg = subprocess.run(["readelf", "-W", "-l", p], capture_output=True, text=True).stdout
+    if re.search(r"GNU_STACK\s+(\S+\s+){5}RWE", seg):
+        problemas += 1
+        print(f"nucleo nao abre: {f} pede pilha executavel (ligar com -Wl,-z,noexecstack)")
+# console sem nenhum nucleo instalado (o 32X na de 64 bits, na v0.22): a tabela e a do proprio menu
+raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src = open(raiz + "/external/package/scrapcade/src/scrapcade.cpp", encoding="utf-8").read()
+bloco = src[src.index("static std::string coreOf"):]
+bloco = bloco[:bloco.index("auto it = m.find")]
+tabela = dict((k, re.findall(r'"([a-z0-9_]+)"', v)) for k, v in re.findall(r'\{"([a-z0-9]+)", \{([^}]*)\}\}', bloco))
+cat = open(raiz + "/external/package/scrapcade/src/catalogo.h", encoding="utf-8").read()
+consoles = re.findall(r'^\s*\{"([a-z0-9]+)", "[^"]*", "', cat, re.M)
+instalados = set(f[:-len("_libretro.so")] for f in nucleos)
+# a imagem de 32 bits nao leva os pesados (o menu avisa "so roda no ScrapCade OS de 64 bits")
+SO_64 = {"dreamcast", "saturn", "ps2", "gamecube", "wii", "psp", "nds", "3ds"} if "i686" in T else set()
+for c in consoles:
+    if c in tabela and c not in SO_64 and not any(n in instalados for n in tabela[c]):
+        problemas += 1
+        print(f"console sem emulador: {c} (o menu procura {', '.join(tabela[c])})")
 print(f"bibliotecas: {len(nucleos)} nucleos conferidos, {problemas} problema(s)")
 sys.exit(1 if problemas else 0)

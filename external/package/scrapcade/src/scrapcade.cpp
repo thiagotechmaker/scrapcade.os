@@ -4202,7 +4202,9 @@ static void play() {
     }
     if (g->sys->id == "ports" && g->file == "PortMaster.sh" && !portMasterInstalado()) { baixarPortMaster(); return; }
     if (!port && (core.empty() || !isFile("/usr/lib/libretro/" + core + "_libretro.so"))) {
-        toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
+        // a imagem de 32 bits nao leva os consoles pesados (Dreamcast, Saturn, PS2, GameCube, Wii, PSP, DS e 3DS)
+        if (sizeof(void *) == 4) toast("O " + g->sys->name + " só roda no ScrapCade OS de 64 bits.", 3500);
+        else toast("O " + g->sys->emu + " entra numa próxima versão do ScrapCade", 3500);
         return;
     }
     prefs["plays|" + g->key()] = std::to_string(plays(*g) + 1);
